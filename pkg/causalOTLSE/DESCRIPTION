@@ -1,0 +1,13 @@
+Package: causalOTLSE
+Version: 0.1-0
+Date: 2022-07-08
+Title: Optimal Thresholding Least Squares Inference for Causal Effects
+Authors@R: c(person("Pierre Chausse", "Developer", role = c("aut", "cre"),
+                     email = "pchausse@uwaterloo.ca"),
+             person("Mihai Giurcanu", "Developer", role = "aut",
+	             email = "giurcanu@uchicago.edu"))
+Description: This package includes tools to measure causal effects using least squares regressions. The number of piecewise polynomials is selected by some information criteria.
+Depends: R (>= 4.0.0)
+Imports: stats, splines, sandwich, cvTools, graphics, methods, texreg
+License: GPL (>= 2)
+NeedsCompilation: no
