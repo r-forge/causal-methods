@@ -1,16 +1,18 @@
 importFrom(stats, quantile, lm, predict, coef, vcov, printCoefmat, cov, pnorm,
-           terms, model.matrix, as.formula, model.frame, lm.fit, na.omit, pf)
+           as.formula, model.frame, model.matrix,
+           na.omit, pf, qnorm, residuals, terms, var)
 importFrom(graphics, grid, legend, matplot)
-importFrom(sandwich, vcovHC)
-importFrom(cvTools, cvFolds)
-importFrom(splines, bs)
-importFrom(methods, setMethod)
+importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)
+importFrom(methods, setMethod)
 
-export(otlse, print.otlse, summary.otlse, print.summary.otlse,
-       ppSplines, selASY, selIC, extract)
+export(setModel, print.tlseModel, multiSplines, tlse, print.tlse,
+       summary.tlse, selTLSE, print.summary.tlse, plot.tlse, extract)
  
-S3method(summary, otlse)
-S3method(print, otlse)
-S3method(print, summary.otlse)
-S3method(plot, otlse)
+S3method(summary, tlse)
+S3method(print, tlseModel)
+S3method(print, tlse)
+S3method(print, summary.tlse)
+S3method(plot, tlse)
+
+

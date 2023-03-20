@@ -1,30 +1,37 @@
 \name{print}
-\alias{print.otlse}
-\alias{print.summary.otlse}
+\alias{print.tlseModel}
+\alias{print.tlse}
+\alias{print.summary.tlse}
 \title{Print methods}
 \description{
-Print results of different methods applied to otlse Objects
+Print results of different methods applied to \code{tlse} ands
+\code{tlseModel} Objects.
 }
 \usage{
-\method{print}{otlse}(x, ...)
-\method{print}{summary.otlse}(x, digits = 4,
+\method{print}{tlseModel}(x, knots=FALSE, ...)
+\method{print}{tlse}(x, ...)
+\method{print}{summary.tlse}(x, digits = 4,
                               signif.stars = getOption("show.signif.stars"),
-                              beta=FALSE, knots=FALSE,...)
+                              beta=FALSE, knots = FALSE,...)
 }
 \arguments{
-  \item{x}{Onject of class \code{otlse} or \code{summary.otlse}.}
+  \item{x}{Onject of class \code{tlse} or \code{summary.tlse}.}
   \item{digits}{The number of digits to print.}
   \item{signif.stars}{Should we print the significant stars?}
-  \item{beta}{Should we print the coefficient matrix for the piecewise
+  \item{beta}{Should we print the coefficient matrix of the piecewise
     polynomials?}
-  \item{knots}{Should the knots be printed?}
+  \item{knots}{Should we print the knots of the piecewise polynomial?}
 \item{...}{Argument for other type of objects}
 }
 
 \examples{
 data(simData)
-fit <- otlse(Y~Z|~X1*X2*male, simData, crit="AIC", HCtype="HC3")
-print(summary(fit), digits=5, knots=TRUE)
+mod1 <- setModel(Y~Z|~X1*X2, data=simData)
+print(mod1)
+fit <- tlse(mod1)
+print(fit)
+s <- summary(fit)
+print(s)
 }
 
 

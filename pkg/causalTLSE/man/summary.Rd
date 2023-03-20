@@ -1,11 +1,11 @@
 \name{summary}
-\alias{summary.otlse}
+\alias{summary.tlse}
 \title{Summary for objects of class otlse}
 \description{
 The method builds the coefficient matrices. 
 }
 \usage{
-\method{summary}{otlse}(object, ...)
+\method{summary}{tlse}(object, ...)
 }
 \arguments{
  \item{object}{An object of class \code{otlse}}
@@ -14,7 +14,8 @@ The method builds the coefficient matrices.
 
 \examples{
 data(simData)
-fit <- otlse(Y~Z|~X1*X2*male, simData, crit="AIC", HCtype="HC3")
+mod1 <- setModel(Y~Z|~X1*X2, data=simData)
+fit <- tlse(mod1, selType="BTLSE", vcov.=sandwich::vcovHC, type="HC3")
 summary(fit)
 }
 

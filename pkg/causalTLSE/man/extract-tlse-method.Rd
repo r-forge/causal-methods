@@ -1,9 +1,9 @@
-\name{extract,otlse-method}
-\alias{extract,otlse-method}
-\alias{extract.otlse}
-\title{\code{\link{extract}} method for \code{otlse} objects}
+\name{extract,tlse-method}
+\alias{extract,tlse-method}
+\alias{extract.tlse}
+\title{\code{\link{extract}} method for \code{tlse} objects}
 \usage{
-\S4method{extract}{otlse}(
+\S4method{extract}{tlse}(
   model,
   include.nobs = TRUE,
   include.nknots = TRUE,
@@ -27,6 +27,6 @@
 not in use.}
 }
 \description{
-\code{\link{extract}} method for \code{otlse} objects created by the
-\code{\link[causalOTLSE]{otlse}} function.
+\code{\link{extract}} method for \code{tlse} objects created by the
+\code{\link[causalTLSE]{tlse}} function.
 }

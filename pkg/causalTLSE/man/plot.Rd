@@ -1,38 +1,31 @@
 \name{plot}
-\alias{plot.otlse}
+\alias{plot.tlse}
 \title{Plot methods}
 \description{
 Some plot utilities for object of class \code{otlse}.
 }
 \usage{
-\method{plot}{otlse}(x, y, which=y, addInterval=FALSE, level=0.95,
-                    leg.pos="topright", ...)
+\method{plot}{tlse}(x, y, which=y, interval=c("none","confidence"),
+                    level=0.95, legendPos="topright",
+                    vcov.=NULL, ...)
 }
 \arguments{
-  \item{x}{Object of class \code{otlse}.}
+  \item{x}{Object of class \code{tlse}.}
   \item{y}{alias for \code{which} for compatibility with \code{plot}}
   \item{which}{Which covariate to plot against the outcome variable. It
-    could be an integer of a character}
-  \item{addInterval}{Should we add a confidence interval?}
+    could be an integer or a character}
+  \item{interval}{The type of confidence interval. The default is \code{none}.}
   \item{level}{The confidence interval level if included.}
-  \item{leg.pos}{The legend position.}
-  \item{...}{Currently not used.}  
+  \item{legendPos}{The legend position.}
+  \item{vcov.}{An alternative function to compute the covariance
+    matrix of the least squares estimates. The default \code{vcov}
+    method for \code{lm} objects.}
+  \item{...}{Additional argument to pass to the \code{vcov.} function.}  
 }
 
 \examples{
 data(simData)
-fit <- otlse(Y~Z|~X1*X2*male, simData, crit="AIC", HCtype="HC3")
-plot(fit,"X1")
+mod <- setModel(Y~Z|~X1+X2, data=simData)
+fit <- tlse(mod, seType="lm", vcov.=sandwich::vcovHC, type="HC")
+plot(fit, "X1")
 }
-
-
-
-
-
-
-
-
-
-
-
-
