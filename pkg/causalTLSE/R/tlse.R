@@ -41,7 +41,15 @@ setKnots <- function(x, sel=1:length(x), nknots=function(n) n^0.3,
     .chkKnots(x, knots)
 }
 
+model.matrix.tlseModel <- function(object, ...)
+{
+    X <- model.matrix(object$formX, object$data)    
+    if (attr(terms(object$formX), "intercept") == 1) 
+        X <- X[, -1, drop = FALSE]
+    X
+}
 
+    
 setModel <- function (form, data, nknots = function(n) n^0.3, 
                        knots0 = NA, knots1 = NA, userRem=NULL, ...)
 {
@@ -78,28 +86,28 @@ setModel <- function (form, data, nknots = function(n) n^0.3,
         na <- attr(na, "omit")
         X <- X[-na,,drop=FALSE]
         Z <- Z[-na,,drop=FALSE]
-        Y <- Y[-na]
         data <- data[-na,,drop=FALSE]
-        n <- length(Y)
     } else {
         na <- NULL
     }
     if (!is.null(userRem))
+    {
+        w <- which(colnames(X) %in% userRem)
+        if (length(w))
         {
-            w <- which(colnames(X) %in% userRem)
-            if (length(w))
-            {
-                knots0[w] <- lapply(w, function(i) NULL)
-                knots1[w] <- lapply(w, function(i) NULL)
-            }
+            knots0[w] <- lapply(w, function(i) NULL)
+            knots1[w] <- lapply(w, function(i) NULL)
         }
+    }
     nameX <- colnames(X)
+    nameY <- all.vars(formY)[1]
+    nameZ <- colnames(Z)
     knots0 <- lapply(1:ncol(X), function(i)
         setKnots(X[,i], Z==0, nknots, knots0[[i]]))
     knots1 <- lapply(1:ncol(X), function(i)
         setKnots(X[,i], Z==1, nknots, knots1[[i]]))
     names(knots0) <- names(knots1) <- nameX
-    obj <- list(n=length(Z), na=na, X=X, Y=Y, Z=Z, formY=formY, formX=formX,
+    obj <- list(na=na, formY=formY, formX=formX, treated=nameZ, nameY=nameY,
                 knots0=knots0, knots1=knots1, data=data, nameX=nameX)
     class(obj) <- "tlseModel"
     obj
@@ -107,15 +115,16 @@ setModel <- function (form, data, nknots = function(n) n^0.3,
 
 print.tlseModel <- function(x, knots=FALSE, ...)
 {
+    Z <- x$data[[x$treated]]
     cat("Semiparametric Thresholding LSE Model\n")
     cat("*************************************\n\n")
-    cat("Number of treated: ", sum(x$Z), "\n")
-    cat("Number of control: ", sum(x$Z==0), "\n")
+    cat("Number of treated: ", sum(Z), "\n")
+    cat("Number of control: ", sum(Z==0), "\n")
     cat("Number of missing values: ", length(x$na), "\n")
     cat("Covariates being approximated by a piecewise function:\n")
     w <- sapply(x$knots0, is.null)
-    selPW <- colnames(x$X)[!w]
-    nonselPW <- colnames(x$X)[w]    
+    selPW <- x$nameX[!w]
+    nonselPW <- x$nameX[w]    
     if (length(selPW))
     {
         cat("\t", paste(selPW, collapse=", ", sep=""), "\n")
@@ -135,7 +144,7 @@ print.tlseModel <- function(x, knots=FALSE, ...)
         cat("************************************\n")
         for (sel in which(!w))
         {
-            cat(colnames(x$X)[sel],":\n", sep="")
+            cat(x$nameX[sel],":\n", sep="")
             print.default(format(x$knots1[[sel]], ...), print.gap = 2L, 
                           quote = FALSE)
 
@@ -144,7 +153,7 @@ print.tlseModel <- function(x, knots=FALSE, ...)
         cat("************************************\n")
         for (sel in which(!w))
         {
-            cat(colnames(x$X)[sel],":\n", sep="")
+            cat(x$nameX[sel],":\n", sep="")
             print.default(format(x$knots0[[sel]], ...), print.gap = 2L, 
                           quote = FALSE)
 
@@ -158,13 +167,14 @@ print.tlseModel <- function(x, knots=FALSE, ...)
                            selObs=c("group", "all")) 
 {
     selObs <- match.arg(selObs)
+    Z <- model$data[[model$treated]]
     if (selObs == "group")
     {
-        id <- if (treated) model$Z==1 else model$Z==0
+        id <- if (treated) Z==1 else Z==0
     } else {
-        id <- 1:model$n
+        id <- 1:nrow(model$data)
     }
-    X <- model$X[id,which]
+    X <- model.matrix(model)[id,which]
     knots <- if(treated) model$knots1[[which]] else model$knots0[[which]]
     if (is.null(knots)) 
         return(as.matrix(X))
@@ -189,26 +199,27 @@ print.tlseModel <- function(x, knots=FALSE, ...)
 multiSplines <- function (model, treated=TRUE, selObs=c("group", "all"))
 {
     selObs <- match.arg(selObs)
+    Z <- model$data[[model$treated]]
     knots <- if(treated) model$knots1 else model$knots0
     if (selObs == "group")
     {
-        id <- if(treated) model$Z==1 else model$Z==0
+        id <- if(treated) Z==1 else Z==0
     } else {
-        id <- 1:model$n
+        id <- 1:nrow(model$data)
     }
-    all <- lapply(1:ncol(model$X), function(i) {
+    all <- lapply(1:length(model$nameX), function(i) {
         ans <- .splineMatrix(model, i, treated, selObs)
         nk <- length(knots[[i]]) + 1
-        Xf <- matrix(0, model$n, nk)
+        Xf <- matrix(0, nrow(model$data), nk)
         Xf[id,] <- ans
         colnames(Xf) <- if (nk == 1)
                          {
-                             colnames(model$X)[i]
+                             model$nameX[i]
                          } else {
-                             paste(colnames(model$X)[i], "_", 1:nk, sep = "")
+                             paste(model$nameX[i], "_", 1:nk, sep = "")
                          }
         Xf})
-    names(all) <- colnames(model$X)
+    names(all) <- model$nameX
     cnames <- lapply(all, colnames)
     names(cnames) <- names(all)
     all <- do.call(cbind, all)
@@ -221,8 +232,8 @@ multiSplines <- function (model, treated=TRUE, selObs=c("group", "all"))
                    causal=c("ACE", "ACT", "ACN", "ALL"))
 {
     causal <- match.arg(causal)
-    id0 <- model$Z==0
-    n <- model$n
+    id0 <- model$data[[model$treated]]==0
+    n <- nrow(model$data)
     phat0 <- sum(id0)/n
     e <- residuals(fit)
     sig <- var(e[id0])/phat0 + var(e[!id0])/(1-phat0)
@@ -311,10 +322,11 @@ multiSplines <- function (model, treated=TRUE, selObs=c("group", "all"))
 .causali <- function(model, beta, vcov, X0, X1,
                      beta0, beta1, causal, islm=TRUE)
 {
+    Z <- model$data[[model$treated]]
     id <- switch(causal,
-                 ACE=rep(TRUE, model$n),
-                 ACT=model$Z==1,
-                 ACN=model$Z==0)
+                 ACE=rep(TRUE, nrow(model$data)),
+                 ACT=Z==1,
+                 ACN=Z==0)
     n <- sum(id)
     X0 <- X0[id,, drop = FALSE]
     X1 <- X1[id,, drop = FALSE]
@@ -552,7 +564,7 @@ print.summary.tlse <- function (x, digits = 4,
                      crit=NULL)
 {
     pval <- c(do.call("c", pvalRes$pval0), do.call("c", pvalRes$pval1))
-    n <- model$n
+    n <- nrow(model$data)
     q <- length(pval)
     p <- mean(c(pvalRes$p0,pvalRes$p1))
     crit <- minPV(p)
@@ -677,7 +689,8 @@ estModel <- function(model, w0=NULL, w1=NULL)
                } else if (p == 2) {
                    list(1:2)
                } else {
-                   c(list(1:2), lapply(1:(p-2), function(j) (0:2)+j), list(c(p-1,p)))
+                   c(list(1:2), lapply(1:(p-2),
+                                       function(j) (0:2)+j), list(c(p-1,p)))
                }
     }
     pvali <- function(i, treated=TRUE)
@@ -722,32 +735,33 @@ extract.tlse <- function (model, include.nobs = TRUE, include.nknots = TRUE,
 {
     which <- match.arg(which)
     type <- c("ACE","ACT","ACN")
-    w <- if (which == "ALL") type else type[sapply(type, function(ti) grepl(ti, which))]
-    wl <- tolower(w)
-    co <- unlist(model[wl])
-    names(co) <- toupper(names(co))
-    se <- unlist(model[paste("se.",wl,sep="")])
-    names(se) <- toupper(names(se))
-    pval <- 2*pnorm(-abs(co/se))
-    names(pval) <- toupper(names(pval))
+    w <- if (which == "ALL") type
+         else type[sapply(type, function(ti) grepl(ti, which))]
+    s <- summary(model)
+    co <- s$causal
+    co <- co[rownames(co) %in% w,,drop=FALSE]
+    se <- co[,2]
+    pval <- co[,4]
+    co <- co[,1]
+    names(pval) <- names(se) <- names(co) <- w
     gof <- numeric()
     gof.names <- character()
     gof.decimal <- logical()
     if (isTRUE(include.nknots)) {
-        rs1 <- length(unlist(model$knots0))
-        rs2 <- length(unlist(model$knots1))        
+        rs1 <- length(unlist(model$model$knots0))
+        rs2 <- length(unlist(model$model$knots1))        
         gof <- c(gof, rs1, rs2)
         gof.names <- c(gof.names, "Num. knots (Control)", "Num. knots (Treated)")
         gof.decimal <- c(gof.decimal, FALSE, FALSE)
    }
     if (isTRUE(include.numcov)) {
-        rs3 <- length(model$knots0)
+        rs3 <- length(model$model$nameX)
         gof <- c(gof, rs3)
         gof.names <- c(gof.names, "Num. covariates")
         gof.decimal <- c(gof.decimal, FALSE)
     }
     if (isTRUE(include.nobs)) {
-        n <- nrow(model$data)
+        n <- nrow(model$model$data)
         gof <- c(gof, n)
         gof.names <- c(gof.names, "Num. obs.")
         gof.decimal <- c(gof.decimal, FALSE)
@@ -761,57 +775,99 @@ setMethod("extract", signature = className("tlse", "causalTLSE"),
           definition = extract.tlse)
 
 
-plot.tlse <- function(x, y, which=y, interval=c("none","confidence"), level=0.95, 
-                       legendPos="topright", vcov.=NULL, ...)
+predict.tlse <- function (object, interval = c("none", "confidence"), se.fit = FALSE, 
+    newdata = NULL, level = 0.95, vcov. = NULL, ...) 
 {
     interval <- match.arg(interval)
-    vnames <- all.vars(x$model$formX)
-    if (is.numeric(which))
-        which <- vnames[which]
-    if (!is.character(which) & length(which) != 1)
-        stop("which must be a character type")
-    if (!(which %in% vnames))
-        stop("which must be one of the names of the variables")
-    ind <- order(x$model$data[,which])
-    treat <- colnames(x$model$Z)    
-    data <- x$model$data[ind,]
-    data[,!(names(data)%in%c(which, treat))] <-
-        sapply(which(!(names(data)%in%c(which, treat))), function(i)
-            rep(mean(data[,i], na.rm=TRUE), nrow(data)))
-    x$model$X <- model.matrix(x$model$formX, data)[,-1]
-    x$model$Y <- x$model$Y[ind]
-    x$model$Z <- x$model$Z[ind,,drop=FALSE]
-    x$model$data <- data
-    Z <- x$model$data[,treat]
-    data$Xf1 <- multiSplines(x$model, TRUE)
-    data$Xf0 <- multiSplines(x$model, FALSE)
-    X <- model.matrix(x$model$formY, data)
-    v <- if (is.null(vcov.)) vcov(x$lm.out) else vcov.(x$lm.out, ...)
-    b <- coef(x$lm.out)
-    crit <- qnorm(0.5+level/2)
-    pr0 <- c(X[Z==0,]%*%b)
-    pr1 <- c(X[Z==1,]%*%b)
-    if (interval == "confidence")
-        {
-            se0 <- apply(X[Z==0,], 1, function(x) sqrt(c(t(x)%*%v%*%x)))
-            se1 <- apply(X[Z==1,], 1, function(x) sqrt(c(t(x)%*%v%*%x)))
-            pr0 <- cbind(pr0, pr0-crit*se0, pr0+crit*se0)
-            pr1 <- cbind(pr1, pr1-crit*se1, pr1+crit*se1)
-            lty=c(1,3,3)
-            lwd=c(2,1,1)
-
-        } else {
-            lty=1
-            lwd=2
-        }
-    main <- paste("Outcome versus ", which, " using piecewise polynomials", sep="")
-    ylim <- range(c(pr0, pr1))
-    matplot(data[Z==1,which], pr1, col=2, ylim=ylim, type='l',
-            lty=lty, lwd=lwd, main=main, ylab="Outcome", xlab=which)
-    matplot(data[Z==0,which], pr0, col=5, type='l',
-            lty=lty, lwd=lwd, add=TRUE)
-    grid()
-    legend(legendPos, c("Treated","Control"), col=c(2,5), lty=lty, lwd=2,
-           bty='n')
-    invisible()
+    model <- object$model
+    if (!is.null(newdata)) 
+        model$data <- newdata
+    else newdata <- model$data
+    Z <- model$data[[model$treated]]
+    if (is.null(Z)) 
+        stop("newdata must contain a treatment assignment variable")
+    newdata$Xf1 <- multiSplines(model, TRUE)
+    newdata$Xf0 <- multiSplines(model, FALSE)
+    X <- model.matrix(model$formY, newdata)
+    b <- coef(object$lm.out)
+    pr0 <- c(X[Z == 0, ] %*% b)
+    pr1 <- c(X[Z == 1, ] %*% b)
+    if (se.fit | interval == "confidence") {
+        v <- if (is.null(vcov.)) 
+            vcov(object$lm.out)
+        else vcov.(object$lm.out, ...)
+        se0 <- apply(X[Z == 0, ], 1, function(x) sqrt(c(t(x) %*% 
+            v %*% x)))
+        se1 <- apply(X[Z == 1, ], 1, function(x) sqrt(c(t(x) %*% 
+            v %*% x)))
+    }
+    if (interval == "confidence") {
+        crit <- qnorm(0.5 + level/2)
+        pr0 <- cbind(fit = pr0, lower = pr0 - crit * se0, upper = pr0 + 
+            crit * se0)
+        pr1 <- cbind(fit = pr1, lower = pr1 - crit * se1, upper = pr1 + 
+            crit * se1)
+    }
+    if (se.fit) 
+        list(treated = list(fit = pr1, se.fit = se1), control = list(fit = pr0, 
+            se.fit = se0))
+    else list(treated = pr1, control = pr0)
 }
+
+
+plot.tlse <- function (x, y, which = y, interval = c("none", "confidence"), 
+                       level = 0.95, newdata = NULL, legendPos = "topright", vcov. = NULL,
+                       col0=2, col1=5, ...) 
+ {
+    interval <- match.arg(interval)
+    vnames <- all.vars(x$model$formX)
+    if (!is.null(newdata)) {
+        if (!is.numeric(newdata)) 
+            stop("newdata must be a vector of numeric values")
+        if (is.null(names(newdata))) 
+            stop("newdata must be a named vector")
+        if (any(names(newdata) == "")) 
+            stop("All elements of newdata must be named")
+        nd <- names(newdata)
+    }
+   if (is.numeric(which)) 
+        which <- vnames[which]
+    if (!is.character(which) & length(which) != 1) 
+        stop("which must be a character type")
+    if (!(which %in% vnames)) 
+        stop("which must be one of the names of the variables")
+    ind <- order(x$model$data[, which])
+    treat <- x$model$treated
+    data <- x$model$data[ind, ]
+    Z <- data[, treat]
+    data[, !(names(data) %in% c(which, treat))] <- sapply(which(!(names(data) %in% 
+        c(which, treat))), function(i) rep(mean(data[, i], na.rm = TRUE), 
+                                           nrow(data)))
+    if (!is.null(newdata)) 
+        for (ndi in nd) data[[ndi]] <- newdata[ndi]
+    res <- predict(x, interval = interval, level = level, newdata = data, 
+                    se.fit = FALSE, vcov. = vcov., ...)
+    pr0 <- res$control
+    pr1 <- res$treated
+    if (interval == "confidence") {
+        lty = c(1, 3, 3)
+        lwd = c(2, 1, 1)
+    }
+    else {
+        lty = 1
+        lwd = 2
+    }
+    main <- paste("Outcome versus ", which, " using piecewise polynomials", 
+        sep = "")
+    ylim <- range(c(pr0, pr1))
+    matplot(data[Z == 1, which], pr1, col = col1, ylim = ylim, type = "l", 
+        lty = lty, lwd = lwd, main = main, ylab = x$model$nameY, 
+        xlab = which)
+    matplot(data[Z == 0, which], pr0, col = col0, type = "l", lty = lty, 
+        lwd = lwd, add = TRUE)
+    grid()
+    legend(legendPos, c("Treated", "Control"), col = c(col1, col0), 
+        lty = lty, lwd = 2, bty = "n")
+    invisible()
+ }
+

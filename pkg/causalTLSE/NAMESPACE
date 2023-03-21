@@ -6,13 +6,16 @@ importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)
 importFrom(methods, setMethod)
 
-export(setModel, print.tlseModel, multiSplines, tlse, print.tlse,
-       summary.tlse, selTLSE, print.summary.tlse, plot.tlse, extract)
+export(setModel, print.tlseModel, tlse, print.tlse,
+       summary.tlse, selTLSE, print.summary.tlse, plot.tlse, extract,
+       predict.tlse)
  
 S3method(summary, tlse)
 S3method(print, tlseModel)
 S3method(print, tlse)
 S3method(print, summary.tlse)
 S3method(plot, tlse)
+S3method(predict, tlse)
+S3method(model.matrix, tlseModel)
 
 
