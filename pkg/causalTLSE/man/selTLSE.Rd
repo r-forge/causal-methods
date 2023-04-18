@@ -1,11 +1,11 @@
 \name{selTLSE}
 \alias{selTLSE}
 \title{
-Thresholding Least Squares estimator
+Knot selection method
 }
 \description{
-This is the main function to estimate the causal effects using the
-semiparametric thresholding least squares method.
+This is the main function to select the knots in \code{tlseModel} objects. It returns
+a model with non significant knots removed.
 }
 \usage{
 selTLSE(model, method=c("FTLSE", "BTLSE"),
@@ -27,8 +27,8 @@ selTLSE(model, method=c("FTLSE", "BTLSE"),
 }
 
 \examples{
-data(simData)
-mod1 <- setModel(Y~Z|~X1*X2, data=simData)
+data(simDat3)
+mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
 selTLSE(mod1, "BTLSE")
 }
 

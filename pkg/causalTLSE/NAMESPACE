@@ -1,21 +1,28 @@
 importFrom(stats, quantile, lm, predict, coef, vcov, printCoefmat, cov, pnorm,
-           as.formula, model.frame, model.matrix,
-           na.omit, pf, qnorm, residuals, terms, var)
+           as.formula, model.frame, model.matrix, delete.response,
+           na.omit, pf, qnorm, residuals, terms, var, fitted, nobs)
 importFrom(graphics, grid, legend, matplot)
 importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)
 importFrom(methods, setMethod)
 
-export(setModel, print.tlseModel, tlse, print.tlse,
-       summary.tlse, selTLSE, print.summary.tlse, plot.tlse, extract,
-       predict.tlse)
+export(setModel, print.tlseModel, causalTlse, print.causalTlse,
+       summary.causalTlse, selTLSE, print.summary.causalTlse, plot.tlseFit,
+       extract, predict.tlseFit, estModel, print.tlseFit,
+       summary.tlseFit, print.summary.tlseFit, causal, causal.tlseModel,
+       causal.tlseFit)
  
-S3method(summary, tlse)
+S3method(summary, causalTlse)
+S3method(summary, tlseFit)
+S3method(causal, tlseFit)
+S3method(causal, tlseModel)
 S3method(print, tlseModel)
-S3method(print, tlse)
-S3method(print, summary.tlse)
-S3method(plot, tlse)
-S3method(predict, tlse)
+S3method(print, causalTlse)
+S3method(print, summary.causalTlse)
+S3method(print, summary.tlseFit)
+S3method(plot, tlseFit)
+S3method(print, tlseFit)
+S3method(predict, tlseFit)
 S3method(model.matrix, tlseModel)
 
 

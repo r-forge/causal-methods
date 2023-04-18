@@ -11,7 +11,7 @@ polynomial.
 }
 \usage{
 setModel(form, data, nknots = function(n) n^0.3, 
-         knots0 = NA, knots1 = NA, userRem=NULL, ...)
+         knots0, knots1, userRem=NULL, ...)
 }
 \arguments{
   \item{form}{A formula for the regression (outcome versus treatment
@@ -22,8 +22,9 @@ setModel(form, data, nknots = function(n) n^0.3,
     be a function of one argument, the sample size. To fix it, simply
     input a function that returns an integer.}
   \item{knots0}{A list of knots for the control group. The length must
-    be equal to the number of covariates. The number of knots is 0 an
-    element of the list is set to \code{NULL}.}
+    be equal to the number of covariates. The number of knots is 0 if an
+    element of the list is set to \code{NULL}. If missing, the knots are
+  automatically generated.}
   \item{knots1}{A list of knots for the control group. See \code{knots0}.}  
   \item{userRem}{A vector of characters representing the covariates not
     to be apploximated by a piecewise polynomial.}
@@ -31,8 +32,8 @@ setModel(form, data, nknots = function(n) n^0.3,
 }
 
 \examples{
-data(simData)
-mod1 <- setModel(Y~Z|~X1*X2, data=simData)
+data(simDat3)
+mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
 mod1
 }
 

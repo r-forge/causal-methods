@@ -1,5 +1,5 @@
 \name{predict}
-\alias{predict.tlse}
+\alias{predict.tlseFit}
 \title{Plot method}
 \description{
 The method computes the predicted outcome for each group with standard
@@ -7,12 +7,12 @@ errors and confidence intervals.
 }
 \usage{
 
-\method{predict}{tlse}(object, interval=c("none","confidence"),
+\method{predict}{tlseFit}(object, interval=c("none","confidence"),
                        se.fit=FALSE, newdata=NULL, level=0.95,
                        vcov.=NULL, ...)
 }
 \arguments{
-  \item{object}{Object of class \code{tlse}.}
+  \item{object}{Object of class \code{tlseFit}.}
   \item{interval}{If set to \code{interval}, it returns the predicted 
     values along with the lower and upper bounds of
     the confidence interval.}
@@ -29,8 +29,8 @@ errors and confidence intervals.
 }
 
 \examples{
-data(simData)
-mod <- setModel(Y~Z|~X1+X2, data=simData)
-fit <- tlse(mod, seType="lm", vcov.=sandwich::vcovHC, type="HC")
+data(simDat3)
+mod <- setModel(Y~Z|~X1+X2, data=simDat3)
+fit <- causalTlse(mod, seType="lm", vcov.=sandwich::vcovHC, type="HC")
 pr <- predict(fit, interval="confidence")
 }
