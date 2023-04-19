@@ -1,14 +1,15 @@
-\name{extract,causalTlse-method}
-\alias{extract,causalTlse-method}
-\alias{extract.causalTlse}
-\title{\code{\link{extract}} method for \code{causalTlse} objects}
+\name{extract,causaltlse-method}
+\alias{extract,causaltlse-method}
+\alias{extract.causaltlse}
+\title{\code{\link{extract}} method for \code{causaltlse} objects}
 \usage{
-\S4method{extract}{causalTlse}(
+\S4method{extract}{causaltlse}(
   model,
   include.nobs = TRUE,
   include.nknots = TRUE,
   include.numcov = TRUE,
   include.rsquared = TRUE,
+  include.adjrsquared=TRUE,
   which = c("ALL","ACE","ACT","ACN","ACE-ACT","ACE-ACN","ACT-ACN"),
   ...)
 }
@@ -22,7 +23,11 @@
 \item{include.numcov}{Report the total number of covariates (including
   interactions is any) per group?}
 
-\item{include.rsquared}{Report the R-squared of the final regression estimtion}
+\item{include.rsquared}{Report the R-squared of the final regression
+  estimtion}
+
+\item{include.adjrsquared}{Report the adjusted R-squared of the final
+  regression estimtion}
 
 \item{which}{Which causal effect measures should be printed?}
 
@@ -30,7 +35,7 @@
 not in use.}
 }
 \description{
-\code{\link{extract}} method for \code{causalTlse} objects created by the
-\code{\link[causalTLSE]{causalTlse}} or
+\code{\link{extract}} method for \code{causaltlse} objects created by the
+\code{\link[causalTLSE]{causalTLSE}} or
 \code{\link[causalTLSE]{causal}} function.
 }

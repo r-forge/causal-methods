@@ -31,6 +31,6 @@ errors and confidence intervals.
 \examples{
 data(simDat3)
 mod <- setModel(Y~Z|~X1+X2, data=simDat3)
-fit <- causalTlse(mod, seType="lm", vcov.=sandwich::vcovHC, type="HC")
+fit <- causalTLSE(mod, seType="lm", vcov.=sandwich::vcovHC, type="HC")
 pr <- predict(fit, interval="confidence")
 }

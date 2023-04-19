@@ -1,5 +1,5 @@
-\name{causalTlse}
-\alias{causalTlse}
+\name{causalTLSE}
+\alias{causalTLSE}
 \title{
 Causal Effect based on thresholding Least Squares with knots selection
 }
@@ -9,7 +9,7 @@ and estimate different causal effects using the semiparametric
 thresholding least squares method.
 }
 \usage{
-causalTlse(model, selType=c("SLSE","BTLSE","FTLSE"),
+causalTLSE(model, selType=c("SLSE","BTLSE","FTLSE"),
      selCrit = c("ASY", "AIC", "BIC"),
      causal = c("ALL","ACT","ACE","ACN"),
      seType=c("analytical", "lm"),
@@ -36,7 +36,7 @@ causalTlse(model, selType=c("SLSE","BTLSE","FTLSE"),
 \examples{
 data(simDat3)
 mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
-fit1 <- causalTlse(mod1, selType="BTLSE", vcov.=sandwich::vcovHC, type="HC3")
+fit1 <- causalTLSE(mod1, selType="BTLSE", vcov.=sandwich::vcovHC, type="HC3")
 }
 
 \keyword{causal effects}

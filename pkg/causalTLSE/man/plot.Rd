@@ -9,7 +9,7 @@ Some plot utilities for object of class \code{tlseFit}.
                     level = 0.95, newdata = NULL, legendPos = "topright",
                     vcov. = NULL, col0=2, col1=5, lty0=1, lty1=2,
                     add.=FALSE, addToLegend=NULL,
-                    cex=1, ylim.=NULL, addPoints=FALSE, ...) 
+                    cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE, ...) 
 }
 \arguments{
   \item{x}{Object of class \code{tlseFit}.}
@@ -32,7 +32,7 @@ Some plot utilities for object of class \code{tlseFit}.
   \item{addToLegend}{A character string to add to the legend next to
     treated and control.}
   \item{cex}{The font size for the legend.}
-  \item{ylim.}{An optional range for the y-axis.}
+  \item{ylim., xlim.}{An optional range for the y-axis and x-axis.}
   \item{addPoints}{Should we add the scatterplot of the outcome and
     covariate on the graph?}
   \item{...}{Additional argument to pass to the \code{vcov.} function.}  
@@ -41,6 +41,6 @@ Some plot utilities for object of class \code{tlseFit}.
 \examples{
 data(simDat3)
 mod <- setModel(Y~Z|~X1+X2, data=simDat3)
-fit <- causalTlse(mod, seType="lm", vcov.=sandwich::vcovHC, type="HC")
+fit <- causalTLSE(mod, seType="lm", vcov.=sandwich::vcovHC, type="HC")
 plot(fit, "X1")
 }

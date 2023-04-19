@@ -1,19 +1,18 @@
 \name{print}
 \alias{print.tlseModel}
-\alias{print.causalTlse}
+\alias{print.causaltlse}
 \alias{print.tlseFit}
-\alias{print.summary.causalTlse}
+\alias{print.summary.causaltlse}
 \alias{print.summary.tlseFit}
 \title{Print methods}
 \description{
-Print results of different methods applied to \code{causalTlse} and
-\code{tlseModel} Objects.
+Print methods for different objects from the package.
 }
 \usage{
 \method{print}{tlseModel}(x, knots=FALSE, ...)
-\method{print}{causalTlse}(x, ...)
+\method{print}{causaltlse}(x, ...)
 \method{print}{tlseFit}(x, ...)
-\method{print}{summary.causalTlse}(x, digits = 4,
+\method{print}{summary.causaltlse}(x, digits = 4,
                               signif.stars = getOption("show.signif.stars"),
                               beta=FALSE, knots = FALSE,...)
 \method{print}{summary.tlseFit}(x, digits = 4,
@@ -34,7 +33,7 @@ Print results of different methods applied to \code{causalTlse} and
 data(simDat3)
 mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
 print(mod1)
-causal <- causalTlse(mod1)
+causal <- causalTLSE(mod1)
 print(causal)
 s <- summary(causal)
 print(s)

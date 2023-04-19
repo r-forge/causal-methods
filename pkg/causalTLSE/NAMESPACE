@@ -6,19 +6,19 @@ importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)
 importFrom(methods, setMethod)
 
-export(setModel, print.tlseModel, causalTlse, print.causalTlse,
-       summary.causalTlse, selTLSE, print.summary.causalTlse, plot.tlseFit,
+export(setModel, print.tlseModel, causalTLSE, print.causaltlse,
+       summary.causaltlse, selTLSE, print.summary.causaltlse, plot.tlseFit,
        extract, predict.tlseFit, estModel, print.tlseFit,
        summary.tlseFit, print.summary.tlseFit, causal, causal.tlseModel,
        causal.tlseFit)
  
-S3method(summary, causalTlse)
+S3method(summary, causaltlse)
 S3method(summary, tlseFit)
 S3method(causal, tlseFit)
 S3method(causal, tlseModel)
 S3method(print, tlseModel)
-S3method(print, causalTlse)
-S3method(print, summary.causalTlse)
+S3method(print, causaltlse)
+S3method(print, summary.causaltlse)
 S3method(print, summary.tlseFit)
 S3method(plot, tlseFit)
 S3method(print, tlseFit)

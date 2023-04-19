@@ -10,7 +10,7 @@ a model with non significant knots removed.
 \usage{
 selTLSE(model, method=c("FTLSE", "BTLSE"),
         crit = c("ASY", "AIC", "BIC"), 
-        minPV = function(p) 1/(p * log(p)), vcov.=NULL, ...)
+        minPV = function(p) 1/log(p), vcov.=NULL, ...)
 }
 \arguments{
   \item{model}{A model of class \code{tlseModel} created by
