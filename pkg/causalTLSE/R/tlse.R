@@ -978,6 +978,7 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
 {
     interval <- match.arg(interval)
     vnames <- all.vars(x$model$formX)
+    treat <- x$model$treated    
     if (!is.null(newdata)) {
         if (!is.numeric(newdata)) 
             stop("newdata must be a vector of numeric values")
@@ -997,11 +998,11 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     {
         Yp <- x$model$data[,x$model$nameY]
         Xp <- x$model$data[,which]
+        Zp <- x$model$data[,treat]
     }
     ind <- order(x$model$data[, which])
-    treat <- x$model$treated
     data <- x$model$data[ind, ]
-    Z <- data[, treat]
+    Z <- data[,treat]    
     data[, !(names(data) %in% c(which, treat))] <- sapply(which(!(names(data) %in% 
         c(which, treat))), function(i) rep(mean(data[, i], na.rm = TRUE), 
                                            nrow(data)))
@@ -1024,12 +1025,10 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     if (addPoints)
     {
         add.=TRUE
-        bg. <- rep(col1, length(Z))
-        pcol <- rep(col1, length(Z))
-        bg.[Z==0] <- col0
-        pcol[Z==0] <- col0
-        pch. <- 21*(Z==1)+22*(Z==0)
-        plot(Xp, Yp, pch=pch., col=pcol, bg=bg.,
+        pcol <- rep(col1, length(Zp))
+        pcol[Zp==0] <- col0
+        pch. <- 21*(Zp==1)+22*(Zp==0)
+        plot(Xp, Yp, pch=pch., col=pcol, 
              main=main, ylab = x$model$nameY, xlab = which)
     }
     if (is.null(ylim.))
@@ -1048,8 +1047,9 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     } else {
         Leg=paste(c("Treated", "Control"), " (", addToLegend[1], ")", sep="")
     }
-        
-    legend(legendPos, Leg, col = c(col1, col0), 
+    if (addPoints) pch. <- c(21,22) else pch.=c(NA,NA)
+    
+    legend(legendPos, Leg, col = c(col1, col0), pch=pch., 
            lty = c(lty1[1], lty0[1]), lwd = 2, bty = "n", cex=cex)
     invisible()
  }
