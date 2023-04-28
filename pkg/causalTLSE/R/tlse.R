@@ -422,7 +422,7 @@ multiSplines <- function (model, treated=TRUE, selObs=c("group", "all"))
 }
 
 causalTLSE <- function (model, selType=c("SLSE","BTLSE","FTLSE"),
-                  selCrit = c("ASY", "AIC", "BIC"),
+                  selCrit = c("AIC", "BIC", "ASY"),
                   causal = c("ALL","ACT","ACE","ACN"),
                   seType=c("analytical", "lm"),
                   minPV = function(p) 1/log(p), vcov.=NULL, ...)
@@ -707,7 +707,7 @@ print.summary.causaltlse <- function (x, digits = 4,
 }
 
 selTLSE <- function(model, method=c("FTLSE", "BTLSE"),
-                    crit = c("ASY", "AIC", "BIC"), 
+                    crit = c("AIC", "BIC", "ASY"), 
                     minPV = function(p) 1/log(p), vcov.=NULL, ...)
 {
     crit <- match.arg(crit)

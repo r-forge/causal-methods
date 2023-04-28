@@ -524,11 +524,11 @@ follows:
 >    - **ASY**: We remove all knots with a p-value greater than a
 >      specified threshold.
 >
->     - **AIC** or **BIC**: We order the p-values in descending
->      order. Then, going from the largest to the smallest, we remove
->      the knot associated with the p-value one by one, estimate the
->      model and return the information criterion. We keep the model
->      with the smallest information citerion.
+>     - **AIC** or **BIC**: We order the p-values in
+>      descending order. Then, going from the largest to the smallest,
+>      we remove the knot associated with the p-value one by one,
+>      estimate the model and return the information criterion. We
+>      keep the model with the smallest information citerion.
 
 
 > **FTLSE**: 
@@ -575,7 +575,7 @@ The selection is done using the function `selTLSE`. The arguments are:
   "FTLSE" (the default) and "BTLSE".
 
 - **crit**: This is the criterion used by the selection method. We
-  have the choice between "ASY" (the default), "AIC" or "BIC".
+  have the choice between "AIC" (the default), "BIC" or "ASY".
   
 - **minPV**: This is a function that returns the p-value threshold. It
   is a function of one argument, the average number of knots per
@@ -602,11 +602,11 @@ print(model2, knots=TRUE)
 ```
 \normalsize
 
-For example, the method has removed all knots from `re75` for the
-treated group and kept 2 knots for the control group. We can then
+For example, the method has removed all knots from `re75` for
+the treated group and kept two knots for the control group. We can then
 compute the causality measures for the new model. Notice that the
 selection method and criterion reflects what was used to update the
-model. In this case, we see FTLSE as selection method and ASY as
+model. In this case, we see FTLSE as selection method and AIC as
 criterion.
 
 ```{r}
@@ -669,7 +669,7 @@ are almost like the ones from the `selTLSE` and `causal` functions.
   method.
 
 - **selCrit**: This is the criterion used by the selection method. We
-  have the choice between "ASY" (the default), "AIC" or "BIC".
+  have the choice between "AIC" (the default), "BIC" or "ASY".
   
 - **causal**: What causality measure should the function compute? We
   have the choice between "All" (the default), "ACT", "ACE" or "ACT".

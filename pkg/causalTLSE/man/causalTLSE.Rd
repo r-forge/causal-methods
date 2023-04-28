@@ -10,7 +10,7 @@ thresholding least squares method.
 }
 \usage{
 causalTLSE(model, selType=c("SLSE","BTLSE","FTLSE"),
-     selCrit = c("ASY", "AIC", "BIC"),
+     selCrit = c("AIC", "BIC", "ASY"),
      causal = c("ALL","ACT","ACE","ACN"),
      seType=c("analytical", "lm"),
      minPV = function(p) 1/log(p), vcov.=NULL, ...)

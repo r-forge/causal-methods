@@ -9,7 +9,7 @@ a model with non significant knots removed.
 }
 \usage{
 selTLSE(model, method=c("FTLSE", "BTLSE"),
-        crit = c("ASY", "AIC", "BIC"), 
+        crit = c("AIC", "BIC", "ASY"), 
         minPV = function(p) 1/log(p), vcov.=NULL, ...)
 }
 \arguments{
