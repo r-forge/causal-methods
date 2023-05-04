@@ -3,7 +3,7 @@
 #include "tlse.h"
 
 static const R_FortranMethodDef fortranMethods[] = {
-  {"selic", (DL_FUNC) &F77_SUB(selic), 25},
+  {"selic", (DL_FUNC) &F77_SUB(selic), 26},
   {NULL, NULL, 0}
 };
 
