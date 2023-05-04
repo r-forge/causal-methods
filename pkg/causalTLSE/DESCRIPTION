@@ -11,7 +11,7 @@ Depends: R (>= 4.0.0)
 Suggests: knitr, rmarkdown
 Imports: stats, sandwich, texreg, methods
 License: GPL (>= 2)
-NeedsCompilation: no
+NeedsCompilation: tes
 Packaged: 2022-06-07 19:15:24 UTC; pierrechausse
 Author: Pierre Chausse Developer [aut, cre],
   Mihai Giurcanu Developer [aut]

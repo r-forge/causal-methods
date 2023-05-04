@@ -1055,3 +1055,94 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
  }
 
 
+selTLSE2 <- function (model, method = c("FTLSE", "BTLSE"), crit = c("AIC", 
+    "BIC", "ASY"), minPV = function(p) 1/log(p), vcov. = NULL, 
+    ...) 
+{
+    crit <- match.arg(crit)
+    method <- match.arg(method)
+    critFct <- if (crit == "ASY") {
+        .selASY
+    }
+    else {
+        .selICF
+    }
+    if (method == "BTLSE") 
+        pval <- .getPvalB(model, vcov., ...)
+    else pval <- .getPvalF(model, vcov., ...)
+    critFct(model, pval, minPV, crit)
+}
+
+.reshapeKnots <- function(model, w, mnk, treated)
+{
+    w <- matrix(w, nrow=mnk)
+    w <- lapply(1:ncol(w) ,function(i) {
+        if (w[1,i]==0)
+            return(NULL)
+        sort(w[w[,i]!=0,i])})
+    .chkSelKnots(model, w, treated)
+}
+
+
+.selICF <- function (model, pvalRes, minPV = NULL, crit) 
+{
+    x <- model.matrix(model)
+    y <- model$data[,model$nameY]
+    z <- model$data[,model$treated]
+    nk0 <- sapply(model$knots0, length)
+    nk1 <- sapply(model$knots1, length)
+    mnk0 <- max(nk0)
+    tnk0 <- sum(nk0)
+    pval <- c(do.call("c", pvalRes$pval0), do.call("c", pvalRes$pval1))
+    spval <- sort(pval)
+    npval <- length(spval)
+    pval0 <-  sapply(pvalRes$pval0, function(pvi) {
+        pv <- numeric(mnk0)
+        if (!is.na(pvi[1]))
+            pv[1:length(pvi)] <- pvi
+        pv}) 
+    knots0 <- sapply(model$knots0, function(ki) {
+        k <- numeric(mnk0)
+        if (length(ki))
+            k[1:length(ki)] <- ki
+        k})
+    mnk1 <- max(nk1)
+    tnk1 <- sum(nk1)
+    pval1 <-  sapply(pvalRes$pval1, function(pvi) {
+        pv <- numeric(mnk1)
+        if (!is.na(pvi[1]))
+            pv[1:length(pvi)] <- pvi
+        pv})    
+    knots1 <- sapply(model$knots1, function(ki) {
+        k <- numeric(mnk1)
+        if (length(ki))
+            k[1:length(ki)] <- ki
+        k})
+    p <- ncol(x)
+    nb0 <- tnk0+p+1
+    nb1 <- tnk1+p+1
+    n <- nrow(x)
+    id0 <- z==0
+    n0 <- sum(id0)
+    sp <- .Fortran(F_selic, as.numeric(y[id0]), as.numeric(y[!id0]),
+                   as.numeric(x[id0,]), as.numeric(x[!id0,]),
+                   as.integer(n0), as.integer(n-n0),
+                   as.integer(p), as.numeric(1e-7),
+                   as.numeric(knots0), as.integer(nk0), as.integer(mnk0),
+                   as.integer(tnk0),  
+                   as.numeric(knots1), as.integer(nk1), as.integer(mnk1),                   
+                   as.integer(tnk1),
+                   as.numeric(pval0), as.numeric(pval1), as.numeric(spval),
+                   as.integer(npval),
+                   bic=numeric(npval+1), aic=numeric(npval+1),
+                   w0BIC=integer(mnk0*p), w1BIC=integer(mnk1*p),
+                   w0AIC=integer(mnk0*p), w1AIC=integer(mnk1*p))
+    modelAIC <- model
+    modelBIC <- model
+    modelAIC$knots0 <-.reshapeKnots(model, sp$w0AIC, mnk0, FALSE)
+    modelAIC$knots1 <-.reshapeKnots(model, sp$w1AIC, mnk1, FALSE) 
+    modelBIC$knots0 <-.reshapeKnots(model, sp$w0BIC, mnk0, FALSE)
+    modelBIC$knots1 <-.reshapeKnots(model, sp$w1BIC, mnk1, FALSE) 
+    list(AIC=modelAIC, BIC=modelBIC)
+}
+
