@@ -6,7 +6,7 @@ Authors@R: c(person("Pierre Chausse", "Developer", role = c("aut", "cre"),
                      email = "pchausse@uwaterloo.ca"),
              person("Mihai Giurcanu", "Developer", role = "aut",
 	             email = "giurcanu@uchicago.edu"))
-Description: This package includes tools to measure causal effects using least squares regressions. The number of piecewise polynomials is selected by some information criteria.
+Description: Several causal effects are measured using least squares regressions and basis function approximations. Backward and forward selection methods based on different criteria are used to select the bases.
 Depends: R (>= 4.0.0)
 Suggests: knitr, rmarkdown
 Imports: stats, sandwich, texreg, methods
