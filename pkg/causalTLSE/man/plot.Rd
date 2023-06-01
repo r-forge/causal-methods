@@ -7,9 +7,10 @@ Some plot utilities for object of class \code{tlseFit}.
 \usage{
 \method{plot}{tlseFit}(x, y, which = y, interval = c("none", "confidence"), 
                     level = 0.95, newdata = NULL, legendPos = "topright",
-                    vcov. = NULL, col0=2, col1=5, lty0=1, lty1=2,
+                    vcov. = NULL, col0=1, col1=2, lty0=1, lty1=2,
                     add.=FALSE, addToLegend=NULL,
-                    cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE, ...) 
+                    cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE,
+                    FUN=mean, main=NULL, ...) 
 }
 \arguments{
   \item{x}{Object of class \code{tlseFit}.}
@@ -35,6 +36,9 @@ Some plot utilities for object of class \code{tlseFit}.
   \item{ylim., xlim.}{An optional range for the y-axis and x-axis.}
   \item{addPoints}{Should we add the scatterplot of the outcome and
     covariate on the graph?}
+  \item{FUN}{The function to determine the fixed value for the other
+    covariates. The default is \code{mean}.}
+  \item{main}{An optional title to replace the default one.}
   \item{...}{Additional argument to pass to the \code{vcov.} function.}  
 }
 

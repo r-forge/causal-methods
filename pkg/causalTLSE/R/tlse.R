@@ -18,14 +18,14 @@
 }
 
 
-setKnots <- function(x, sel=1:length(x), nknots=function(n) n^0.3,
+setKnots <- function(x, sel=1:length(x), nbases=function(n) n^0.3,
                      knots=NA)
 {
     x <- x[sel]
     if (is.null(knots) | is.numeric(knots))
         return(.chkKnots(x, knots))
     n <- length(x)
-    p <- floor(nknots(n))
+    p <- floor(nbases(n))
     if (p <= 1)
         return(NULL)
     prop.seq <- seq(from = 0, to = 1, length.out = p + 1)
@@ -49,7 +49,7 @@ model.matrix.tlseModel <- function(object, ...)
 }
 
     
-setModel <- function (form, data, nknots = function(n) n^0.3, 
+setModel <- function (form, data, nbases = function(n) n^0.3, 
                        knots0, knots1, userRem=NULL, ...)
 {
     tmp <- as.character(form)
@@ -114,9 +114,9 @@ setModel <- function (form, data, nknots = function(n) n^0.3,
     nameY <- all.vars(formY)[1]
     nameZ <- colnames(Z)
     knots0 <- lapply(1:ncol(X), function(i)
-        setKnots(X[,i], Z==0, nknots, knots0[[i]]))
+        setKnots(X[,i], Z==0, nbases, knots0[[i]]))
     knots1 <- lapply(1:ncol(X), function(i)
-        setKnots(X[,i], Z==1, nknots, knots1[[i]]))
+        setKnots(X[,i], Z==1, nbases, knots1[[i]]))
     names(knots0) <- names(knots1) <- nameX
     obj <- list(na=na, formY=formY, formX=formX, treated=nameZ, nameY=nameY,
                 knots0=knots0, knots1=knots1, data=data, nameX=nameX,
@@ -130,15 +130,15 @@ print.tlseModel <- function(x, knots=FALSE, ...)
     Z <- x$data[[x$treated]]
     if (!knots)
     {
-        cat("Semiparametric Thresholding LSE Model\n")
-        cat("*************************************\n\n")
+        cat("Semiparametric TLSE Model\n")
+        cat("**************************\n\n")
         cat("Number of treated: ", sum(Z), "\n")
         cat("Number of control: ", sum(Z==0), "\n")
         cat("Number of missing values: ", length(x$na), "\n")
         cat("Selection Method: ", x$method$select, "\n", sep="")
         if (x$method$crit != "")
             cat("Criterion: ", x$method$crit, "\n\n", sep = "")
-        cat("Covariates being approximated by a piecewise function:\n")
+        cat("Covariates approximated by semiparametric TLSE:\n")
         w0 <- sapply(x$knots0, is.null)
         w1 <- sapply(x$knots1, is.null)    
         selPW0 <- x$nameX[!w0]
@@ -157,7 +157,7 @@ print.tlseModel <- function(x, knots=FALSE, ...)
         } else {
             cat("\t", isApp1, "\n", sep="")
         }
-        cat("Covariates not being approximated by a piecewise function:\n")   
+        cat("Covariates not approximated by semiparametric TLSE:\n")   
         if (!allSame)
         {
             cat("\tTreated: ", notApp1, "\n", sep="")
@@ -501,11 +501,15 @@ causal.tlseFit <- function(object, seType=c("analytical", "lm"),
 
 print.causaltlse <- function (x, ...) 
 {
-    cat("Causal Effect using Thresholding Least Squares\n")
-    cat("**********************************************\n")
+    cat("Causal Effect using Semiparametric TLSE\n")
+    cat("***************************************\n")
     cat("Selection Method: ", x$model$method$select, "\n", sep="")
     if (x$model$method$crit != "")
+    {
         cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
+    } else {
+        cat("\n")
+    }
     for (causal in c("ACE","ACT","ACN"))
     {
         if (!is.null(x[[causal]]))
@@ -516,9 +520,17 @@ print.causaltlse <- function (x, ...)
 
 print.tlseFit <- function(x, ...)
 {
-    cat("Semiparametric Thresholding LSE Estimate\n\n")
-        print.default(format(coef(x$lm.out), ...), print.gap = 2L, 
-                      quote = FALSE)
+    cat("Semiparametric TLSE Estimate\n")
+    cat("****************************\n")
+    cat("Selection Method: ", x$model$method$select, "\n", sep="")
+    if (x$model$method$crit != "")
+    {
+        cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
+    } else {
+        cat("\n")
+    }
+    print.default(format(coef(x$lm.out), ...), print.gap = 2L, 
+                  quote = FALSE)
     invisible()
 }
 
@@ -549,7 +561,15 @@ print.summary.tlseFit <- function(x, digits = 4,
                                   signif.stars = getOption("show.signif.stars"),
                                   ...)
 {
-    cat("Semiparametric Thresholding LSE Estimate\n\n")
+    cat("Semiparametric TLSE Estimate\n")
+    cat("****************************\n")
+    cat("Selection Method: ", x$model$method$select, "\n", sep="")
+    if (x$model$method$crit != "")
+    {
+        cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
+    } else {
+        cat("\n")
+    }
     printCoefmat(x$coefficients, na.print = "NA", digits = digits,
                  signif.stars = signif.stars, ...)
     cat("\nMultiple R-squared: ", formatC(x$r.squared, digits=digits, ...))
@@ -973,8 +993,9 @@ predict.tlseFit <- function (object, interval = c("none", "confidence"), se.fit 
 
 plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
                           level = 0.95, newdata = NULL, legendPos = "topright", vcov. = NULL,
-                          col0=2, col1=5, lty0=1, lty1=2,  add.=FALSE, addToLegend=NULL,
-                          cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE, ...) 
+                          col0=1, col1=2, lty0=1, lty1=2,  add.=FALSE, addToLegend=NULL,
+                          cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE, FUN=mean,
+                          main=NULL, ...) 
 {
     interval <- match.arg(interval)
     vnames <- all.vars(x$model$formX)
@@ -1003,9 +1024,12 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     ind <- order(x$model$data[, which])
     data <- x$model$data[ind, ]
     Z <- data[,treat]    
-    data[, !(names(data) %in% c(which, treat))] <- sapply(which(!(names(data) %in% 
-        c(which, treat))), function(i) rep(mean(data[, i], na.rm = TRUE), 
-                                           nrow(data)))
+    data[Z==1, !(names(data) %in% c(which, treat))] <- sapply(which(!(names(data) %in% 
+        c(which, treat))), function(i) rep(FUN(data[Z==1, i]), 
+                                           sum(Z)))
+    data[Z==0, !(names(data) %in% c(which, treat))] <- sapply(which(!(names(data) %in% 
+        c(which, treat))), function(i) rep(FUN(data[Z==0, i]), 
+                                           sum(1-Z)))    
     if (!is.null(newdata)) 
         for (ndi in nd) data[[ndi]] <- newdata[ndi]
     res <- predict(x, interval = interval, level = level, newdata = data, 
@@ -1020,8 +1044,9 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     else {
         lwd = 2
     }
-    main <- paste("Outcome versus ", which, " using piecewise polynomials", 
-                  sep = "")
+    if (is.null(main))
+        main <- paste("Outcome VS ", which, " using TLSE", 
+                      sep = "")
     if (addPoints)
     {
         add.=TRUE

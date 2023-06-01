@@ -10,7 +10,7 @@ the starting knots for the control and treated group for the piecewise
 polynomial.
 }
 \usage{
-setModel(form, data, nknots = function(n) n^0.3, 
+setModel(form, data, nbases = function(n) n^0.3, 
          knots0, knots1, userRem=NULL, ...)
 }
 \arguments{
@@ -18,7 +18,7 @@ setModel(form, data, nknots = function(n) n^0.3,
     indicator) and a formula for the covariates to include in the
     regression, separated by \code{|}. See details.}
   \item{data}{A \code{data.frame} with all variables included in \code{form}.}
-  \item{nknots}{A function to determined the number of knots. It has to
+  \item{nbases}{A function to determined the number of bases. It has to
     be a function of one argument, the sample size. To fix it, simply
     input a function that returns an integer.}
   \item{knots0}{A list of knots for the control group. The length must
