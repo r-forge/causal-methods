@@ -10,9 +10,9 @@ These are the main functions to estimate the causal effects using the
 semiparametric thresholding least squares method.
 }
 \usage{
-\method{causal}{tlseModel}(object, seType=c("analytical", "lm"),
+\method{causal}{tlseModel}(object, seType=c("analytic", "lm"),
        causal = c("ALL","ACT","ACE","ACN"), vcov.=NULL, ...)
-\method{causal}{tlseFit}(object, seType=c("analytical", "lm"),
+\method{causal}{tlseFit}(object, seType=c("analytic", "lm"),
        causal = c("ALL","ACT","ACE","ACN"), vcov.=NULL, ...)
 }
 \arguments{

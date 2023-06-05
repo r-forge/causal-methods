@@ -12,8 +12,8 @@ thresholding least squares method.
 causalTLSE(model, selType=c("SLSE","BTLSE","FTLSE"),
      selCrit = c("AIC", "BIC", "ASY"),
      causal = c("ALL","ACT","ACE","ACN"),
-     seType=c("analytical", "lm"),
-     minPV = function(p) 1/log(p), vcov.=NULL, ...)
+     seType=c("analytic", "lm"),
+     pvalT = function(p) 1/log(p), vcov.=NULL, ...)
 }
 \arguments{
   \item{model}{A model of class \code{tlseModel} created by the
@@ -22,9 +22,9 @@ causalTLSE(model, selType=c("SLSE","BTLSE","FTLSE"),
   \item{selCrit}{The criterion to select the piecewise polynomial knots.}
   \item{causal}{What causal effect should we compute.}
   \item{seType}{Should the causal effect standard errors be computed
-    based on an analytical expression or based on least squares
-    asymptotics.}
-  \item{minPV}{A function to determine the threshold for the
+    based on an analytic expression or based on least squares
+    asymptotics (\code{vcov.lm}).}
+  \item{pvalT}{A function to determine the p-value threshold for the
     significance of the coefficients. It has to be a function of one
     parameter, which is the average number of knots in the model.}
   \item{vcov.}{An alternative function to compute the covariance matrix

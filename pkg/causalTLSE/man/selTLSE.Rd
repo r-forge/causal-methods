@@ -10,14 +10,14 @@ a model with non significant knots removed.
 \usage{
 selTLSE(model, method=c("FTLSE", "BTLSE"),
         crit = c("AIC", "BIC", "ASY"), 
-        minPV = function(p) 1/log(p), vcov.=NULL, ...)
+        pvalT = function(p) 1/log(p), vcov.=NULL, ...)
 }
 \arguments{
   \item{model}{A model of class \code{tlseModel} created by
     the \code{getModel} function.}
   \item{method}{The selection method: backward for forward.}
   \item{crit}{The criterion to select the piecewise polynomial knots.}
-  \item{minPV}{A function to determine the threshold for the
+  \item{pvalT}{A function to determine the p-value threshold for the
     significance of the coefficients. It has to be a function of one
     parameter, which is the average number of knots in the model.}
   \item{vcov.}{An alternative function to compute the covariance matrix

@@ -531,7 +531,7 @@ plot(fit1, "re75", addPoints=TRUE)
 
 ## The `causal` function
 
-Once we have a model with knots, we can estimate the different causal
+Once we have a model with knots, we can estimate the causal
 effects. This is done by the `causal` function. The function assumes
 we are satisfied with the knots and estimate the causal effects and
 their standard errors. To define the different causal effect measures,
@@ -543,35 +543,39 @@ is not equal to 0 when $Z_i=0$. The regression estimated by
 `estModel`, or the one defined in the introduction, can be written as
 
 \[ 
-Y = \beta_0 (1-Z) + \beta_1 Z + \psi_0'[U_0(X)(1-Z)] + \psi_1'[U_1(X)Z] + u\,.
+Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \psi_0'[U_0(X_i)(1-Z_i)] + 
+\psi_1'[U_1(X_i)Z_i] + u_i\mbox{ for } i=1,...,n\,.
 \] 
 
 Let $\hat\beta_0$, $\hat\beta_1$, $\hat\psi_0$ and $\hat\psi_1$ be the
-least squares estimates. Then, the estimated causal effects are defined as:
+least squares estimates of the above model. Then, the TLSE average
+causal effect (ACE), causal effect on the treated (ACT) and causal
+effect on the non-treated (ACN) are defined respectively as follows:
 
 \begin{eqnarray*}
-\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1(X)} -
-\hat{\phi}_0'\overline{U_0(X)} \\
-\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1(X)Z} -
-\hat{\phi}_0'\overline{U_0(X)Z} \\
-\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1(X)(1-Z)} -
-\hat{\phi}_0'\overline{U_0(X)(1-Z)} \,,
+\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1} -
+\hat{\phi}_0'\overline{U_0} \\
+\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1Z} -
+\hat{\phi}_0'\overline{U_0Z} \\
+\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1(1-Z)} -
+\hat{\phi}_0'\overline{U_0(1-Z)} \,,
 \end{eqnarray*}
 
 where
 
 \begin{eqnarray*}
-\overline{U_j(X)} &=& \frac{1}{n}\sum_{i=1}^n U_j(X_i) \mbox{, for j=0,1}\\
-\overline{U_j(X)Z} &=& \frac{1}{n_1}\sum_{i=1}^n U_j(X_i)Z_i \mbox{, for j=0,1}\\
-\overline{U_j(X)(1-Z)} &=& \frac{1}{n_0}\sum_{i=1}^n U_j(X_i)(1-Z_i) \mbox{, for j=0,1}
+\overline{U_j} &=& \frac{1}{n}\sum_{i=1}^n U_j(X_i) \mbox{, for j=0,1}\\
+\overline{U_jZ} &=& \frac{1}{n_1}\sum_{i=1}^n U_j(X_i)Z_i \mbox{, for j=0,1}\\
+\overline{U_j(1-Z)} &=& \frac{1}{n_0}\sum_{i=1}^n U_j(X_i)(1-Z_i) \mbox{, for j=0,1}
 \end{eqnarray*}
 
-and $n_0$ and $n_1$ are the number of individuals in the control and
-treated groups. The function `causal` is a method registered for
-`tlseFit` and `tlseModel` objects. In other words, we can compute the
-causal effects directly from the model:
+and $n_0$ and $n_1$ are the sample size in the control and treated
+groups. The function `causal` is a method registered for `tlseFit` and
+`tlseModel` objects. In other words, we can compute the causal effects
+directly from the model:
 
 ```{r}
+model1 <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data=nsw)
 causal(model1)
 ```
 
@@ -581,28 +585,23 @@ or from the estimated model:
 causal(fit1)
 ```
 
-We see that the selection method (for the knots) and the criteria used
-to select the knots are set to unknown. This is because it is not
-specified in the model object how the knots were selected. We will
-clarify this below. The method return an object of class
-`causaltlse`. We see above what its `print` method returns and the
-following show its `summary` method:
+We see that the selection method used to select the knots are set to
+SLSE. This is explained in the section "Setting up the Model". The
+method returns an object of class `causaltlse`. We see above what its
+`print` method returns and the following shows its `summary` method:
 
 ```{r}
 ce <- causal(model1)
 summary(ce)
 ```
 
-The standard errors are computed using an analytical expression
-derived in the paper (need to add a citation to our paper), which takes
-into account the variance of the sample means of the
-covariates. Asymptotically, these variances converge to 0, so it only
-makes a difference in small samples. Alternatively, we can set the
-argument `seType` to "lm" and use the least squares standard errors
-based on the asymptotic properties. By default, `vcov.lm` is used, but
-it is possible to modify it by changing the argument `vcov.`. In the
-following, we estimate the standard errors using the HC3 type of
-heteroskedasticity robust standard errors.
+The standard errors are computed using an analytic expression derived
+in the paper. Alternatively, we can set the argument `seType` to "lm"
+and use the least squares standard errors based on the asymptotic
+properties. By default, `vcov.lm` is used, but it is possible to
+modify it by changing the argument `vcov.`. In the following, we
+estimate the standard errors using the HC3 type of heteroskedasticity
+robust standard errors.
 
 ```{r}
 ce2 <- causal(model1, seType="lm", vcov.=vcovHC, type="HC3")
@@ -618,8 +617,8 @@ plot(ce2, "re75")
 
 ## Optimal selection of the knots
 
-We propose two methods for selecting the knots: a backward (BTLSE) and
-a forward (FTLSE) methods. For each method, we propose three criteria:
+We propose two methods for selecting the knots: the backward (BTLSE) and
+the forward (FTLSE) methods. For each method, we propose 3 criteria:
 the asymptotic (ASY), the Akaike Information (AIC) and the Bayesian
 Information (BIC). The two selection methods can be summarized as
 follows:
@@ -628,8 +627,8 @@ follows:
 >
 > 1. We estimate the model with all knots included in the model.
 >
-> 2. For each knot, we test if the slope of the piecewise linear
->    polynomial is the same before and after, and return the p-value.
+> 2. For each knot, we test if the slopes of the basis function are
+>    the same before and after, and return the p-value.
 >
 > 3. The knots are selected using one of the following criteria
 >
@@ -679,7 +678,7 @@ follows:
 >      smallest information citerion.
 
 
-The selection is done using the function `selTLSE`. The arguments are:
+The knot selection is done using the function `selTLSE`. The arguments are:
 
 - **model**: An object of class `tlseModel`.
 
@@ -689,7 +688,7 @@ The selection is done using the function `selTLSE`. The arguments are:
 - **crit**: This is the criterion used by the selection method. We
   have the choice between "AIC" (the default), "BIC" or "ASY".
   
-- **minPV**: This is a function that returns the p-value threshold. It
+- **pvalT**: This is a function that returns the p-value threshold. It
   is a function of one argument, the average number of knots per
   covariate. The default is `function(p) 1/log(p)`. It is also
   possible to set it to a fix threshold. For example, `function(p)
@@ -714,12 +713,12 @@ print(model2, knots=TRUE)
 ```
 \normalsize
 
-For example, the method has removed all knots from `re75` for
-the treated group and kept two knots for the control group. We can then
-compute the causality measures for the new model. Notice that the
-selection method and criterion reflects what was used to update the
-model. In this case, we see FTLSE as selection method and AIC as
-criterion.
+For example, the method has removed all knots from `re75` for the
+treated group and kept two knots for the control group. We can then
+compute the causal effect estimates based on the updated model. Notice
+that the selection method and criterion reflects what was used to
+update the model. In this case, we see FTLSE as selection method and
+AIC as criterion.
 
 ```{r}
 causal(model2)
@@ -734,7 +733,6 @@ causal(model3)
 ```
 
 ## The `extract` method
-
 
 The package comes with an `extract` method for objects of class
 `causaltlse`, which is a required method for creating Latex tables
@@ -761,22 +759,60 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 \normalsize
 \end{center}
 
+The option `table=FALSE`, from the `texreg` package, is to remove the
+Latex floating table environment. With this option, the table appears
+right after the code instead of being placed somewhere else by
+Latex. The arguments of the `extract` methods, which control what is
+printed and can be modified through the `texreg` function, are:
+
+- **include.nobs**: Should the number of observations be printed? The
+  default is `TRUE`.
+  
+- **include.nknots**: Should the number of knots be printed?  The
+  default is `TRUE`.
+
+- **include.rsquared**: Should the $R^2$ be printed?  The default is
+  `TRUE`.
+  
+- **include.adjrsquared**: Should the adjusted $R^2$ be printed?  The
+  default is `TRUE`.
+
+- **which**: Which causal effects should be printed? The options are
+  "ALL" (the default), "ACE", "ACT", "ACN", "ACE-ACT", "ACE-ACN" or
+  "ACT-ACN".
+
+Here is one example on how to change some arguments:
+
+```{r, eval=FALSE}
+texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE,
+       which="ACE-ACT", include.adjrsquared=FALSE)
+```
+
+\begin{center}
+\footnotesize
+```{r, results='asis', message=FALSE, echo=FALSE}
+texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE,
+       which="ACE-ACT", include.adjrsquared=FALSE)
+```
+\normalsize
+\end{center}
 
 ## The `causalTLSE` function
 
 We just saw how to estimate the causal effects step by step. The
-function `causalTLSE` estimate them in one step, once the model has
-been created. It returns an object of class `causaltlse` like the
-`causal` method does, so we can apply the same `print`, `summary` and
-`predict` and `plot` method to it. The last two can be applied to the
-object, because it inherits from the `tlseFit` class. The arguments
-are almost like the ones from the `selTLSE` and `causal` functions.
+function `causalTLSE` computes the causal effect estimates one step,
+once the model has been created. It returns an object of class
+`causaltlse` like the `causal` method does, so we can apply the same
+`print`, `summary`, `predict` and `plot` method to it. The last two
+can be applied to the object, because it inherits from the `tlseFit`
+class. The arguments are almost like the ones from the `selTLSE` and
+`causal` functions.
 
 - **model**: An object of class `tlseModel`.
 
 - **selType**: This is the selection method. We have the choice
   between "SLSE" (the default), "FTLSE" and "BTLSE". The SLSE method
-  implies no selection, so all knots from the model are kept. It is
+  performs no selection, so all knots from the model are kept. It is
   therefore identical to estimating the model using the `causal`
   method.
 
@@ -786,20 +822,20 @@ are almost like the ones from the `selTLSE` and `causal` functions.
 - **causal**: What causality measure should the function compute? We
   have the choice between "All" (the default), "ACT", "ACE" or "ACT".
   
-- **seType**: The method to compute the standard error of the
-  causality measures. We have the choice between "analytical" (the
+- **seType**: The method to compute the standard errors of the
+  causality measures. We have to choose between "analytic" (the
   default) or "lm". We have explained the difference when we presented
   the `causal` method.
 
-- **minPV**: This is a function that returns the p-value threshold. We
-  explained this argument when we presented the `sellTLSE` function.
+- **pvalT**: This is a function that returns the p-value threshold. We
+  explained this argument when we presented the `selTLSE` function.
   
-- **vcov.**: An alternative was to compute the covariance matrix of
-  the least squares estimates.
+- **vcov.**: An alternative function used to compute the covariance
+  matrix of the least squares estimates.
   
 - **...**: This is used to pass arguments to the `vcov.` function.
 
-For example, we can generate the previous table as follows:
+For example, we can generate the previous table as follows. 
 
 ```{r, eval=FALSE}
 c1 <- causalTLSE(model1, selType="SLSE")
@@ -819,24 +855,23 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 \normalsize
 \end{center}
 
+## A simulated data set from Model 1
 
-## An example with simulated data
-
-In the package, the data set `datSim1` was generated using the
-following data generating process.
+In the package, the data set `datSim1` is generated using the
+following data generating process with a sample size of 300.
 
 \begin{eqnarray*}
 Y(0) &=& 1+X+X^2+e\\
 Y(1) &=& 1-2X+u\\
-Z &=& \mathrm{Ber}[\Lambda(1+X)]\\
+Z &=& \mathrm{B}[\Lambda(1+X)]\\
 Y &=& Y(1)Z + Y(0) (1-Z)\,
 \end{eqnarray*}
 
-where $X$, $e$ and $u$ are standard normal, $\Lambda(x)$ is the CDF of
-the standard logistic distribution and Ber(p) is the Bernoulli
-distribution. The true causal effects ACE, ACT and ACN are
-approximately equal to -1, -1.6903 and 0.5867. We can start by
-building starting model:
+where $X$, $e$ and $u$ are independent standard normal, $\Lambda(x)$
+is the CDF of the standard logistic distribution and B(p) is the
+Bernoulli distribution. The causal effects ACE, ACT and ACN are
+approximately equal to -1, -1.6903 and 0.5867 (estimated using a
+sample size of 10 millions). We can start by building starting model:
 
 ```{r}
 data(simDat1)
@@ -871,15 +906,15 @@ the selected knots are the same):
 
 ```{r, out.width='50%', fig.show='hold'}
 plot(c1, "X")
-curve(1-2*x, -3,3, col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve(1+x+x^2, -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
+curve(1-2*x, -3,3, col="darkgreen", lty=4, lwd=3, add=TRUE)
+curve(1+x+x^2, -3,3, col="darkorange", lty=4, lwd=3, add=TRUE)
 legend("bottomleft", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n')
+       col=c("darkgreen","darkorange"), lty=4, lwd=3, bty='n')
 plot(c2, "X")
-curve(1-2*x, -3,3, col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve(1+x+x^2, -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
+curve(1-2*x, -3,3, col="darkgreen", lty=4, lwd=3, add=TRUE)
+curve(1+x+x^2, -3,3, col="darkorange", lty=4, lwd=3, add=TRUE)
 legend("bottomleft", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n')
+       col=c("darkgreen","darkorange"), lty=4, lwd=3, bty='n')
 ```
 
 We see that the piecewise polynomials are very close to the true
@@ -890,24 +925,24 @@ lines are fit through the observations by group.
 plot(c1, "X", addPoints=TRUE)
 ```
 
-## An example with another simulated data
+## A simulated data set from Model 2
 
 The dataset `datSim2` was generated using the following data
-generating process.
+generating process. It is change point (piecewise) regression model.
 
 \begin{eqnarray*}
 Y(0) &=& (1+X)I(X\leq-1) + (-1-X)I(X>-1) + e\\
-Y(1) &=& (1-2X)I(X\leq 0) + (1+2X)I(X>0) + e\\
-Z &=& \mathrm{Ber}[\Lambda(1+X)]\\
+Y(1) &=& (1-2X)I(X\leq 0) + (1+2X)I(X>0) + u\\
+Z &=& \mathrm{B}[\Lambda(1+X)]\\
 Y &=& Y(1)Z + Y(0) (1-Z)\,
 \end{eqnarray*}
 
 where $I(A)$ is the indicator function equal to 1 if $A$ is true, $X$,
-$e$ and $u$ are standard normal, $\Lambda(x)$ is the CDF of the
-standard logistic distribution and Ber(p) is the Bernoulli
-distribution. The true causal effects ACE, ACT and ACN are
-approximately equal to 3.763, 3.858 and 3.545. We can compare the
-SLSE, BTLSE with AIC and BTLSE with BIC.
+$e$ and $u$ are independent standard normal, $\Lambda(x)$ is the CDF
+of the standard logistic distribution and B(p) is the Bernoulli
+distribution. The causal effects ACE, ACT and ACN are approximately
+equal to 3.763, 3.858 and 3.545 (estimated with a sample size of 10
+millions). We can compare the SLSE, BTLSE with AIC and BTLSE with BIC.
 
 ```{r}
 data(simDat2)
@@ -932,8 +967,8 @@ texreg(list(SLSE=c1, BTLSE.BIC=c2, BTLSE.AIC=c3), table=FALSE, digits=4)
 \normalsize
 \end{center}
 
-The following illustrate the fit of BTLSE-AIC with the true $f_1(x)$
-and $f_0(x), and the observations.
+The following shows the fit of BTLSE-AIC with the true $f_1(x)$ and
+$f_0(x)$, and the observations.
 
 ```{r, out.width='50%', fig.show='hold'}
 plot(c2, "X", legendPos="right", cex=.8)
@@ -945,4 +980,82 @@ legend("left", c("True-treated","True-control"),
        col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
 plot(c2, "X", addPoints=TRUE, legendPos="topleft", cex=.8)
 ```
+
+## A simulated data set from Model 3
+
+In the package, the data set `datSim3` is generated using the
+following data generating process with a sample size of 300. This
+model is presented as a case of multiple covariates.
+
+\begin{eqnarray*}
+Y(0) &=& [1+X_1+X_1^2] + [(1+X_2)I(X_2\leq-1) + (-1-X_2)I(X_2>-1)] + e\\
+Y(1) &=& [1-2X_1] + [(1-2X_2)I(X_2\leq 0) + (1+2X_2)I(X_2>0)] + u\\
+Z &=& \mathrm{B}[\Lambda(1+X_1+X_2)]\\
+Y &=& Y(1)Z + Y(0) (1-Z)\,,
+\end{eqnarray*}
+
+where $I(A)$ is the indicator function equal to 1 if $A$ is true,
+$X_1$, $X_2$, $e$ and $u$ are independent standard normal,
+$\Lambda(x)$ is the CDF of the standard logistic distribution and B(p)
+is the Bernoulli distribution. The causal effects ACE, ACT and ACN are
+approximately equal to 2.762, 2.204 and 3.922 (estimated with a sample
+size of 10 millions). We can compare the SLSE, FTLSE with AIC and
+FTLSE with BIC. 
+
+```{r}
+data(simDat3)
+mod <- setModel(Y~Z | ~X1+X2, data=simDat3)
+```
+
+```{r, eval=FALSE}
+c1 <- causalTLSE(mod, selType="SLSE")
+c2 <- causalTLSE(mod, selType="FTLSE", selCrit="BIC")
+c3 <- causalTLSE(mod, selType="FTLSE", selCrit="AIC")
+texreg(list(SLSE=c1, FTLSE.BIC=c2, FTLSE.AIC=c3), table=FALSE, digits=4)
+```
+
+\begin{center}
+\footnotesize
+```{r, results='asis', message=FALSE, echo=FALSE}
+c1 <- causalTLSE(mod, selType="SLSE")
+c2 <- causalTLSE(mod, selType="FTLSE", selCrit="BIC")
+c3 <- causalTLSE(mod, selType="FTLSE", selCrit="AIC")
+texreg(list(SLSE=c1, FTLSE.BIC=c2, FTLSE.AIC=c3), table=FALSE, digits=4)
+```
+\normalsize
+\end{center}
+
+To illustrate the method, since we have two covariates, we need to
+plot the outcome against one covariate holding the other fixed. The
+default is to fix it to its sample mean. For the true curve, we fix it
+to its population mean, which is 0. We first look at the outcome
+against $X_1$. By fixing $X_2$ to 0, the true curve is $X_1+X_1^2$ for
+the control and $2-2X_1$ for the treated. The following graphs show how
+the FTLSE-BIC method fits the curves.
+
+```{r, out.width='50%', fig.show='hold'}
+plot(c2, "X1", legendPos="right", cex=.8)
+curve(x+x^2, -3,3, col="darkgreen", lty=3, lwd=3, add=TRUE)
+curve(2-2*x, -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
+legend("topleft", c("True-treated","True-control"),
+       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
+plot(c2, "X1", addPoints=TRUE, legendPos="topleft", cex=.8)
+```
+
+If we fix $X_1$ to 0, the true curve is $1+[(1+X_2)I(X_2\leq-1) +
+(-1-X_2)I(X_2>-1)]$ for the control and $1+[(1-2X_2)I(X_2\leq 0) +
+(1+2X_2)I(X_2>0)]$ for the treated. The following graphs illustrates
+how these curves are approximated by FTLSE-AIC.
+
+```{r, out.width='50%', fig.show='hold'}
+plot(c2, "X2", legendPos="right", cex=.8)
+curve(1+(1-2*x)*(x<=0)+(1+2*x)*(x>0), -3,3,
+      col="darkgreen", lty=3, lwd=3, add=TRUE)
+curve(1+(1+x)*(x<=-1)+(-1-x)*(x>-1),
+      -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
+legend("left", c("True-treated","True-control"),
+       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
+plot(c2, "X2", addPoints=TRUE, legendPos="topleft", cex=.8)
+```
+
 

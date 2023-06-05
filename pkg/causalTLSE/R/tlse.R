@@ -381,7 +381,7 @@ multiSplines <- function (model, treated=TRUE, selObs=c("group", "all"))
 
 .causal <- function(model, fit, vcov, X0, X1,
                     causal=c("ACE", "ACT", "ACN", "ALL"),
-                    type=c("analytical","lm"))
+                    type=c("analytic","lm"))
 {
     causal <- match.arg(causal)
     type <- match.arg(type)
@@ -424,8 +424,8 @@ multiSplines <- function (model, treated=TRUE, selObs=c("group", "all"))
 causalTLSE <- function (model, selType=c("SLSE","BTLSE","FTLSE"),
                   selCrit = c("AIC", "BIC", "ASY"),
                   causal = c("ALL","ACT","ACE","ACN"),
-                  seType=c("analytical", "lm"),
-                  minPV = function(p) 1/log(p), vcov.=NULL, ...)
+                  seType=c("analytic", "lm"),
+                  pvalT = function(p) 1/log(p), vcov.=NULL, ...)
 {
     if (!inherits(model, "tlseModel"))
         stop("model must be an object of class tlseModel")
@@ -434,7 +434,7 @@ causalTLSE <- function (model, selType=c("SLSE","BTLSE","FTLSE"),
     causal <- match.arg(causal)
     selCrit <- match.arg(selCrit)
     if (selType != "SLSE")
-        model <- selTLSE(model, selType, selCrit, minPV, vcov., ...)
+        model <- selTLSE(model, selType, selCrit, pvalT, vcov., ...)
     ans <- causal(model, seType, causal, vcov., ...)
     ans    
 }
@@ -445,7 +445,7 @@ causal <- function(object, ...)
     }
 
 
-causal.tlseModel <- function(object, seType=c("analytical", "lm"),
+causal.tlseModel <- function(object, seType=c("analytic", "lm"),
                              causal = c("ALL","ACT","ACE","ACN"), vcov.=NULL, ...)
 {
     seType <- match.arg(seType)
@@ -472,7 +472,7 @@ causal.tlseModel <- function(object, seType=c("analytical", "lm"),
     ans    
 }
 
-causal.tlseFit <- function(object, seType=c("analytical", "lm"),
+causal.tlseFit <- function(object, seType=c("analytic", "lm"),
                            causal = c("ALL","ACT","ACE","ACN"), vcov.=NULL, ...)
 {
     seType <- match.arg(seType)
@@ -613,8 +613,8 @@ print.summary.causaltlse <- function (x, digits = 4,
                                 signif.stars = getOption("show.signif.stars"), 
                                 beta = FALSE, knots = FALSE, ...) 
 {
-    cat("Causal Effect using Thresholding Least Squares\n")
-    cat("**********************************************\n")
+    cat("Causal Effect using Semiparametric TLSE\n")
+    cat("****************************************\n")
     cat("Selection Method: ", x$select, "\n", sep="")
     if (x$crit != "")
         cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
@@ -666,7 +666,7 @@ print.summary.causaltlse <- function (x, digits = 4,
     list(pval0 = pval0, pval1 = pval1, p0=p0, p1=p1)
 }
 
-.selIC <- function (model, pvalRes, minPV = NULL, crit)
+.selIC <- function (model, pvalRes, pvalT = NULL, crit)
 {
     pval <- c(do.call("c", pvalRes$pval0), do.call("c", pvalRes$pval1))
     pval_sort <- sort(pval)    
@@ -701,14 +701,14 @@ print.summary.causaltlse <- function (x, digits = 4,
 }
 
 
-.selASY <- function (model, pvalRes, minPV = function(p) 1/log(p),
+.selASY <- function (model, pvalRes, pvalT = function(p) 1/log(p),
                      crit=NULL, ...)
 {
     pval <- c(do.call("c", pvalRes$pval0), do.call("c", pvalRes$pval1))
     n <- nrow(model$data)
     q <- length(pval)
     p <- mean(c(pvalRes$p0,pvalRes$p1))
-    crit <- minPV(p)
+    crit <- pvalT(p)
     w0 <- lapply(1:length(model$knots0), function(i)
     {
         w <- which(pvalRes$pval0[[i]]<crit)
@@ -728,7 +728,7 @@ print.summary.causaltlse <- function (x, digits = 4,
 
 selTLSE <- function(model, method=c("FTLSE", "BTLSE"),
                     crit = c("AIC", "BIC", "ASY"), 
-                    minPV = function(p) 1/log(p), vcov.=NULL, ...)
+                    pvalT = function(p) 1/log(p), vcov.=NULL, ...)
 {
     crit <- match.arg(crit)
     method <- match.arg(method)
@@ -741,7 +741,7 @@ selTLSE <- function(model, method=c("FTLSE", "BTLSE"),
         pval <- .getPvalB(model, vcov., ...)
     else
         pval <- .getPvalF(model, vcov., ...)
-    model <- critFct(model, pval, minPV, crit)
+    model <- critFct(model, pval, pvalT, crit)
     model$method <- list(select=method, crit=crit)
     model
 }
@@ -909,10 +909,12 @@ extract.causaltlse <- function (model, include.nobs = TRUE, include.nknots = TRU
         gof.decimal <- c(gof.decimal, FALSE)
     }
     if (isTRUE(include.nobs)) {
-        n <- nrow(model$model$data)
-        gof <- c(gof, n)
-        gof.names <- c(gof.names, "Num. obs.")
-        gof.decimal <- c(gof.decimal, FALSE)
+        Z <- model$model$data[[model$model$treated]]
+        n1 <- sum(Z)
+        n0 <- sum(1-Z)
+        gof <- c(gof, n0, n1)
+        gof.names <- c(gof.names, "Num. obs. (Control)", "Num. obs. (Treated)")
+        gof.decimal <- c(gof.decimal, FALSE, FALSE)
     }
     if (isTRUE(include.rsquared)) {
         f <- fitted(model$lm.out)
@@ -1081,7 +1083,7 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
 
 
 selTLSE2 <- function (model, method = c("FTLSE", "BTLSE"), crit = c("AIC", 
-    "BIC", "ASY"), minPV = function(p) 1/log(p), vcov. = NULL, 
+    "BIC", "ASY"), pvalT = function(p) 1/log(p), vcov. = NULL, 
     ...) 
 {
     crit <- match.arg(crit)
@@ -1095,7 +1097,7 @@ selTLSE2 <- function (model, method = c("FTLSE", "BTLSE"), crit = c("AIC",
     if (method == "BTLSE") 
         pval <- .getPvalB(model, vcov., ...)
     else pval <- .getPvalF(model, vcov., ...)
-    critFct(model, pval, minPV, crit)
+    critFct(model, pval, pvalT, crit)
 }
 
 .reshapeKnots <- function(model, w, mnk, treated)
@@ -1109,7 +1111,7 @@ selTLSE2 <- function (model, method = c("FTLSE", "BTLSE"), crit = c("AIC",
 }
 
 
-.selICF <- function (model, pvalRes, minPV = NULL, crit) 
+.selICF <- function (model, pvalRes, pvalT = NULL, crit) 
 {
     x <- model.matrix(model)
     y <- model$data[,model$nameY]
