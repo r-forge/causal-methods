@@ -11,7 +11,7 @@ polynomial.
 }
 \usage{
 setModel(form, data, nbases = function(n) n^0.3, 
-         knots0, knots1, userRem=NULL, ...)
+         knots0, knots1, userRem=NULL)
 }
 \arguments{
   \item{form}{A formula for the regression (outcome versus treatment
@@ -28,7 +28,6 @@ setModel(form, data, nbases = function(n) n^0.3,
   \item{knots1}{A list of knots for the control group. See \code{knots0}.}  
   \item{userRem}{A vector of characters representing the covariates not
     to be apploximated by a piecewise polynomial.}
-  \item{...}{Corrently not used.}
 }
 
 \examples{

@@ -11,12 +11,13 @@ export(setModel, print.tlseModel, causalTLSE, print.causaltlse,
        summary.causaltlse, selTLSE, print.summary.causaltlse, plot.tlseFit,
        extract, predict.tlseFit, estModel, print.tlseFit,
        summary.tlseFit, print.summary.tlseFit, causalTLSE, causalTLSE.tlseModel,
-       causalTLSE.tlseFit)
+       causalTLSE.tlseFit, causalTLSE.formula)
  
 S3method(summary, causaltlse)
 S3method(summary, tlseFit)
 S3method(causalTLSE, tlseFit)
 S3method(causalTLSE, tlseModel)
+S3method(causalTLSE, formula)
 S3method(print, tlseModel)
 S3method(print, causaltlse)
 S3method(print, summary.causaltlse)

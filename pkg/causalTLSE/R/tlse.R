@@ -50,7 +50,7 @@ model.matrix.tlseModel <- function(object, ...)
 
     
 setModel <- function (form, data, nbases = function(n) n^0.3, 
-                       knots0, knots1, userRem=NULL, ...)
+                       knots0, knots1, userRem=NULL)
 {
     tmp <- as.character(form)
     if (!grepl("\\|", tmp[3])) 
@@ -421,22 +421,6 @@ multiSplines <- function (model, treated=TRUE, selObs=c("group", "all"))
     ans
 }
 
-causalTLSE <- function (model, selType=c("SLSE","BTLSE","FTLSE"),
-                  selCrit = c("AIC", "BIC", "ASY"),
-                  causal = c("ALL","ACT","ACE","ACN"),
-                  seType=c("analytic", "lm"),
-                  pvalT = function(p) 1/log(p), vcov.=NULL, ...)
-{
-    selType <- match.arg(selType)
-    seType <- match.arg(seType)
-    causal <- match.arg(causal)
-    selCrit <- match.arg(selCrit)
-    if (selType != "SLSE")
-        model <- selTLSE(model, selType, selCrit, pvalT, vcov., ...)
-    ans <- causal(model, seType, causal, vcov., ...)
-    ans    
-}
-
 causalTLSE <- function(object, ...)
 {
     UseMethod("causalTLSE")
@@ -523,6 +507,24 @@ print.causaltlse <- function (x, ...)
     }
 }
 
+causalTLSE.formula <- function(object, data, nbases=function(n) n^0.3,
+                               knots0, knots1, userRem=NULL,
+                               selType=c("SLSE","BTLSE","FTLSE"),
+                               selCrit = c("AIC", "BIC", "ASY"),
+                               causal = c("ALL","ACT","ACE","ACN"),
+                               seType=c("analytic", "lm"),
+                               pvalT = function(p) 1/log(p),
+                               vcov.=NULL, ...)
+{
+    model <- setModel(object, data, nbases,  knots0, knots1, userRem)
+    selType <- match.arg(selType)
+    seType <- match.arg(seType)
+    causal <- match.arg(causal)
+    selCrit <- match.arg(selCrit)
+    causalTLSE(object=model, selType=selType, selCrit = selCrit,
+               causal = causal, seType=seType, pvalT =  pvalT,
+               vcov.=vcov., ...)    
+}
 
 print.tlseFit <- function(x, ...)
 {

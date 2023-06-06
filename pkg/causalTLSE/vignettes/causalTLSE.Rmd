@@ -847,6 +847,38 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 \normalsize
 \end{center}
 
+## The `causalTLSE` method for `formula` objects
+
+This last method, offers an alternative way of estimating the causal
+effects. It allows the estimation in one step without having to first
+create a model. The arguments are the same as the ones from the
+`setModel` function and the `causalTLSE` method for `tlseModel'
+objects. It creates the model, select the knots and estimate the
+causal effects in one step. For example, we can create the previous
+table as follows:
+
+```{r, eval=FALSE}
+c1 <- causalTLSE(re78 ~ treat | ~ age + re75 + ed + married, data=nsw,
+                 selType="SLSE")
+c2 <- causalTLSE(re78 ~ treat | ~ age + re75 + ed + married, data=nsw,
+                 selType="BTLSE")
+c3 <- causalTLSE(re78 ~ treat | ~ age + re75 + ed + married, data=nsw,
+                 selType="FTLSE")
+texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
+```
+
+\begin{center}
+\footnotesize
+```{r, results='asis', message=FALSE, echo=FALSE}
+c1 <- causalTLSE(model1, selType="SLSE")
+c2 <- causalTLSE(model1, selType="BTLSE")
+c3 <- causalTLSE(model1, selType="FTLSE")
+texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
+```
+\normalsize
+\end{center}
+
+
 ## A simulated data set from Model 1
 
 In the package, the data set `datSim1` is generated using the
