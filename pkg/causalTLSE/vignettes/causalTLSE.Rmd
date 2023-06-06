@@ -34,21 +34,19 @@ Y = \beta_0 (1-Z) + \beta_1 Z + f_0(X) + f_1(X) + \varepsilon\,,
 and it is approximated by the regression
 
 \[ 
-Y = \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(X) + \tp{\psi_1}U_1(X) + u\,, 
+Y = \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(X)(1-Z) + 
+\tp{\psi_1}U_1(X)Z + u\,, 
 \] 
 
 where $Y\in \reals$ is the response variable, $X$ is a $k\times 1$
 vector of confounders, and $U_0(X)\in \reals^{p_0}$ and $U_1(X)\in
-\reals^{p_1}$ are spline vectors satisfying $U_0(X)=0$ if $Z=1$ and
-$U_1(X)=0$ if $Z=0$\footnote{This is a simplification for
-clarify. Alternatively, we could define the regression as $$Y =
-\beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(X)(1-Z) +
-\tp{\psi_1}U_1(X)Z + u\,.$$}. We can represent $U_j(X)$, for $j=0,1$,
-into a block vector $\tp{\{\tp{U_{j1}(X_1)}, \tp{U_{j2}(X_2)}, ...,
-\tp{U_{jk}(X_k)}\}}$, where $U_{jl}(X_l)\in \reals^{p_{jl}}$ is the
-vector of basis functions for group $j$ associated with $X_l$, with
-$\sum_{l=1}^k p_{jl}=p_j$, $j=0,1$. The paper proposes a data-driven
-method for selecting the vectors $U_0(X)$ and $U_1(X)$.
+\reals^{p_1}$ are spline vectors. We can represent $U_j(X)$, for
+$j=0,1$, into a block vector $\tp{\{\tp{U_{j1}(X_1)},
+\tp{U_{j2}(X_2)}, ..., \tp{U_{jk}(X_k)}\}}$, where $U_{jl}(X_l)\in
+\reals^{p_{jl}}$ is the vector of basis functions for group $j$
+associated with $X_l$, with $\sum_{l=1}^k p_{jl}=p_j$, $j=0,1$. The
+paper proposes a data-driven method for selecting the vectors $U_0(X)$
+and $U_1(X)$.
 
 To understand the package, it is important to know how the
 $U_{jl}(X_l)$'s are defined. To simplify the notation, we remove the
@@ -69,17 +67,17 @@ U_s(x) &=& (x -  \kappa_{s-1})I(\kappa_{s-1} \leq x \leq \kappa_{s}) +
 
 where the last $U_s(x)$ is defined for $2<s<p$. Therefore, if the
 number of knots is equal to 1, we only have the first two bases. Since
-knots must be strictly inside the support of $X$, any categorical
-variable with two levels, which includes as a special case binary
-variables, the number of knots must be equal to zero. In this case,
-$U(X)=X$. For general nominal variables, the number of knots cannot
-exceed the number of levels minus two.
+the knots must be strictly inside the support of $X$, for any
+categorical variable with two levels, which includes as a special case
+binary variables, the number of knots must be equal to zero. In this
+case, $U(X)=X$. For general nominal variables, the number of knots
+cannot exceed the number of levels minus two.
 
 Note that for the sample regression
 
 \[ 
 Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + 
-\tp{\psi_0}U_0(X_i) + \tp{\psi_1}U_1(X_i) + u_i\,, 
+\tp{\psi_0}U_0(X_i)(1-Z_i) + \tp{\psi_1}U_1(X_i)Z_i + u_i\,, 
 \] 
 
 for $i=1,...,n$, the knots of $X_l$, $l=1,...,k$, must be strictly
@@ -289,7 +287,7 @@ least squares method applied to the extended set of covariates. We
 want to estimate the model
 
 \[ 
-Y = \beta_0 (1-Z) + \beta_1 Z + \psi_0'U_0(X) + \psi_1'U_1(X) + u\,, 
+Y = \beta_0 (1-Z) + \beta_1 Z + \psi_0'U_0(X)(1-Z) + \psi_1'U_1(X)Z + u\,, 
 \] 
 
 where $U_0(X)$ and $U_1(X)$ are defined above and depends on the model
@@ -529,92 +527,6 @@ plot(fit1, "ed", col0="darkgreen", col1="darkred", lty0=2, lty1=4,
 plot(fit1, "re75", addPoints=TRUE)
 ```
 
-## The `causal` function
-
-Once we have a model with knots, we can estimate the causal
-effects. This is done by the `causal` function. The function assumes
-we are satisfied with the knots and estimate the causal effects and
-their standard errors. To define the different causal effect measures,
-let's redefine $U_0(X)$ and $U_1(X)$ as the spline bases using the
-knots of the control and treated group respectively, but with all data
-points. This differs from how it is defined in the introduction,
-because this $U_0(X_i)$ is not equal to 0 when $Z_i=1$ and $U_1(X_i)$
-is not equal to 0 when $Z_i=0$. The regression estimated by
-`estModel`, or the one defined in the introduction, can be written as
-
-\[ 
-Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \psi_0'[U_0(X_i)(1-Z_i)] + 
-\psi_1'[U_1(X_i)Z_i] + u_i\mbox{ for } i=1,...,n\,.
-\] 
-
-Let $\hat\beta_0$, $\hat\beta_1$, $\hat\psi_0$ and $\hat\psi_1$ be the
-least squares estimates of the above model. Then, the TLSE average
-causal effect (ACE), causal effect on the treated (ACT) and causal
-effect on the non-treated (ACN) are defined respectively as follows:
-
-\begin{eqnarray*}
-\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1} -
-\hat{\phi}_0'\overline{U_0} \\
-\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1Z} -
-\hat{\phi}_0'\overline{U_0Z} \\
-\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1(1-Z)} -
-\hat{\phi}_0'\overline{U_0(1-Z)} \,,
-\end{eqnarray*}
-
-where
-
-\begin{eqnarray*}
-\overline{U_j} &=& \frac{1}{n}\sum_{i=1}^n U_j(X_i) \mbox{, for j=0,1}\\
-\overline{U_jZ} &=& \frac{1}{n_1}\sum_{i=1}^n U_j(X_i)Z_i \mbox{, for j=0,1}\\
-\overline{U_j(1-Z)} &=& \frac{1}{n_0}\sum_{i=1}^n U_j(X_i)(1-Z_i) \mbox{, for j=0,1}
-\end{eqnarray*}
-
-and $n_0$ and $n_1$ are the sample size in the control and treated
-groups. The function `causal` is a method registered for `tlseFit` and
-`tlseModel` objects. In other words, we can compute the causal effects
-directly from the model:
-
-```{r}
-model1 <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data=nsw)
-causal(model1)
-```
-
-or from the estimated model:
-
-```{r}
-causal(fit1)
-```
-
-We see that the selection method used to select the knots are set to
-SLSE. This is explained in the section "Setting up the Model". The
-method returns an object of class `causaltlse`. We see above what its
-`print` method returns and the following shows its `summary` method:
-
-```{r}
-ce <- causal(model1)
-summary(ce)
-```
-
-The standard errors are computed using an analytic expression derived
-in the paper. Alternatively, we can set the argument `seType` to "lm"
-and use the least squares standard errors based on the asymptotic
-properties. By default, `vcov.lm` is used, but it is possible to
-modify it by changing the argument `vcov.`. In the following, we
-estimate the standard errors using the HC3 type of heteroskedasticity
-robust standard errors.
-
-```{r}
-ce2 <- causal(model1, seType="lm", vcov.=vcovHC, type="HC3")
-summary(ce2)
-```
-
-The object `causaltlse` inherits from the class `tlseFit`, so we can
-apply the `plot` (or the `predict`) method directly on this object.
-
-```{r, fig.align='center', out.width='65%'}
-plot(ce2, "re75")
-```
-
 ## Optimal selection of the knots
 
 We propose two methods for selecting the knots: the backward (BTLSE) and
@@ -714,25 +626,116 @@ print(model2, knots=TRUE)
 \normalsize
 
 For example, the method has removed all knots from `re75` for the
-treated group and kept two knots for the control group. We can then
-compute the causal effect estimates based on the updated model. Notice
-that the selection method and criterion reflects what was used to
-update the model. In this case, we see FTLSE as selection method and
-AIC as criterion.
-
-```{r}
-causal(model2)
-```
-
-We can compare with other methods:
-
+treated group and kept two knots for the control group. The print
+method indicates which method was used to select the knots. In the
+following example, we see BTLSE as selection method and BIC as
+criterion. Note that the BIC selects 0 knots for all covariates.
 
 ```{r}
 model3 <- selTLSE(model1, method="BTLSE", crit="BIC")
-causal(model3)
+model3
 ```
 
-## The `extract` method
+Since the function `selTLSE` function returns a new model, we can
+apply the `estModel` to it:
+
+```{r}
+estModel(selTLSE(model1, method="FTLSE", crit="BIC"))
+```
+
+## The `causalTLSE` method for `tlseFit` objects
+
+The regression estimated by `estModel`, or the one defined in the
+introduction, can be written as
+
+\[ 
+Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \psi_0'[U_0(X_i)(1-Z_i)] + 
+\psi_1'[U_1(X_i)Z_i] + u_i\mbox{ for } i=1,...,n\,.
+\] 
+
+Let $\hat\beta_0$, $\hat\beta_1$, $\hat\psi_0$ and $\hat\psi_1$ be the
+least squares estimates of the above model. Then, the TLSE average
+causal effect (ACE), causal effect on the treated (ACT) and causal
+effect on the non-treated (ACN) are defined respectively as follows:
+
+\begin{eqnarray*}
+\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1} -
+\hat{\phi}_0'\overline{U_0} \\
+\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1Z} -
+\hat{\phi}_0'\overline{U_0Z} \\
+\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1(1-Z)} -
+\hat{\phi}_0'\overline{U_0(1-Z)} \,,
+\end{eqnarray*}
+
+where
+
+\begin{eqnarray*}
+\overline{U_j} &=& \frac{1}{n}\sum_{i=1}^n U_j(X_i) \mbox{, for j=0,1}\\
+\overline{U_jZ} &=& \frac{1}{n_1}\sum_{i=1}^n U_j(X_i)Z_i \mbox{, for j=0,1}\\
+\overline{U_j(1-Z)} &=& \frac{1}{n_0}\sum_{i=1}^n U_j(X_i)(1-Z_i) \mbox{, for j=0,1}
+\end{eqnarray*}
+
+and $n_0$ and $n_1$ are the sample size in the control and treated
+groups. The method `causalTLSE` estimates the causal effects from
+`tlseFit` objects using the knots included in the estimated model. The
+arguments of the method are:
+
+- **object**: An object of class `tlseFit`.
+
+- **seType**: The method to compute the standard errors of the
+  causality measures. By default, they are computed using an analytic
+  expression derived in the paper. Alternatively, we can set the
+  argument to "lm" and use the least squares standard errors based on
+  the asymptotic properties.
+   
+- **causal**: What causality measure should the function compute? We
+  have the choice between "All" (the default), "ACT", "ACE" or "ACT".
+   
+- **vcov.**: An alternative function used to compute the covariance
+  matrix of the least squares estimates. By default, `vcov.lm` is
+  used. For example, we can set the argument to `vcovHC` from the
+  `sandwich` package to compute heteroskedastic robust standard
+  errors.
+  
+- **...**: This is used to pass arguments to the `vcov.` function.
+
+In the following example, we estimate the causal effect with the
+initial knots (without selection).
+
+```{r}
+model1 <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data=nsw)
+fit1 <- estModel(model1)
+causalTLSE(fit1)
+```
+
+We see that the selection method used to select the knots are set to
+SLSE. This is explained in the section "Setting up the Model". The
+method returns an object of class `causaltlse`. We see above what its
+`print` method returns. The following shows its `summary` method:
+
+```{r}
+ce <- causalTLSE(fit1)
+summary(ce)
+```
+
+By default, the standard errors are computed using an analytic
+expression derived in the paper. In the following, we estimate the
+standard errors using the HC3 type of heteroskedasticity robust
+standard errors.
+
+```{r}
+ce2 <- causalTLSE(fit1, seType="lm", vcov.=vcovHC, type="HC3")
+summary(ce2)
+```
+
+The object `causaltlse` inherits from the class `tlseFit`, so we can
+apply the `plot` (or the `predict`) method directly on this object.
+
+```{r, fig.align='center', out.width='65%'}
+plot(ce2, "re75")
+```
+
+### The `extract` method
 
 The package comes with an `extract` method for objects of class
 `causaltlse`, which is a required method for creating Latex tables
@@ -741,9 +744,11 @@ methods in a single table.
 
 ```{r, eval=FALSE}
 library(texreg)
-c1 <- causal(model1)
-c2 <- causal(selTLSE(model1, method="BTLSE"))
-c3 <- causal(selTLSE(model1, method="FTLSE"))
+c1 <- causalTLSE(fit1)
+fit2 <- estModel(selTLSE(model1, method="BTLSE"))
+fit3 <- estModel(selTLSE(model1, method="FTLSE"))
+c2 <- causalTLSE(fit2)
+c3 <- causalTLSE(fit3)
 texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 ```
 
@@ -751,9 +756,11 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 \footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 library(texreg)
-c1 <- causal(model1)
-c2 <- causal(selTLSE(model1, method="BTLSE"))
-c3 <- causal(selTLSE(model1, method="FTLSE"))
+c1 <- causalTLSE(fit1)
+fit2 <- estModel(selTLSE(model1, method="BTLSE"))
+fit3 <- estModel(selTLSE(model1, method="FTLSE"))
+c2 <- causalTLSE(fit2)
+c3 <- causalTLSE(fit3)
 texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 ```
 \normalsize
@@ -797,45 +804,30 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE,
 \normalsize
 \end{center}
 
-## The `causalTLSE` function
+## The `causalTLSE` method for `tlseModel` objects
 
-We just saw how to estimate the causal effects step by step. The
-function `causalTLSE` computes the causal effect estimates one step,
-once the model has been created. It returns an object of class
-`causaltlse` like the `causal` method does, so we can apply the same
-`print`, `summary`, `predict` and `plot` method to it. The last two
-can be applied to the object, because it inherits from the `tlseFit`
-class. The arguments are almost like the ones from the `selTLSE` and
-`causal` functions.
+When applied directly to `tlseModel` objects, the `causalTLSE` method
+offers the possibility to select the knots and estimate the causal
+effects all at once. The method also returns an object of class
+`causaltlse`. The arguments are the same as the method for `tlseFit`
+objects, plus the necessary arguments for the knots selection. The
+following are the arguments not already defined for objects of class
+`tlseFit`. The details of these arguments are presented in the section
+Optimal selection of knots.
 
-- **model**: An object of class `tlseModel`.
+- **object**: An object of class `tlseModel`.
 
 - **selType**: This is the selection method. We have the choice
   between "SLSE" (the default), "FTLSE" and "BTLSE". The SLSE method
-  performs no selection, so all knots from the model are kept. It is
-  therefore identical to estimating the model using the `causal`
-  method.
+  performs no selection, so all knots from the model are kept. 
 
 - **selCrit**: This is the criterion used by the selection method. We
   have the choice between "AIC" (the default), "BIC" or "ASY".
   
-- **causal**: What causality measure should the function compute? We
-  have the choice between "All" (the default), "ACT", "ACE" or "ACT".
-  
-- **seType**: The method to compute the standard errors of the
-  causality measures. We have to choose between "analytic" (the
-  default) or "lm". We have explained the difference when we presented
-  the `causal` method.
-
 - **pvalT**: This is a function that returns the p-value threshold. We
   explained this argument when we presented the `selTLSE` function.
   
-- **vcov.**: An alternative function used to compute the covariance
-  matrix of the least squares estimates.
-  
-- **...**: This is used to pass arguments to the `vcov.` function.
-
-For example, we can generate the previous table as follows. 
+For example, we can generate the previous table as follows.
 
 ```{r, eval=FALSE}
 c1 <- causalTLSE(model1, selType="SLSE")

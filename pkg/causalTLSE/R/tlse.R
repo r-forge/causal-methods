@@ -427,8 +427,6 @@ causalTLSE <- function (model, selType=c("SLSE","BTLSE","FTLSE"),
                   seType=c("analytic", "lm"),
                   pvalT = function(p) 1/log(p), vcov.=NULL, ...)
 {
-    if (!inherits(model, "tlseModel"))
-        stop("model must be an object of class tlseModel")
     selType <- match.arg(selType)
     seType <- match.arg(seType)
     causal <- match.arg(causal)
@@ -439,17 +437,25 @@ causalTLSE <- function (model, selType=c("SLSE","BTLSE","FTLSE"),
     ans    
 }
 
-causal <- function(object, ...)
-    {
-        UseMethod("causal")
-    }
-
-
-causal.tlseModel <- function(object, seType=c("analytic", "lm"),
-                             causal = c("ALL","ACT","ACE","ACN"), vcov.=NULL, ...)
+causalTLSE <- function(object, ...)
 {
+    UseMethod("causalTLSE")
+}
+
+causalTLSE.tlseModel <- function(object,
+                                 selType=c("SLSE","BTLSE","FTLSE"),
+                                 selCrit = c("AIC", "BIC", "ASY"),
+                                 causal = c("ALL","ACT","ACE","ACN"),
+                                 seType=c("analytic", "lm"),
+                                 pvalT = function(p) 1/log(p),
+                                 vcov.=NULL, ...)
+{
+    selType <- match.arg(selType)
     seType <- match.arg(seType)
-    causal <- match.arg(causal)    
+    causal <- match.arg(causal)
+    selCrit <- match.arg(selCrit)
+    if (selType != "SLSE")
+        object <- selTLSE(object, selType, selCrit, pvalT, vcov., ...)
     res <- estModel(object)
     beta <- coef(res$lm.out)
     if(is.null(vcov.))
@@ -472,11 +478,11 @@ causal.tlseModel <- function(object, seType=c("analytic", "lm"),
     ans    
 }
 
-causal.tlseFit <- function(object, seType=c("analytic", "lm"),
+causalTLSE.tlseFit <- function(object, seType=c("analytic", "lm"),
                            causal = c("ALL","ACT","ACE","ACN"), vcov.=NULL, ...)
 {
     seType <- match.arg(seType)
-    causal <- match.arg(causal)    
+    causal <- match.arg(causal)
     beta <- coef(object$lm.out)
     if(is.null(vcov.))
         v <- vcov(object$lm.out)

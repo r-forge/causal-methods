@@ -36,6 +36,5 @@ not in use.}
 }
 \description{
 \code{\link{extract}} method for \code{causaltlse} objects created by the
-\code{\link[causalTLSE]{causalTLSE}} or
-\code{\link[causalTLSE]{causal}} function.
+\code{\link[causalTLSE]{causalTLSE}} function.
 }
