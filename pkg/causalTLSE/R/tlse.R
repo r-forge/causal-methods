@@ -750,7 +750,7 @@ selTLSE <- function(model, method=c("FTLSE", "BTLSE"),
     else
         pval <- .getPvalF(model, vcov., ...)
     model <- critFct(model, pval, pvalT, crit)
-    model$method <- list(select=method, crit=crit)
+    model$method <- list(select=method, crit=crit, pval=pval)
     model
 }
 
@@ -999,7 +999,6 @@ predict.tlseFit <- function (object, interval = c("none", "confidence"), se.fit 
             se.fit = se0))
     else list(treated = pr1, control = pr0)
 }
-
 
 plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
                           level = 0.95, newdata = NULL, legendPos = "topright", vcov. = NULL,

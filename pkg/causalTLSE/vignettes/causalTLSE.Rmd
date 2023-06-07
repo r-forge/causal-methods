@@ -1082,4 +1082,122 @@ legend("left", c("True-treated","True-control"),
 plot(c2, "X2", addPoints=TRUE, legendPos="topleft", cex=.8)
 ```
 
+## A simulated data set from Model 4
+
+In the package, the data set `datSim5` is generated using the
+following data generating process with a sample size of 300. This
+model is presented as a case of multiple covariates with
+interactions..
+
+\begin{eqnarray*}
+Y(0) &=& [1+X_1+X_1^2] + [(1+X_2)I(X_2\leq-1) + (-1-X_2)I(X_2>-1)] \\
+&& + [1+X_1 X_2 + (X_1X_2)^2] + e\\
+Y(1) &=& [1-2X_1] + [(1-2X_2)I(X_2\leq 0) + (1+2X_2)I(X_2>0)] \\
+&&+ [1-2X_1X_2] + u\\
+Z &=& \mathrm{B}[\Lambda(1+X_1+X_2+X_1X_2)]\\
+Y &=& Y(1)Z + Y(0) (1-Z)\,,
+\end{eqnarray*}
+
+where $I(A)$ is the indicator function equal to 1 if $A$ is true,
+$X_1$, $X_2$, $e$ and $u$ are independent standard normal,
+$\Lambda(x)$ is the CDF of the standard logistic distribution and B(p)
+is the Bernoulli distribution. The causal effects ACE, ACT and ACN are
+approximately equal to 1.763, 0.998 and 3.194 (estimated with a sample
+size of 10 millions). We can compare the SLSE, FTLSE with AIC and
+FTLSE with BIC. 
+
+```{r, echo=FALSE}
+sim_model <- function(n)
+{
+	X1 <- rnorm(n)
+    X2 <- rnorm(n)
+	probX <- plogis(1 + X1 + X2 + X1*X2) 
+	Z <- rbinom(n, 1, probX)
+	er0 <- rnorm(n)
+	er1 <- rnorm(n)
+	Y0 <-  (1 + X1 + X1^2) + (1 + X2)  * (X2 <= -1) + 
+		(-1 - X2) * (X2 > -1) + (1+X1*X2 + X1^2*X2^2) + er0
+	Y1 <- (1 - 2*X1) + (1 - 2*X2)*(X2 <= 0) + 
+		(1 + 2*X2) * (X2 > 0) + (1-2*X1*X2) + er1
+	Y <- Y0 * (1 - Z) + Y1 * Z   
+	data.frame(Y=Y, X1=X1, X2=X2, Z=Z, Y1=Y1, Y0=Y0)
+}
+```
+
+```{r}
+data(simDat5)
+mod <- setModel(Y~Z | ~X1*X2, data=simDat5)
+```
+
+```{r, eval=FALSE}
+c1 <- causalTLSE(mod, selType="SLSE")
+c2 <- causalTLSE(mod, selType="BTLSE", selCrit="BIC")
+c3 <- causalTLSE(mod, selType="BTLSE", selCrit="AIC")
+texreg(list(SLSE=c1, FTLSE.BIC=c2, FTLSE.AIC=c3), table=FALSE, digits=4)
+```
+
+\begin{center}
+\footnotesize
+```{r, results='asis', message=FALSE, echo=FALSE}
+c1 <- causalTLSE(mod, selType="SLSE")
+c2 <- causalTLSE(mod, selType="FTLSE", selCrit="BIC")
+c3 <- causalTLSE(mod, selType="FTLSE", selCrit="AIC")
+texreg(list(SLSE=c1, FTLSE.BIC=c2, FTLSE.AIC=c3), table=FALSE, digits=4)
+```
+\normalsize
+\end{center}
+
+In the case of multiple covariates with interactions, the shape of the
+fitted outcome with respect to one covariate depends on the value of
+the other covariates. Without interaction, changing the value of the
+other covariates only shifts the fitted line without changing its
+shape. The following graphs compare the estimated relationship between
+$Y$ and $X_1$ for $X_2$ equal to its mean (left graph) and 1 (right
+graph). When $X_2$ is equal to its population mean, the true curves
+are $(1+x+x^2)$ for the treated and $(3-2x)$ for the control. If
+$X_2=1$, the true curves become $2x+2x^2$ for the treated and $(5-4x)$
+for the control.
+
+```{r, out.width='50%', fig.show='hold'}
+plot(c2, "X1", legendPos="right", cex=.8,
+     main="Y VS X1 (X2 = sample mean)")
+curve(1+x+x^2, -3,3, col="darkgreen", lty=3, lwd=3, add=TRUE)
+curve(3-2*x, -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
+legend("top", c("True-treated","True-control"),
+       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
+plot(c2, "X1", newdata=c(X2=1), legendPos="right", cex=.8,
+     main="Y VS X1 (X2 = 1)")
+curve(2*x+2*x^2, -3,3, col="darkgreen", lty=3, lwd=3, add=TRUE)
+curve(5-4*x, -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
+legend("top", c("True-treated","True-control"),
+       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
+```
+
+The following graphs illustrate the relationship between $Y$ and $X_2$
+for a given $X_1$. When $X_1$ is equal to its population mean, the
+true curves are $[2+(1-2x)(x\leq 0)+(1+2x)(x>0)]$ for the treated and
+$[2+(1+x)(x\leq-1)+(-1-x)(x>-1)]$ for the control. If $X_1=1$, the
+true curves become $[-2x+(1-2x)(x\leq 0)+(1+2x)(x>0)]$ for the treated
+and $[(4+x+x^2)+(1+x)(x\leq-1)+(-1-x)(x>-1)]$ for the control.
+
+
+```{r, out.width='50%', fig.show='hold'}
+plot(c2, "X2", legendPos="right", cex=.8,
+     main="Y VS X2 (X1 = sample mean)")
+curve(2+(1-2*x)*(x<=0)+(1+2*x)*(x>0), -3,3,
+      col="darkgreen", lty=3, lwd=3, add=TRUE)
+curve(2+(1+x)*(x<=-1)+(-1-x)*(x>-1),
+      -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
+legend("top", c("True-treated","True-control"),
+       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
+plot(c2, "X2", newdata=c(X1=1), legendPos="right", cex=.8,
+     main="Y VS X2 (X1 = 1)")
+curve(-2*x+(1-2*x)*(x<=0)+(1+2*x)*(x>0), -3,3,
+      col="darkgreen", lty=3, lwd=3, add=TRUE)
+curve(4+(1+x)*(x<=-1)+(-1-x)*(x>-1)+x+x^2,
+      -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
+legend("top", c("True-treated","True-control"),
+       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
+```
+
 
