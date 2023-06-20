@@ -9,7 +9,7 @@ errors and confidence intervals.
 
 \method{predict}{tlseFit}(object, interval=c("none","confidence"),
                        se.fit=FALSE, newdata=NULL, level=0.95,
-                       vcov.=NULL, ...)
+                       vcov.=vcovHC, ...)
 }
 \arguments{
   \item{object}{Object of class \code{tlseFit}.}
@@ -23,14 +23,14 @@ errors and confidence intervals.
   \item{newdata}{A \code{data.frame} of new data. It must include values
     for all covariates.}
   \item{vcov.}{An alternative function to compute the covariance
-    matrix of the least squares estimates. The default \code{vcov}
-    method for \code{lm} objects.}
+    matrix of the least squares estimates. The default is the
+    \code{vcovHC} method for \code{lm} objects.}
   \item{...}{Additional argument to pass to the \code{vcov.} function.}  
 }
 
 \examples{
 data(simDat3)
 mod <- setModel(Y~Z|~X1+X2, data=simDat3)
-fit <- causalTLSE(mod, seType="lm", vcov.=sandwich::vcovHC, type="HC")
+fit <- causalTLSE(mod, seType="lm")
 pr <- predict(fit, interval="confidence")
 }

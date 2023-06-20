@@ -1,0 +1,407 @@
+---
+title: "Semiparametric Thresholding Least Squares"
+author: "Pierre Chausse^[University of Waterloo, pchausse@uwaterloo.ca], Mihai Giurcanu^[University of Chicago, giurcanu@uchicago.edu], George Luta^[Georgetown University, George.Luta@georgetown.edu]"
+date: ""
+output: rmarkdown::pdf_document
+abstract: "The vignette includes ideas for improving the causalTLSE package."
+vignette: >
+  %\VignetteIndexEntry{Semiparametric Thresholding Least Squares}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteDepends{causalTLSE}
+  %\VignettePackage{causalTLSE}
+  %\VignetteEncoding{UTF-8}
+header-includes:
+- \DeclareMathOperator{\Ex}{E}
+- \DeclareMathOperator{\var}{var}
+- \DeclareMathOperator{\pr}{Pr}
+- \newcommand{\tp}[1]{#1^T}
+- \newcommand{\reals}{\mathbb{R}}
+---
+
+# Introduction
+
+```{r, echo=FALSE, message=FALSE}
+library(causalTLSE)
+library(sandwich)
+```
+
+This document presents one possible extension to the `causalTLSE`
+package. The TLSE causal effects will eventually be based on the
+following functions and methods. The causal effect model is
+
+\[ 
+Y = \beta_0 (1-Z) + \beta_1 Z + f_0(X) + f_1(X) + \varepsilon\,, 
+\] 
+
+and it is approximated by the regression
+
+\[ 
+Y = \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(X)(1-Z) + 
+\tp{\psi_1}U_1(X)Z + u\,, 
+\] 
+
+where $Y\in \reals$ is the response variable, $X$ is a $k\times 1$
+vector of confounders, and $U_0(X)\in \reals^{p_0}$ and $U_1(X)\in
+\reals^{p_1}$ are spline vectors. We can represent $U_j(X)$, for
+$j=0,1$, into a block vector $\tp{\{\tp{U_{j1}(X_1)},
+\tp{U_{j2}(X_2)}, ..., \tp{U_{jk}(X_k)}\}}$, where $U_{jl}(X_l)\in
+\reals^{p_{jl}}$ is the vector of basis functions for group $j$
+associated with $X_l$, with $\sum_{l=1}^k p_{jl}=p_j$, $j=0,1$. This
+is equivalent to estimating the following two models separately:
+
+\begin{eqnarray*}
+Y &=& \beta_0 + \tp{\psi_0}U_0(X) + u(0) \\
+Y &=& \beta_1 + \tp{\psi_1}U_1(X) + u(1)
+\end{eqnarray*}
+
+The detail on how $U_0(X)$ and $U_1(X)$ are defined and selected is
+presented in the causalTLSE vignette, so we won't repeat it here. It
+is therefore important to be familiar with this vignette to understand
+what follows. 
+
+What is important here is to realize that the package provides a
+semiparametric method for estimating the model
+
+\[ 
+Y = \beta + f(X) + \varepsilon\,.
+\] 
+
+using the following basis function representation:
+
+\[
+Y = \beta + \tp{\psi}U(X) + u
+\]
+
+We can create a model similar to the `tlseModel`, but without
+splitting the sample into two groups. We would simply have one set of
+knots per covariate. For now, we name the class "slse". The model
+constructor would be simpler, because it would not divide the sample
+in two. Also, the formula would not need a | operator. We would only
+provide the regression formula
+
+```{r}
+slse <-  function (form, data, nbasis = function(n) n^0.3, knots,
+                   userRem = NULL) 
+{
+    mf <- model.frame(form, data)
+    X <- model.matrix(form, data)
+    Y <- model.response(mf)
+    if (attr(terms(form), "intercept") == 1)
+    {
+        X <- X[, -1, drop = FALSE]
+        reg <- "~Xf"
+    } else {
+        reg <- "~Xf-1"
+    }
+    formY <- as.formula(paste(all.vars(form)[1], reg, sep=""),
+                        env = .GlobalEnv)
+    formX <- formula(delete.response(terms(form)),  env = .GlobalEnv)
+    na <- na.omit(cbind(Y, X))
+    if (missing(knots)) {
+        select <- "SLSE"
+        crit <- ""
+    } else {
+        select <- "User Based"
+        crit <- ""
+    }
+    if (missing(knots)) 
+        knots <- as.list(rep(NA, ncol(X)))
+    if (is.null(knots)) 
+        knots <- lapply(1:ncol(X), function(i) NULL)
+    if (!is.list(knots))
+        stop("knots must be a list")
+    if (length(knots) != ncol(X))
+        stop("The length of knots must be equal to the number of covariates")
+    if (!is.null(attr(na, "omit")))
+    {
+        na <- attr(na, "omit")
+        X <- X[-na, , drop = FALSE]
+        data <- data[-na, , drop = FALSE]
+    } else {
+        na <- NULL
+    }
+    if (!is.null(userRem))
+    {
+        w <- which(colnames(X) %in% userRem)
+        if (length(w)) 
+            knots[w] <- lapply(w, function(i) NULL)
+    }
+    nameX <- colnames(X)
+    nameY <- all.vars(formY)[1]
+    knots <- lapply(1:ncol(X), function(i)
+        causalTLSE:::setKnots(X[, i], nbasis=nbasis, knots=knots[[i]]))
+    names(knots) <- nameX
+    obj <- list(na = na, formY = formY, formX = formX, 
+        nameY = nameY, knots = knots, data = data, 
+        nameX = nameX, method = list(select = select, crit = crit))
+    class(obj) <- "slse"
+    obj
+}
+```
+
+The print method also needs to be simplified:
+
+
+```{r}
+print.slse <- function (x, knots = FALSE, ...) 
+{
+    if (!knots) {
+        cat("Semiparametric LSE Model\n")
+        cat("************************\n\n")
+        cat("Number of observations: ", nrow(x$data), "\n")
+        cat("Number of missing values: ", length(x$na), "\n")
+        cat("Selection Method: ", x$method$select, "\n", sep = "")
+        if (x$method$crit != "") 
+            cat("Criterion: ", x$method$crit, "\n\n", sep = "")
+        cat("Covariates approximated by semiparametric LSE:\n")
+        w <- sapply(x$knots, is.null)
+        selPW <- x$nameX[!w]
+        nonselPW <- x$nameX[w]
+        isApp <- if (length(selPW)) 
+                     paste(selPW, collapse = ", ", sep = "")
+                 else "None"
+        notApp <- if (length(nonselPW)) 
+                      paste(nonselPW, collapse = ", ", sep = "")
+                  else "None"
+        cat("\t", isApp, "\n", sep = "")
+        cat("Covariates not approximated by semiparametric LSE:\n")
+            cat("\t", notApp, "\n", sep = "")
+    } else {
+        cat("Lists of knots\n")
+        cat("**************\n")
+        for (sel in 1:length(x$knots)) {
+            cat(x$nameX[sel], ":\n", sep = "")
+            if (is.null(x$knots[[sel]])) 
+                cat("None\n")
+            else print.default(format(x$knots[[sel]], ...), 
+                print.gap = 2L, quote = FALSE)
+        }
+    }
+    invisible()
+}
+```
+
+We can try it with the `simDat4` dataset 
+
+```{r}
+data(simDat4)
+mod1 <- slse(Y~X1+X2+X3+X4, data=simDat4)
+mod1
+print(mod1, knots=TRUE)
+```
+
+## Estimation
+
+We first simplify the internal functions:
+
+```{r}
+.chkSelKnots <- function (model, w) 
+{
+    wK <- "knots"
+    knots <- model[[wK]]
+    if (is.null(w)) 
+        return(knots)
+    if (!is.list(w)) 
+        stop("The knots selection must be included in a list")
+    if (length(w) != length(knots)) 
+        stop(paste("The length of the knots selection list does not match the length of ", 
+            wK, sep = ""))
+    k <- lapply(1:length(w), function(i) {
+        ki <- knots[[i]]
+        wi <- w[[i]]
+        if (is.null(ki)) 
+            return(NULL)
+        if (is.null(wi)) 
+            return(NULL)
+        if (any(is.na(wi))) 
+            stop("The knots selection list cannot contain NAs")
+        if (!is.integer(wi)) 
+            stop("The knots selection list can only contain integers")
+        wi <- unique(wi)
+        if (any(wi < 1) | any(wi > length(ki))) 
+            stop(paste("Knot selection out of bound in ", wK, 
+                sep = ""))
+        ki <- ki[wi]
+    })
+    names(k) <- model$nameX
+    k
+}
+
+.splineMatrix <- function (model, which) 
+{
+    X <- causalTLSE:::model.matrix.tlseModel(model)[, which]
+    knots <-  model$knots[[which]]
+    if (is.null(knots)) 
+        return(as.matrix(X))
+    n <- length(X)
+    p <- length(knots) + 1
+    Xf <- matrix(0, nrow = n, ncol = p)
+    Xf[, 1] <- X * (X <= knots[1]) + knots[1] * (X > knots[1])
+    Xf[, p] <- (X - knots[p - 1]) * (X > knots[p - 1])
+    if (p >= 3) {
+        for (j in 2:(p - 1)) {
+            Xf[, j] <- (X - knots[j - 1]) * (X >= knots[j - 
+                1]) * (X <= knots[j]) + (knots[j] - knots[j - 
+                1]) * (X > knots[j])
+        }
+    }
+    Xf
+}
+
+multiSplines <- function (model) 
+{
+    all <- lapply(1:length(model$nameX), function(i) {
+        ans <- .splineMatrix(model, i)
+        nk <- length(model$knots[[i]]) + 1
+        colnames(ans) <- if (nk == 1) {
+                             model$nameX[i]
+                         } else {
+                             paste(model$nameX[i], "_", 1:nk, sep = "")
+                         }
+        ans
+    })
+    names(all) <- model$nameX
+    cnames <- lapply(all, colnames)
+    names(cnames) <- names(all)
+    all <- do.call(cbind, all)
+    attr(all, "p") <- sapply(knots, length) + 1
+    attr(all, "colnames") <- cnames
+    all
+}
+
+```
+
+Then we rewrite the estimation function
+
+```{r}
+estSLSE <- function(model, w = NULL) 
+{
+    if (!inherits(model, "slse"))
+        stop("model must be an object of class slse")
+    model$knots <- .chkSelKnots(model, w)
+    data <- model$data
+    data$Xf <- multiSplines(model)
+    form <- model$formY
+    environment(form) <- environment()
+    fit <- lm(form, data)
+    obj <- list(lm.out = fit, model = model)
+    class(obj) <- "slseFit"
+    obj
+}
+print.slseFit <- function (x, ...) 
+{
+    cat("Semiparametric LSE Estimate\n")
+    cat("***************************\n")
+    cat("Selection Method: ", x$model$method$select, "\n", sep = "")
+    if (x$model$method$crit != "") {
+        cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
+    }
+    else {
+        cat("\n")
+    }
+    print.default(format(coef(x$lm.out), ...), print.gap = 2L, 
+        quote = FALSE)
+    invisible()
+}
+
+summary.slseFit <- function(object, vcov.=vcovHC, ...)
+    summary.tlseFit(object, vcov., ...)
+```
+
+Let's try it
+
+```{r}
+fit <- estSLSE(mod1)
+fit
+summary(fit)
+```
+
+## Predict and Plot
+
+
+
+
+
+
+## Selection
+
+```{r}
+.testKnots <- function (fit, model, whichK, whichX, treated, vcov) 
+{
+    wK <- "knots"
+    wX <- "Xf"
+    if (whichX > length(model[[wK]])) 
+        stop("whichX exceeds the number of covariates")
+    if (any(whichK > length(model[[wK]][[whichX]]))) 
+        stop("whichK exceeds the number of knots")
+    if (is.null(model[[wK]][[whichX]])) 
+        return(NA)
+    b <- coef(fit)
+    b <- na.omit(b)
+    sapply(whichK, function(wi) {
+        nX <- names(model[[wK]])[[whichX]]
+        t <- c(paste(wX, nX, "_", wi, sep = ""), paste(wX, nX, 
+            "_", wi + 1, sep = ""))
+        c1 <- which(names(b) == t[1])
+        c2 <- which(names(b) == t[2])
+        if (length(c(c1, c2)) < 2) 
+            return(NA)
+        s2 <- vcov[c1, c1] + vcov[c2, c2] - 2 * vcov[c1, c2]
+        ans <- 1 - pf((b[c1] - b[c2])^2/s2, 1, fit$df)
+        names(ans) <- NULL
+        ans
+    })
+}
+
+.getPvalB <- function (model, vcov. = vcovHC, ...) 
+{
+    data2 <- model$data
+    data2$Xf <- multiSplines(model)
+    form <- model$formY
+    environment(form) <- environment()
+    fit <- lm(form, data2)
+    p <- attr(data2$Xf, "p")
+    v <- vcov.(fit, ...)
+    pval <- lapply(1:length(model$knots), function(i) {
+        ki <- length(model$knots[[i]])
+        if (ki == 0) 
+            NA
+        else .testKnots(fit, model, 1:ki, i, FALSE, v)
+    })
+    pval1 <- lapply(1:length(model$knots1), function(i) {
+        ki <- length(model$knots1[[i]])
+        if (ki == 0) 
+            NA
+        else .testKnots(fit, model, 1:ki, i, TRUE, v)
+    })
+    names(pval0) <- names(pval1) <- names(p0) <- names(p1) <- model$nameX
+    list(pval0 = pval0, pval1 = pval1, p0 = p0, p1 = p1)
+}
+
+
+selSLSE <- function (model, method = c("FTLSE", "BTLSE"), crit = c("AIC", 
+    "BIC", "ASY"), pvalT = function(p) 1/log(p), vcov. = vcovHC, 
+    ...) 
+{
+    crit <- match.arg(crit)
+    method <- match.arg(method)
+    critFct <- if (crit == "ASY") {
+        causalTLSE.selASY
+    }
+    else {
+        .selIC
+    }
+    if (method == "BTLSE") 
+        pval <- .getPvalB(model, vcov., ...)
+    else pval <- .getPvalF(model, vcov., ...)
+    model <- critFct(model, pval, pvalT, crit)
+    model$method <- list(select = method, crit = crit, pval = pval)
+    model
+}
+```
+
+
+
+
+
+

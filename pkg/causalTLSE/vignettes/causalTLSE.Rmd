@@ -1,9 +1,13 @@
 ---
 title: "Semiparametric Thresholding Least Squares Inference for Causal Effects with R"
-author: "Pierre Chausse^[University of Waterloo, pchausse@uwaterloo.ca], Mihai Giurcanu^[University of Chicago, giurcanu@uchicago.edu], George Luta^[Georgetown University, George.Luta@georgetown.edu]"
+author: "Pierre Chausse^[University of Waterloo, pchausse@uwaterloo.ca], Mihai Giurcanu^[University of Chicago, giurcanu@uchicago.edu], Marinela Capanu^[Memorial
+Sloan Kettering Cancer Center, capanum@mskcc.org], George Luta^[Georgetown University, George.Luta@georgetown.edu]"
 date: ""
-output: rmarkdown::pdf_document
-abstract: "The vignette explains how to use the causalTLSE package to estimate thet causal effects using a semiparametric thresholding least squares methods."
+bibliography: tlse.bib 
+output:
+ pdf_document:
+  number_sections: true
+abstract: "The vignette explains how to use the causalTLSE package to estimate causal effects using the semiparametric thresholding least squares methods developped by @tlse23."
 vignette: >
   %\VignetteIndexEntry{Semiparametric Thresholding Least Squares Inference for Causal Effects}
   %\VignetteEngine{knitr::rmarkdown}
@@ -22,80 +26,89 @@ header-includes:
 
 This document presents the `causalTLSE` package explaining in details
 all functions implemented in the package. It is intended for users
-interested in all the details about the methods presented in the paper
-and how they are implemented.
+interested in all the details about the methods presented in @tlse23
+and how they are implemented. 
 
 The main model is 
 
-\[ 
-Y = \beta_0 (1-Z) + \beta_1 Z + f_0(X) + f_1(X) + \varepsilon\,, 
-\] 
+\begin{eqnarray*} 
+Y &=&  \beta_0 (1-Z) + \beta_1 Z + 
+\sum_{l=1}^q f_{l,0}(X_l)(1-Z) + \sum_{l=1}^q f_{l,1}(X_l)Z + \xi\\
+ &\equiv& \beta_0 (1-Z) + \beta_1 Z +  f_0(X)(1-Z) + f_1(X)Z + \xi\,, 
+\end{eqnarray*} 
 
-and it is approximated by the regression
+where $Y\in \reals$ is the response variable, $Z$ is the treatment
+indicator defined as $Z=1$ for the treated and $Z=0$ for the
+non-treated and $X\in \reals^q$ is a q-vector of confounders. We can
+approximate this model by the following regression:
 
-\[ 
-Y = \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(X)(1-Z) + 
-\tp{\psi_1}U_1(X)Z + u\,, 
-\] 
+\begin{eqnarray*} 
+Y &=&  \beta_0 (1-Z) + \beta_1 Z + 
+\sum_{l=1}^q \tp{\psi_{l,0}}U_{l,0}(1-Z) + 
+\sum_{l=1}^q \tp{\psi_{l,1}}U_{l,1}Z +  \xi\\
+&\equiv&\beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(1-Z) + 
+\tp{\psi_1}U_1Z + \zeta\,, 
+\end{eqnarray*} 
 
-where $Y\in \reals$ is the response variable, $X$ is a $k\times 1$
-vector of confounders, and $U_0(X)\in \reals^{p_0}$ and $U_1(X)\in
-\reals^{p_1}$ are spline vectors. We can represent $U_j(X)$, for
-$j=0,1$, into a block vector $\tp{\{\tp{U_{j1}(X_1)},
-\tp{U_{j2}(X_2)}, ..., \tp{U_{jk}(X_k)}\}}$, where $U_{jl}(X_l)\in
-\reals^{p_{jl}}$ is the vector of basis functions for group $j$
-associated with $X_l$, with $\sum_{l=1}^k p_{jl}=p_j$, $j=0,1$. The
-paper proposes a data-driven method for selecting the vectors $U_0(X)$
-and $U_1(X)$.
+where $U_{l,k}=u_{l,k}(X_l)=(u_{j,l,k}(X_l)~:~ 1 \leq j \leq
+p_{l,k})\in\reals^{p_{l,k}}$ is a vector of basis functions
+corresponding to the l$^\mathrm{th}$ nonparametric component
+$f_{l,k}(X_l)$, $\psi_{l,k}\in\reals^{p_{l,k}}$ is an unknown vector
+of regression coefficients, $U_k=u_k(X)=(u_{l,k}(X_l)~:~ 1 \leq l \leq
+q)\in\reals^{p_k}$ and $\psi_k=(\psi_{l,k}~:~ 1 \leq l \leq
+q)\in\reals^{p_k}$, with $p_k=\sum_{l=1}^q p_{l,k}$. The paper
+proposes a data-driven method for selecting the vectors $U_0(X)$ and
+$U_1(X)$. Note that we allow the number of basis functions ($p_{l,k}$)
+to differ across confounders and groups.
 
 To understand the package, it is important to know how the
-$U_{jl}(X_l)$'s are defined. To simplify the notation, we remove the
-subscript $l$ from $X$ and the subscripts $j$ and $l$ from
-$U_{jl}(X_l)$ and $p_{jl}$. We just need to keep in mind that
-$U(X)=\{U_s(X)\}\in\reals^p$ is different for the treated and control
-groups and also for different confounders. Let $\{\kappa_{1}, ...,
-\kappa_{p-1}\}$ be a set of $p-1$ knots strictly inside the support of
-$X$ satisfying $\kappa_{1}<\kappa_2<,...,< \kappa_{p-1}$. For a
-realization $x$ and $p\geq 3$, we have the following bases:
+$u_{l,k}(X_l)$'s are defined. For clarity, let's write
+$U_{l,k}=u_{l,k}(x_l)$ as $U=u(x) = (u_j(x)~:~ 1 \leq j \leq
+p)\in\reals^{p}$. We just need to keep in mind that it is different
+for the treated and non-treated groups and also for different
+confounders. Let $\{\kappa_{1}, ..., \kappa_{p-1}\}$ be a set of $p-1$
+knots strictly inside the support of $X$ satisfying
+$\kappa_{1}<\kappa_2<,...,< \kappa_{p-1}$. In the case of local linear
+basis functions, we have:
 
 \begin{eqnarray*}
-U_1(x) &=& xI(x\leq \kappa_{1}) + \kappa_{1}I(x> \kappa_{1}) \\
-U_p(x) &=& (x - \kappa_{p-1})I(x > \kappa_{p-1})\\
-U_s(x) &=& (x -  \kappa_{s-1})I(\kappa_{s-1} \leq x \leq \kappa_{s}) +
-(\kappa_{s} - \kappa_{s-1})I(x> \kappa_{s})\,,
+u_1(x) &=& xI(x\leq \kappa_{1}) + \kappa_{1}I(x> \kappa_{1}) \\
+u_j(x) &=& (x -  \kappa_{j-1})I(\kappa_{j-1} \leq x \leq \kappa_{j}) +
+(\kappa_{j} - \kappa_{j-1})I(x> \kappa_{j})\,,~~2\leq j \leq p-1\\
+u_p(x) &=& (x - \kappa_{p-1})I(x > \kappa_{p-1})
 \end{eqnarray*}
 
-where the last $U_s(x)$ is defined for $2<s<p$. Therefore, if the
-number of knots is equal to 1, we only have the first two bases. Since
-the knots must be strictly inside the support of $X$, for any
-categorical variable with two levels, which includes as a special case
-binary variables, the number of knots must be equal to zero. In this
-case, $U(X)=X$. For general nominal variables, the number of knots
-cannot exceed the number of levels minus two.
+Therefore, if the number of knots is equal to 1, we only have the two
+basis functions. Since the knots must be strictly inside the support
+of $X$, for any categorical variable with two levels, which includes
+as a special case binary variables, the number of knots must be equal
+to zero. In this case, $u(X)=X$. For general ordinal variables, the
+number of knots cannot exceed the number of levels minus two.
 
 Note that for the sample regression
 
 \[ 
 Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + 
-\tp{\psi_0}U_0(X_i)(1-Z_i) + \tp{\psi_1}U_1(X_i)Z_i + u_i\,, 
+\tp{\psi_0}u_0(X_i)(1-Z_i) + \tp{\psi_1}u_1(X_i)Z_i + \zeta_i\,, 
 \] 
 
 for $i=1,...,n$, the knots of $X_l$, $l=1,...,k$, must be strictly
-inside the sample range of the vector $\{X_{li}\}\in\reals^n$ instead
-of inside the support of $X_l$.
+inside the sample range of $\{X_{li}~:~1\leq i\leq n\}\in\reals^n$
+instead of inside the support of $X_l$.
 
 # The `causalTLSE` package
 
 ## Setting up the Model
 
-The first step in using the package is to define a model. The model
-contains the information about the outcome, the treatment indicator,
-the covariates and their knots. This is the starting point before
-applying any basis selection method. To illustrate how to use the
-package, we are using the dataset from Lalonde (1986). The dataset,
-called `nsw`, contains some continuous and categorical variables, so
-we can illustrate how knots are selected initially. The dataset is
-included in the `causalTLSE` package.
+The first step in using the package is to define the causal model. The
+model contains the information about the outcome ($Y$), the treatment
+indicator ($Z$), the covariates ($X$) and their knots
+($\kappa_{l,k}$). This is the starting point before applying any basis
+selection method. To illustrate how to use the package, we are using
+the dataset from Lalonde (1986). The dataset, called `nsw`, contains
+some continuous and categorical variables, so we can illustrate how
+knots are selected initially. The dataset is included in the
+`causalTLSE` package.
 
 ```{r}
 library(causalTLSE)
@@ -105,10 +118,10 @@ data(nsw)
 The outcome is the real income in 1978 (`re78`) and the purpose is to
 estimate the causal effect of a training program (`treat`) on the
 outcome. The dataset includes the continuous covariates age (`age`),
-education (`ed`) the 1975 real income (`re75`) and some binary
+education (`ed`), the 1975 real income (`re75`), and some binary
 variables (`black`, `hisp`, `married` and `nodeg`). We start by
-considering the covariates `age`, `re75`, `ed` and ``married`. We can
-setup the model simply by running the following command:
+considering the covariates `age`, `re75`, `ed`, and ``married`. To
+setup the model, we simply by run the following command:
 
 ```{r}
 model1 <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data=nsw)
@@ -116,7 +129,10 @@ model1 <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data=nsw)
 
 The left of | is designated for the formula linking the outcome (re78)
 and the treatment indicator (treat). The covariates are entered after
-| as a formula without a dependent variable. This method works like for formulas in `lm`. For example, we can add interactions, transformations of the variables, etc. The following is an example:
+$|$ as a formula without a dependent variable. This formula works
+similarly to formulas in the `lm` function. For example, we can add
+interactions, transformations of the variables, etc. The following is
+an example:
 
 ```{r}
 model0 <-  setModel(re78 ~ treat | ~ age + I(age^2) + re75 + ed * married,
@@ -138,43 +154,43 @@ separately for the treated and control groups. The term `sample size`
 means the number of observations in the treated or control group.
 
 1. The starting number of knots is a function of the sample size and
-   is determined by the argument `nbases`, a function of one argument,
-   the sample size. The floor of what the function returns is the
-   number of bases. The starting number of knots is therefore equal to
-   the `floor` of what the function returns minus 1 (or 0 if this
-   operation results in a negative number). The default function is
-   `function(n) n^0.3`. For example, if the total sample size is 500,
-   with 200 treated and 300 control, the starting number of knots in
-   the treated and control groups are respectively equal to 3
-   (`floor(200^0.3)-1`) and 4 (`floor(300^0.3)-1`). It is possible to
-   have a number of knots that does not depend on the sample size. All
-   we need is to set the argument `nbases` to a function that returns
-   an integer.
+   is determined by the argument `nbasis`, a function of one argument,
+   the sample size. The floor value of what the function returns is
+   the number of basis functions. The starting number of knots is
+   therefore equal to the `floor` of what the function returns minus 1
+   (or 0 if the function returns a value strictly less than 1). The
+   default function is `function(n) n^0.3`. For example, if the total
+   sample size is 500, with 200 treated and 300 controls, the starting
+   number of knots in the treated and control groups are respectively
+   equal to 3=`floor(200^0.3)-1` and 4=`floor(300^0.3)-1`. It is
+   possible to have a number of knots that does not depend on the
+   sample size. All we need is to set the argument `nbasis` to a
+   function that returns an integer.
    
-2. Let $(p-1)$ be the number of knots determined by the previous
+2. Let $(p-1)$ be the number of knots determined in the previous
    step. The knots are obtained by computing $p+1$ quantiles of $X$
    for equally spaced probabilities from 0 to 1, and by dropping the
-   first and last ones. For example, if the number of knots is equal
-   to 3, we compute the quantiles for the probabilities
+   first and last quantiles. For example, if the number of knots is 3,
+   then the initial knots are given by quantiles for the probabilities
    0.25, 0.5 and 0.75.
    
 3. We drop any duplicated knots and any knots equal to either the max
    or the min of X. If the resulting number of knots is equal to 0,
    the vector of knots is set to `NULL`. When the knots is `NULL` for
-   a variable $X$, it means that $U(X)=X$.
+   a variable $X$, it means that $u(X)=X$.
    
 The last step implies that the number of knots for all categorical
 variables with two levels, which includes as a special case binary
 variables, is equal to 0. For nominal variables with a small number of
 levels, the number of knots may be smaller than the ones defined by
-`nbases`. For example, when the number of levels for a nominal
+`nbasis`. For example, when the number of levels for a nominal
 variable is 3, the number of knots cannot exceed 1.
 
 We can inspect the knots of the current model as follows. Note that
 each object in the package is S3-class, so the elements can be
 accessed using the operator $. The elements `knots0` and `knots1` are
-the list of knots for the control and treated groups. For example, the
-knots for the treated are:
+the list of knots for the control and treated groups. For example, in
+our case the initial knots for the treated are:
 
 ```{r}
 model1$knots1
@@ -182,38 +198,39 @@ model1$knots1
 
 We see that it is set to `NULL` for `married`, because it is a binary
 variable. The sample size for the treated is `r sum(nsw$treat==1)`.
-Given the default `nbases`, it implies a number of starting knots
-equal to `r floor(sum(nsw$treat==1)^.3)-1` ($297^{0.3}-1=4.519$). This
-is the number of knots we have for `ed` and `age`, but not for
+Given the default `nbasis`, it implies a number of starting knots
+equal to `r floor(sum(nsw$treat==1)^.3)-1`=`floor(`$297^{0.3}$`)`-1. 
+This is the number of knots we have for `ed` and `age`, but not for
 `re75`. The reason is that `re75` contains a large fraction of
-zeros. Since the 20\% quantile is equal to 0 and 0 in also the minimum
-value of `ed75`, it is dropped (the `type` argument of the `quantile`
-function is the same as it is implemented in the package).
+zeros. Since the 20$^\mathrm{th}$ percentile is equal to 0 and 0 is
+also the minimum value of `ed75`, it is dropped (the `type` argument
+of the `quantile` function is the same as it is implemented in the
+package).
 
 ```{r}
 quantile(nsw[nsw$treat==1,'re75'], c(.2,.4,.6,.8), type=1)
 ```
    
 By printing the object, we see a summary of the model. It includes the
-list of variable with a positive number of knots and the ones with no
+list of variables with a positive number of knots and the ones with no
 knots. 
 
 ```{r}
 model1
 ```
 
-> **SLSE**: We see that the selection method is set to SLSE, which
-> stands for Semiparametric Least Squares Estimator. We refer to this
-> when the knots are automatically selected by the method described
-> above. Later in the document, we will present methods for selecting
-> a subset of the SLSE using TLSE.
+Note that the selection method is set to SLSE, which stands for
+Semiparametric Least Squares Estimator. We refer to this when the
+knots are automatically selected by the method described above. Later
+in the document, we will present methods for selecting a subset of the
+SLSE using TLSE.
 
 As another example, the simulated dataset `simDat4` contains special
 types of covariates. It helps to further illustrate how the knots are
 determined. The dataset contains a continuous variable `X1` with a
-large proportion of zeros, the nominal variables `X2` and `X3`, with
-respectively 2 and 3 levels (the levels are {3,4} for `X2` and {1,2,3}
-for `X3`), and a binary variable `X4`.
+large proportion of zeros, the nominal variables `X2` and `X3`, with 2
+and 3 levels respectively, and `X4` is a binary variable. The levels
+for `X2` are {3,4} and for `X3` the levels are {1,2,3}.
 
 ```{r}
 data(simDat4)
@@ -221,23 +238,9 @@ model2 <- setModel(Y~Z |~X1+X2+X3+X4, data=simDat4)
 model2$knots0
 ```
 
-We see that the number of knots for the nominal variable with 2
-levels is set to 0 and it is equal to 1 for the one with 3 levels.
-
-### Setting the number of knots to 0 for specific variables
-
-To avoid having a positive number of knots for a variable, we can
-enter its name in the argument `userRem`. For example, if we want the
-number of knots to be zero for `ed` and `age`, we can create the model
-as follows:
-
-```{r}
-model3 <- setModel(re78~treat | ~age+re75+ed+married, data=nsw,
-                   userRem=c("ed","age"))
-model3
-```
-
-We see that only `re75` has a positive number of knots. 
+We see that the number of knots for the variables with 2 levels (`X2`
+and `X4`) are set to 0 and it is equal to 1 for the variable with 3
+levels (`X3`).
 
 ### Setting the knots manually
 
@@ -253,9 +256,10 @@ setModel(re78~treat | ~age+re75+ed+married, data=nsw, knots1=NULL)
 ```
 
 Notice that the selection method is defined as "User Based" whenever
-knots are provided manually by the user. The other option is to
-provide a list of knots. The list must have the same length as the
-number of covariates. For each element, we have three options:
+knots are provided manually by the user. Also, the print method shows
+the lists of covariates by group only when they differ, which is the
+case here. The other option is to provide a list of knots. For each
+element, we have three options:
 
 - `NA`: The knots are set automatically for this variable only.
 
@@ -265,51 +269,108 @@ number of covariates. For each element, we have three options:
    values and must be strictly inside the range of the variable for
    the group.
    
+The following explains all possible formats for the list of knots.
 
-Suppose you want to set for the control group an automatic selection
-for `age`, no knots for `ed` and the knots $\{1000, 5000, 10000\}$ for
-`re75`, and the knots be automatically selected for the treated
-group. We proceed as follows. Note that setting the value to `NA` or
-`NULL` has the same effect for the binary variable `married`. In the
-following, the argument `knots=TRUE` is added to the `print` method to
-only print the knots.
+- An unnamed list of length equal to the number of covariates. In that
+  case, the knots must be defined in the same order of covariates
+  implied by the formula.
+
+  Suppose you want to set for the control group an automatic selection
+  for `age`, no knots for `ed`, the knots $\{1000, 5000, 10000\}$ for
+  `re75`, and the knots be automatically selected for the treated
+  group. We proceed as follows. Note that setting the value to `NA` or
+  `NULL` has the same effect for the binary variable `married`. In the
+  following, the argument `knots=TRUE` is added to the `print` method
+  to only print the knots.
 
 ```{r}
 model <- setModel(re78~treat | ~age+re75+ed+married, data=nsw,
                   knots0=list(NA, c(1000,5000,10000), NULL, NA))
 print(model, knots=TRUE)
 ```
-   
+
+- A named list of length equal to the number of covariates. In that
+  case, the order does not matter. It will automatically be reorder to
+  match the order implied by the formula. The names must match
+  perfectly the covariate names generated by R. This is particularly
+  useful when we have interaction terms and we are not sure how R
+  orders them.
+
+  In the following example, we want to add the interaction between
+  `ed` and `age`. We want the same set of knots as in the previous
+  example and we want no knots for the interaction term. The name of
+  the interaction depends on how we enter it in the formula. When we
+  are uncertain about the names, we can print the knots of a model
+  with the default sets of knots. In the following, we change the
+  order of knots to show that the order does not matter.
+
+```{r}
+knots <- list(married=NA, ed=NULL, 'age:ed'=NULL, 
+              re75=c(1000,5000,10000), age=NA)
+model <- setModel(re78~treat | ~age*ed+re75+married, data=nsw,
+                  knots0=knots)
+model$knots0
+```
+
+- A named list of length strictly less than the number of
+  covariates. The names of the selected covariates must match
+  perfectly the names generated by R and the order does not matter.
+  
+  If we consider the previous example, the knots are set manually only
+  for `ed`, `ed:age` and `re75`. By default, all names not included in
+  the list of knots are set to `NA`. Therefore, we can create the same
+  model from the previous example as follows:
+
+```{r}
+knots <- list(ed=NULL, 'age:ed'=NULL, re75=c(1000,5000,10000))
+model <- setModel(re78~treat | ~age*ed+re75+married, data=nsw,
+                  knots0=knots)
+model$knots0
+```
+
+Note that the previous case offers an easy way of setting the number
+of knots to 0 for a subset of covariates. For example, suppose we want
+to add more interaction terms and set the knots to 0 for all of
+them. We can proceed as follows. 
+
+```{r}
+knots <- list('age:ed'=NULL, 'ed:re75'=NULL, 'ed:married'=NULL)
+model <- setModel(re78~treat | ~age*ed+re75*ed+married*ed, data=nsw,
+                  knots0=knots, knots1=knots)
+model
+```
+
 ## Estimating the model
 
 Given the set of knots from the model object, the estimation is just a
 least squares method applied to the extended set of covariates. We
-want to estimate the model
+want to estimate the parameters of model
 
 \[ 
-Y = \beta_0 (1-Z) + \beta_1 Z + \psi_0'U_0(X)(1-Z) + \psi_1'U_1(X)Z + u\,, 
+Y = \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(1-Z) + \tp{\psi_1}U_1Z + \zeta\,, 
 \] 
 
-where $U_0(X)$ and $U_1(X)$ are defined above and depends on the model
-knots. The function that estimates the model is `estModel`. The
+where $U_0$ and $U_1$ are defined above (which depends on the model
+knots). The function that estimates the model is `estModel`. The
 function has three arguments, but two of them are mostly used
 internally by other functions. We present it in case it is needed. The
 arguments are:
 
 - `model`: A model created by the function `setModel`.
 
-- `w0`: A list of integers to select knots for the control group from
-  the model. By default, all the knots are used.
-  
-- `w1`: A list of integers to select knots for the treated group from
-  the model. By default, all the knots are used.
+- `w0` and `w1`: lists of integers to select knots for the control and
+  treated groups respectively. For example, suppose we have 2
+  covariates with 5 knots each. If we want to estimate the model with
+  only the first knot for the first covariate and knots 3 and 5 for
+  the second, we set `w0` to `list(1L,c(3L, 5L))`. By default they are
+  set to `NULL` and all the knots from the model are used.
 
-We illustrate with a simple model containing only two covariates and
-one knot per eligible variables.
+We illustrate the usage of `estModel` with a simple model containing 2
+covariates and one knot per variable.
 
 ```{r}
 model <- setModel(re78~treat | ~age+married, data=nsw,
-                  nbases=function(n) 2)
+                  nbasis=function(n) 2)
 print(model, knots=TRUE)
 fit <- estModel(model)
 fit
@@ -325,11 +386,9 @@ summary(fit)
 ```
 
 For example, the coefficient of `Xf0age_1` is the effect of age for
-the control on `re78` when age is less than the first knot
-(`r fit$model$knots0[["age"]][1]`) and `Xf0age_2` is the effect when
-age is greater then the first knot. Note that the $R^2$ and adjusted
-$R^2$ are different from what we obtain using the summary of the `lm`
-object:
+the control on `re78` when $age\leq 23$ and `Xf0age_2` is the effect
+when $age> 23$. Note that the $R^2$ and adjusted $R^2$ are different
+from what we obtain using the summary of the `lm` object:
 
 ```{r}
 summary(fit$lm.out)[c("r.squared","adj.r.squared")]
@@ -341,19 +400,20 @@ definition of the $R^2$ used by R is the following (RSS means residual
 sum of squares):
 
 \[
-R^2 = 1-\frac{\mbox{RSS for the model with the regressors}}{\mbox{RSS for the model without the regressors}}
+R^2 = 1-\frac{\mbox{RSS for the model with the regressors}}{\mbox{RSS for the model without the regressors}}\,.
 \]
 
 In a model with an intercept, the residual of the model without the
 regressors is $Y_i-\bar{Y}$, but it is equal to $Y_i$ when the model
 does not have an intercept. As a result, the $R^2$ with and without an
-intercept are
+intercept are respectively
 
 \[
 R^2_{with} = 1-\frac{\sum_{i=1}^n \hat{e}_i^2}{\sum_{i=1}^n (Y_i-\bar{Y})^2}
 \]
+and
 \[
-R^2_{without} = 1-\frac{\sum_{i=1}^n \hat{e}_i^2}{\sum_{i=1}^n Y_i^2}
+R^2_{without} = 1-\frac{\sum_{i=1}^n \hat{e}_i^2}{\sum_{i=1}^n Y_i^2}\,.
 \]
 
 However, our model does contain an intercept since we include a binary
@@ -364,14 +424,11 @@ variable for both the control and treated groups.
 The `predict` method is very similar to the `predict.lm` method. We
 use the same arguments: `object`, `interval`, `se.fit`, `newdata` and
 `level`. The difference is that it returns the predicted outcome for
-the treated and control groups separately and the argument `vcov.`, a
-function like `vcovHC` or `vcovCL` fro the `sandwich` package, can be
-used to compute robust standard errors. By default, the standard
-errors are computed using `vcov.lm` (valid under the homoskedasticity
-assumption). Since there are many options for computing robust
-standard errors, we let the user chooses what is the most appropriate
-one when it is needed. The function return a list of 2 elements,
-`treated` and `control`. By default (`se.fit=FALSE` and
+the treated and control groups separately, and the argument `vcov.`
+provides a way of changing how the least squares covariance matrix is
+computed. By default, it is computed using `vcovHC` from the
+`sandwich` package of @sandwich. The function returns a list of 2
+elements, `treated` and `control`. By default (`se.fit=FALSE` and
 `interval="none"`), each element contains a vector of
 predictions. Here is an example with the previously fitted model
 `fit`:
@@ -382,9 +439,9 @@ predict(fit, newdata=data.frame(treat=c(1,1,0,0),age=20:23, married=1))
 
 If `interval` is set to "confidence", but $`se.fit` remains equal to
 `FALSE`, each element contains a matrix containing the prediction, and
-the lower and upper bound of the confidence interval, with the
-confidence level determined by the argument `level`. Here is an
-example with the same fitted model:
+the lower and upper confidence limits, with the confidence level
+determined by the argument `level` (set to 0.95 by default). Here is
+an example with the same fitted model:
 
 ```{r}
 predict(fit, newdata=data.frame(treat=c(1,1,0,0),age=20:23, married=1),
@@ -402,8 +459,8 @@ predict(fit, newdata=data.frame(treat=c(1,1,0,0),age=20:23, married=1),
 ```
 
 The `predict` method is called by the `plot` method to visually assess
-the predicted outcome for the treated and control groups with respect
-to a given covariate, controlling for the other covariates in the
+the predicted outcome for the treated and non-treated with respect to
+a given covariate, controlling for the other covariates in the
 model. The arguments of the `plot` method are:
 
 - **x**: An object of class `tlseFit`.
@@ -422,14 +479,16 @@ model. The arguments of the `plot` method are:
   default is 0.95.
   
 - **newdata**: An optional named vector of fixed values for some or
-  all other covariates.
+	all other covariates. The values of the covariates not specified
+	are determined by the argument `FUN`.
   
 - **legendPos**: The position of the legend. The default is
   "topright".
   
 - **vcov.**: An optional function to compute the estimated matrix of
   covariance of the least squares estimators. This argument only
-  affects the confidence intervals.
+  affects the confidence intervals. The default is `vcovHC` with
+  `type="HC3"`. 
 
 - **col0, col1, lty0, lty1**: The line colors and shapes for the
   control and treated. The defaults are `col0=1` (black), `col1=2`
@@ -454,7 +513,10 @@ model. The arguments of the `plot` method are:
 
 - **main**: An optional title to replace the default one.
 
-- **...*: Other arguments are passed to the `vcov.` function. 
+- **...**: Other arguments are passed to the `vcov.` function. For
+  example, it is possible to change the type of `vcovHC` from the
+  default HC3 to any available methods included in the `sandwich`
+  package. 
 
 In the following, we illustrate some examples. Consider the model:
 
@@ -468,13 +530,14 @@ education, holding the other covariates fixed to their group means
 (the default). 
 
 The following are two examples with some of the default arguments
-modified:
+modified. Note that `vcov.lm` is used in the first plot function and
+`vcovHC` (the default) of type HC1 in the second plot.
 
 ```{r, fig.show='hold', out.width='50%'}
 library(sandwich)
 plot(fit1, "ed", col0="darkgreen", col1="darkred", lty0=2, lty1=4,
-     legendPos="topleft")
-plot(fit1, "age", interval='confidence', level=0.9, vcov.=vcovHC)
+     legendPos="topleft", vcov.=vcov)
+plot(fit1, "age", interval='confidence', level=0.9, type="HC1")
 ```
 
 If we want to fix the other covariates using another function, we can
@@ -503,9 +566,9 @@ plot(fit1, "age", newdata=c(married=1, re75=10000), addToLegend="married", cex=0
 plot(fit1, "age", newdata=c(married=0, re75=10000), addToLegend="non-married", cex=0.8)
 ```
 
-To be better compare the two, it is also possible to have them plotted
-on the same graph by setting the argument `add.` to `TRUE`. We just
-need to adjust some of the arguments to better distinguish the
+To better compare the two groups, it is also possible to have them
+plotted on the same graph by setting the argument `add.` to `TRUE`. We
+just need to adjust some of the arguments to better distinguish the
 different curves. In the following example, we set the colors and line
 shapes to different values and change the position of the legend in
 the second `plot` function.
@@ -515,7 +578,7 @@ plot(fit1, "age", newdata=c(married=1, re75=10000), addToLegend="married", cex=0
      ylim.=c(3000,10000))
 plot(fit1, "age", newdata=c(married=0, re75=10000), addToLegend="non-married", cex=0.8,
      legendPos='topleft', col0="darkgreen", col1="darkred", lty0=4, lty1=5,
-     add.=TRUE,)
+     add.=TRUE)
 ```
 
 Finally, it is also possible to add the observed points to the graph.
@@ -529,11 +592,11 @@ plot(fit1, "re75", addPoints=TRUE)
 
 ## Optimal selection of the knots
 
-We propose two methods for selecting the knots: the backward (BTLSE) and
-the forward (FTLSE) methods. For each method, we propose 3 criteria:
-the asymptotic (ASY), the Akaike Information (AIC) and the Bayesian
-Information (BIC). The two selection methods can be summarized as
-follows:
+We propose two methods for selecting the knots: the backward (BTLSE)
+and the forward (FTLSE) methods. For each method, we propose 3
+criteria: the asymptotic (ASY), the Akaike Information (AIC), and the
+Bayesian Information (BIC). The two selection methods can be
+summarized as follows:
 
 > **BTLSE**: 
 >
@@ -556,9 +619,9 @@ follows:
 
 > **FTLSE**: 
 >
-> 1. We estimate the model by including a subset of the knots one
->    variable at the time. When we test a knot for one variable, the
->    number of knots is set to 0 for all the others. 
+> 1. We estimate the model by including a subset of the knots, one
+>    variable at the time. When we test a knot for one covariate, the
+>    number of knots is set to 0 for all the other covariates. 
 >
 > 2. For each knot, we test if the slope of the piecewise linear
 >    polynomial is the same before and after, and return the
@@ -585,31 +648,33 @@ follows:
 >     - **AIC** or **BIC**: We order the p-values in ascending
 >      order. Then, starting with a model with no knots and going from
 >      the smallest to the highest highest p-value, we add the knot
->      associated with the p-value one by one, estimate the model and
->      return the information criterion. We keep the model with the
->      smallest information citerion.
+>      associated with the smallest remaining p-value one by one,
+>      estimate the model and return the information criterion. We
+>      keep the model with the smallest information citerion.
 
 
 The knot selection is done using the function `selTLSE`. The arguments are:
 
 - **model**: An object of class `tlseModel`.
 
-- **method**: This is the selection method. We have the choice between
+- **selType**: This is the selection method. We have the choice between
   "FTLSE" (the default) and "BTLSE".
 
-- **crit**: This is the criterion used by the selection method. We
+- **selCrit**: This is the criterion used by the selection method. We
   have the choice between "AIC" (the default), "BIC" or "ASY".
   
 - **pvalT**: This is a function that returns the p-value threshold. It
-  is a function of one argument, the average number of knots per
-  covariate. The default is `function(p) 1/log(p)`. It is also
-  possible to set it to a fix threshold. For example, `function(p)
-  0.20` set the threshold to 0.2. This argument affects the result
-  only when `method` is set to "ASY".
+  is a function of one argument, the average number of basis functions
+  per covariate. The default is `function(p) 1/log(p)` and it is
+  applied to each group separately. Therefore, the threshold may be
+  different for the treated and non-treated. It is also possible to
+  set it to a fix threshold. For example, `function(p) 0.20` sets the
+  threshold to 0.2. This argument affects the result only when
+  `method` is set to "ASY".
   
-- **vcov.**: By default, the p-values are computed with the `lm`
-  covariance matrix method `vcov`. Alternatively, we can use sandwich
-  estimators like `vcovHC`. 
+- **vcov.**: An optional function to compute the least squares
+  standard errors. By default, the p-values are computed using the
+  `vcovHC` method from the `sandwich` package with `type="HC3"`.
   
 - **...**: This is used to pass arguments to the `vcov.` function.
 
@@ -625,14 +690,14 @@ print(model2, knots=TRUE)
 ```
 \normalsize
 
-For example, the method has removed all knots from `re75` for the
-treated group and kept two knots for the control group. The print
-method indicates which method was used to select the knots. In the
-following example, we see BTLSE as selection method and BIC as
+For example, the FTLSE-AIC method has removed all knots from `re75`
+for the treated group and kept two knots for the control group. The
+print method indicates which method was used to select the knots. In
+the following example, we see BTLSE as selection method and BIC as
 criterion. Note that the BIC selects 0 knots for all covariates.
 
 ```{r}
-model3 <- selTLSE(model1, method="BTLSE", crit="BIC")
+model3 <- selTLSE(model1, selType="BTLSE", selCrit="BIC")
 model3
 ```
 
@@ -640,23 +705,24 @@ Since the function `selTLSE` function returns a new model, we can
 apply the `estModel` to it:
 
 ```{r}
-estModel(selTLSE(model1, method="FTLSE", crit="BIC"))
+estModel(selTLSE(model1, selType="FTLSE", selCrit="BIC"))
 ```
 
 ## The `causalTLSE` method for `tlseFit` objects
 
-The regression estimated by `estModel`, or the one defined in the
+The regression model estimated by `estModel`, as described in the
 introduction, can be written as
 
 \[ 
-Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \psi_0'[U_0(X_i)(1-Z_i)] + 
-\psi_1'[U_1(X_i)Z_i] + u_i\mbox{ for } i=1,...,n\,.
+Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \psi_0'u_0(X_i)(1-Z_i) + 
+\psi_1'u_1(X_i)Z_i + \zeta_i\mbox{ for } i=1,...,n\,.
 \] 
 
 Let $\hat\beta_0$, $\hat\beta_1$, $\hat\psi_0$ and $\hat\psi_1$ be the
-least squares estimates of the above model. Then, the TLSE average
-causal effect (ACE), causal effect on the treated (ACT) and causal
-effect on the non-treated (ACN) are defined respectively as follows:
+least squares estimates of the above parameters. Then, the TLSE
+average causal effect (ACE), causal effect on the treated (ACT) and
+causal effect on the non-treated (ACN) are defined respectively as
+follows:
 
 \begin{eqnarray*}
 \mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1} -
@@ -670,9 +736,9 @@ effect on the non-treated (ACN) are defined respectively as follows:
 where
 
 \begin{eqnarray*}
-\overline{U_j} &=& \frac{1}{n}\sum_{i=1}^n U_j(X_i) \mbox{, for j=0,1}\\
-\overline{U_jZ} &=& \frac{1}{n_1}\sum_{i=1}^n U_j(X_i)Z_i \mbox{, for j=0,1}\\
-\overline{U_j(1-Z)} &=& \frac{1}{n_0}\sum_{i=1}^n U_j(X_i)(1-Z_i) \mbox{, for j=0,1}
+\overline{U_j} &=& \frac{1}{n}\sum_{i=1}^n u_j(X_i) \mbox{, for j=0,1}\\
+\overline{U_jZ} &=& \frac{1}{n_1}\sum_{i=1}^n u_j(X_i)Z_i \mbox{, for j=0,1}\\
+\overline{U_j(1-Z)} &=& \frac{1}{n_0}\sum_{i=1}^n u_j(X_i)(1-Z_i) \mbox{, for j=0,1}
 \end{eqnarray*}
 
 and $n_0$ and $n_1$ are the sample size in the control and treated
@@ -692,10 +758,8 @@ arguments of the method are:
   have the choice between "All" (the default), "ACT", "ACE" or "ACT".
    
 - **vcov.**: An alternative function used to compute the covariance
-  matrix of the least squares estimates. By default, `vcov.lm` is
-  used. For example, we can set the argument to `vcovHC` from the
-  `sandwich` package to compute heteroskedastic robust standard
-  errors.
+  matrix of the least squares estimates. By default, `vcovHC` is used
+  with `type="HC3"`. 
   
 - **...**: This is used to pass arguments to the `vcov.` function.
 
@@ -721,10 +785,10 @@ summary(ce)
 By default, the standard errors are computed using an analytic
 expression derived in the paper. In the following, we estimate the
 standard errors using the HC3 type of heteroskedasticity robust
-standard errors.
+standard errors, which is the default when `seType="lm"`.
 
 ```{r}
-ce2 <- causalTLSE(fit1, seType="lm", vcov.=vcovHC, type="HC3")
+ce2 <- causalTLSE(fit1, seType="lm")
 summary(ce2)
 ```
 
@@ -739,14 +803,14 @@ plot(ce2, "re75")
 
 The package comes with an `extract` method for objects of class
 `causaltlse`, which is a required method for creating Latex tables
-using the `texreg` package. For example, we can compare different
+using the `texreg` package of @texreg. For example, we can compare different
 methods in a single table.
 
 ```{r, eval=FALSE}
 library(texreg)
 c1 <- causalTLSE(fit1)
-fit2 <- estModel(selTLSE(model1, method="BTLSE"))
-fit3 <- estModel(selTLSE(model1, method="FTLSE"))
+fit2 <- estModel(selTLSE(model1, selType="BTLSE"))
+fit3 <- estModel(selTLSE(model1, selType="FTLSE"))
 c2 <- causalTLSE(fit2)
 c3 <- causalTLSE(fit3)
 texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
@@ -757,8 +821,8 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 ```{r, results='asis', message=FALSE, echo=FALSE}
 library(texreg)
 c1 <- causalTLSE(fit1)
-fit2 <- estModel(selTLSE(model1, method="BTLSE"))
-fit3 <- estModel(selTLSE(model1, method="FTLSE"))
+fit2 <- estModel(selTLSE(model1, selType="BTLSE"))
+fit3 <- estModel(selTLSE(model1, selType="FTLSE"))
 c2 <- causalTLSE(fit2)
 c3 <- causalTLSE(fit3)
 texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
@@ -766,9 +830,9 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 \normalsize
 \end{center}
 
-The option `table=FALSE`, from the `texreg` package, is to remove the
-Latex floating table environment. With this option, the table appears
-right after the code instead of being placed somewhere else by
+The option `table=FALSE`, from the `texreg` package, is used to remove
+the Latex floating table environment. With this option, the table
+appears right after the code instead of being placed somewhere else by
 Latex. The arguments of the `extract` methods, which control what is
 printed and can be modified through the `texreg` function, are:
 
@@ -821,8 +885,8 @@ Optimal selection of knots.
   between "SLSE" (the default), "FTLSE" and "BTLSE". The SLSE method
   performs no selection, so all knots from the model are kept. 
 
-- **selCrit**: This is the criterion used by the selection method. We
-  have the choice between "AIC" (the default), "BIC" or "ASY".
+- **selCrit**: This is the criterion used by the selection method when
+  `selType` is set to "FTLSE" or "BTLSE".
   
 - **pvalT**: This is a function that returns the p-value threshold. We
   explained this argument when we presented the `selTLSE` function.
@@ -851,11 +915,12 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 
 This last method, offers an alternative way of estimating the causal
 effects. It allows the estimation in one step without having to first
-create a model. The arguments are the same as the ones from the
-`setModel` function and the `causalTLSE` method for `tlseModel'
-objects. It creates the model, select the knots and estimate the
-causal effects in one step. For example, we can create the previous
-table as follows:
+create a model.
+
+The arguments are the same as the ones from the `setModel` function
+and the `causalTLSE` method for `tlseModel' objects. It creates the
+model, select the knots and estimate the causal effects in one
+step. For example, we can create the previous table as follows:
 
 ```{r, eval=FALSE}
 c1 <- causalTLSE(re78 ~ treat | ~ age + re75 + ed + married, data=nsw,
@@ -878,6 +943,14 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 \normalsize
 \end{center}
 
+Note that this method calls `setModel`, `selTLSE`, `estModel` and the
+method `causalTLSE` for `tlseFit` objects sequentially. It is easier
+to simply work with this method, but manually going through all steps
+may be beneficial to better understand the procedure. Also, it is more
+convenient to work with a model when we want to compare the different
+selection methods, or if we want to compare estimations with different
+standard errors. 
+
 
 ## A simulated data set from Model 1
 
@@ -885,17 +958,17 @@ In the package, the data set `datSim1` is generated using the
 following data generating process with a sample size of 300.
 
 \begin{eqnarray*}
-Y(0) &=& 1+X+X^2+e\\
-Y(1) &=& 1-2X+u\\
-Z &=& \mathrm{B}[\Lambda(1+X)]\\
+Y(0) &=& 1+X+X^2+\epsilon(0)\\
+Y(1) &=& 1-2X+\epsilon(1)\\
+Z &=& \mathrm{Bernoulli}[\Lambda(1+X)]\\
 Y &=& Y(1)Z + Y(0) (1-Z)\,
 \end{eqnarray*}
 
-where $X$, $e$ and $u$ are independent standard normal, $\Lambda(x)$
-is the CDF of the standard logistic distribution and B(p) is the
-Bernoulli distribution. The causal effects ACE, ACT and ACN are
-approximately equal to -1, -1.6903 and 0.5867 (estimated using a
-sample size of 10 millions). We can start by building starting model:
+where $X$, $\epsilon(0)$ and $\epsilon(1)$ are independent standard
+normal and $\Lambda(x)$ is the CDF of the standard logistic
+distribution. The causal effects ACE, ACT and ACN are approximately
+equal to -1, -1.6903 and 0.5867 (estimated using a sample size of
+$10^7$). We can start by building starting model:
 
 ```{r}
 data(simDat1)
@@ -952,21 +1025,21 @@ plot(c1, "X", addPoints=TRUE)
 ## A simulated data set from Model 2
 
 The dataset `datSim2` was generated using the following data
-generating process. It is change point (piecewise) regression model.
+generating process. It is a change point regression model (with
+unknown location of change points).
 
 \begin{eqnarray*}
-Y(0) &=& (1+X)I(X\leq-1) + (-1-X)I(X>-1) + e\\
-Y(1) &=& (1-2X)I(X\leq 0) + (1+2X)I(X>0) + u\\
-Z &=& \mathrm{B}[\Lambda(1+X)]\\
+Y(0) &=& (1+X)I(X\leq-1) + (-1-X)I(X>-1) + \epsilon(0)\\
+Y(1) &=& (1-2X)I(X\leq 0) + (1+2X)I(X>0) + \epsilon(1)\\
+Z &=& \mathrm{Bernoulli}[\Lambda(1+X)]\\
 Y &=& Y(1)Z + Y(0) (1-Z)\,
 \end{eqnarray*}
 
-where $I(A)$ is the indicator function equal to 1 if $A$ is true, $X$,
-$e$ and $u$ are independent standard normal, $\Lambda(x)$ is the CDF
-of the standard logistic distribution and B(p) is the Bernoulli
-distribution. The causal effects ACE, ACT and ACN are approximately
-equal to 3.763, 3.858 and 3.545 (estimated with a sample size of 10
-millions). We can compare the SLSE, BTLSE with AIC and BTLSE with BIC.
+where $I(A)$ is the indicator function equal to 1 if $A$ is true, and
+$X$, $\epsilon(0)$ and $\epsilon(1)$ are independent standard
+normal. The causal effects ACE, ACT and ACN are approximately equal to
+3.763, 3.858 and 3.545 (estimated with a sample size of $10^7$). We
+can compare the SLSE, BTLSE with AIC and BTLSE with BIC.
 
 ```{r}
 data(simDat2)
@@ -1012,19 +1085,18 @@ following data generating process with a sample size of 300. This
 model is presented as a case of multiple covariates.
 
 \begin{eqnarray*}
-Y(0) &=& [1+X_1+X_1^2] + [(1+X_2)I(X_2\leq-1) + (-1-X_2)I(X_2>-1)] + e\\
-Y(1) &=& [1-2X_1] + [(1-2X_2)I(X_2\leq 0) + (1+2X_2)I(X_2>0)] + u\\
-Z &=& \mathrm{B}[\Lambda(1+X_1+X_2)]\\
+Y(0) &=& [1+X_1+X_1^2] + [(1+X_2)I(X_2\leq-1) + (-1-X_2)I(X_2>-1)] + 
+\epsilon(0)\\
+Y(1) &=& [1-2X_1] + [(1-2X_2)I(X_2\leq 0) + (1+2X_2)I(X_2>0)] + 
+\epsilon(1)\\
+Z &=& \mathrm{Bernoulli}[\Lambda(1+X_1+X_2)]\\
 Y &=& Y(1)Z + Y(0) (1-Z)\,,
 \end{eqnarray*}
 
-where $I(A)$ is the indicator function equal to 1 if $A$ is true,
-$X_1$, $X_2$, $e$ and $u$ are independent standard normal,
-$\Lambda(x)$ is the CDF of the standard logistic distribution and B(p)
-is the Bernoulli distribution. The causal effects ACE, ACT and ACN are
-approximately equal to 2.762, 2.204 and 3.922 (estimated with a sample
-size of 10 millions). We can compare the SLSE, FTLSE with AIC and
-FTLSE with BIC. 
+where $X_1$, $X_2$, $\epsilon(0)$ and $\epsilon(1)$ are independent
+standard normal. The causal effects ACE, ACT and ACN are approximately
+equal to 2.762, 2.204 and 3.922 (estimated with a sample size of
+$10^7$). We can compare the SLSE, FTLSE with AIC and FTLSE with BIC.
 
 ```{r}
 data(simDat3)
@@ -1091,20 +1163,17 @@ interactions..
 
 \begin{eqnarray*}
 Y(0) &=& [1+X_1+X_1^2] + [(1+X_2)I(X_2\leq-1) + (-1-X_2)I(X_2>-1)] \\
-&& + [1+X_1 X_2 + (X_1X_2)^2] + e\\
+&& + [1+X_1 X_2 + (X_1X_2)^2] + \epsilon(0)\\
 Y(1) &=& [1-2X_1] + [(1-2X_2)I(X_2\leq 0) + (1+2X_2)I(X_2>0)] \\
-&&+ [1-2X_1X_2] + u\\
-Z &=& \mathrm{B}[\Lambda(1+X_1+X_2+X_1X_2)]\\
+&&+ [1-2X_1X_2] + \epsilon(1)\\
+Z &=& \mathrm{Bernoulli}[\Lambda(1+X_1+X_2+X_1X_2)]\\
 Y &=& Y(1)Z + Y(0) (1-Z)\,,
 \end{eqnarray*}
 
-where $I(A)$ is the indicator function equal to 1 if $A$ is true,
-$X_1$, $X_2$, $e$ and $u$ are independent standard normal,
-$\Lambda(x)$ is the CDF of the standard logistic distribution and B(p)
-is the Bernoulli distribution. The causal effects ACE, ACT and ACN are
-approximately equal to 1.763, 0.998 and 3.194 (estimated with a sample
-size of 10 millions). We can compare the SLSE, FTLSE with AIC and
-FTLSE with BIC. 
+where$X_1$, $X_2$, $e$ and $u$ are independent standard normal. The
+causal effects ACE, ACT and ACN are approximately equal to 1.763,
+0.998 and 3.194 (estimated with a sample size of $10^7$). We can
+compare the SLSE, FTLSE with AIC and FTLSE with BIC.
 
 ```{r, echo=FALSE}
 sim_model <- function(n)
@@ -1200,4 +1269,6 @@ legend("top", c("True-treated","True-control"),
        col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
 ```
 
+\newpage 
 
+# References

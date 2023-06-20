@@ -8,20 +8,20 @@ This is the main function to select the knots in \code{tlseModel} objects. It re
 a model with non significant knots removed.
 }
 \usage{
-selTLSE(model, method=c("FTLSE", "BTLSE"),
-        crit = c("AIC", "BIC", "ASY"), 
-        pvalT = function(p) 1/log(p), vcov.=NULL, ...)
+selTLSE(model, selType=c("FTLSE", "BTLSE"),
+        selCrit = c("AIC", "BIC", "ASY"), 
+        pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
 }
 \arguments{
   \item{model}{A model of class \code{tlseModel} created by
     the \code{getModel} function.}
-  \item{method}{The selection method: backward for forward.}
-  \item{crit}{The criterion to select the piecewise polynomial knots.}
+  \item{selType}{The selection method: backward for forward.}
+  \item{selCrit}{The criterion to select the piecewise polynomial knots.}
   \item{pvalT}{A function to determine the p-value threshold for the
     significance of the coefficients. It has to be a function of one
     parameter, which is the average number of knots in the model.}
   \item{vcov.}{An alternative function to compute the covariance matrix
-    of the least squares estimators. The default is the \code{vcov}
+    of the least squares estimators. The default is the \code{vcovHC}
     method for \code{lm} objects.}
   \item{...}{Additional arguments to pass to \code{vcov.}}
 }

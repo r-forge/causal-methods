@@ -18,14 +18,14 @@
 }
 
 
-setKnots <- function(x, sel=1:length(x), nbases=function(n) n^0.3,
+setKnots <- function(x, sel=1:length(x), nbasis=function(n) n^0.3,
                      knots=NA)
 {
     x <- x[sel]
     if (is.null(knots) | is.numeric(knots))
         return(.chkKnots(x, knots))
     n <- length(x)
-    p <- floor(nbases(n))
+    p <- floor(nbasis(n))
     if (p <= 1)
         return(NULL)
     prop.seq <- seq(from = 0, to = 1, length.out = p + 1)
@@ -48,9 +48,53 @@ model.matrix.tlseModel <- function(object, ...)
     X
 }
 
-    
-setModel <- function (form, data, nbases = function(n) n^0.3, 
-                       knots0, knots1, userRem=NULL)
+.firstknots <- function (knames, knots) 
+{
+    nk <- length(knames)
+    if (missing(knots)) {
+        knots <- as.list(rep(NA, nk))
+        names(knots) <- knames
+    }
+    else if (is.null(knots)) {
+        knots <- lapply(1:nk, function(i) NULL)
+        names(knots) <- knames
+    }
+    else {
+        if (!is.list(knots)) 
+            stop("The knots must be a list")
+        if (length(knots) == 0) 
+            stop("The knots cannot be an empty list")
+        uknames <- names(knots)
+        if (length(knots) > nk) {
+            stop("You provided too many sets of knots")
+        }
+        else if (length(knots) == nk) {
+            if (is.null(uknames)) {
+                names(knots) <- knames
+            } else {
+                m <- match(knames, uknames)
+                if (any(is.na(m))) 
+                    stop("The names of the knots must match the name of the covariates")
+                knots <- knots[m]
+            }
+        }
+        else {
+            if (is.null(uknames))
+                stop("To manually define a subset of knots, the list must be named")
+            m <- match(uknames, knames)
+            if (any(is.na(m))) 
+                stop("The names of the knots must match the name of the covariates")
+            tmp <- as.list(rep(NA, nk))
+            names(tmp) <- knames
+            tmp[m] <- knots
+            knots <- tmp
+        }
+    }
+    knots
+}
+   
+setModel <- function (form, data, nbasis = function(n) n^0.3, 
+                       knots0, knots1)
 {
     tmp <- as.character(form)
     if (!grepl("\\|", tmp[3])) 
@@ -72,26 +116,6 @@ setModel <- function (form, data, nbases = function(n) n^0.3,
     if (attr(terms(formX), "intercept") == 1) 
         X <- X[, -1, drop = FALSE]
     na <- na.omit(cbind(Y,Z,X))
-    if (missing(knots0) & missing(knots1))
-    {
-        select <- "SLSE"
-        crit <- ""
-    } else {
-        select <- "User Based"
-        crit <- ""
-    }
-    if (missing(knots0))
-        knots0 <- as.list(rep(NA, ncol(X)))
-    if (missing(knots1))
-        knots1 <- as.list(rep(NA, ncol(X)))
-    if (is.null(knots1))
-        knots1 <- lapply(1:ncol(X), function(i) NULL)
-    if (is.null(knots0))
-        knots0 <- lapply(1:ncol(X), function(i) NULL)    
-    if (!all(c(is.list(knots0), is.list(knots1))))
-        stop("knots0 and knots1 must be a list")
-    if ( (length(knots0)!=ncol(X)) | (length(knots1)!=ncol(X)) )
-        stop("The length of knots must be equal to the number of covariates")    
     if (!is.null(attr(na, "omit")))
     {
         na <- attr(na, "omit")
@@ -101,26 +125,21 @@ setModel <- function (form, data, nbases = function(n) n^0.3,
     } else {
         na <- NULL
     }
-    if (!is.null(userRem))
-    {
-        w <- which(colnames(X) %in% userRem)
-        if (length(w))
-        {
-            knots0[w] <- lapply(w, function(i) NULL)
-            knots1[w] <- lapply(w, function(i) NULL)
-        }
-    }
     nameX <- colnames(X)
     nameY <- all.vars(formY)[1]
     nameZ <- colnames(Z)
+    select <- ifelse(missing(knots0) & missing(knots1), "SLSE",
+                     "User Based")
+    knots0 <- .firstknots(nameX, knots0)
+    knots1 <- .firstknots(nameX, knots1)    
     knots0 <- lapply(1:ncol(X), function(i)
-        setKnots(X[,i], Z==0, nbases, knots0[[i]]))
+        setKnots(X[,i], Z==0, nbasis, knots0[[i]]))
     knots1 <- lapply(1:ncol(X), function(i)
-        setKnots(X[,i], Z==1, nbases, knots1[[i]]))
+        setKnots(X[,i], Z==1, nbasis, knots1[[i]]))
     names(knots0) <- names(knots1) <- nameX
     obj <- list(na=na, formY=formY, formX=formX, treated=nameZ, nameY=nameY,
                 knots0=knots0, knots1=knots1, data=data, nameX=nameX,
-                method=list(select=select, crit=crit))
+                method=list(select=select, crit=""))
     class(obj) <- "tlseModel"
     obj
 }
@@ -135,7 +154,7 @@ print.tlseModel <- function(x, knots=FALSE, ...)
         cat("Number of treated: ", sum(Z), "\n")
         cat("Number of control: ", sum(Z==0), "\n")
         cat("Number of missing values: ", length(x$na), "\n")
-        cat("Selection Method: ", x$method$select, "\n", sep="")
+        cat("Selection method: ", x$method$select, "\n", sep="")
         if (x$method$crit != "")
             cat("Criterion: ", x$method$crit, "\n\n", sep = "")
         cat("Covariates approximated by semiparametric TLSE:\n")
@@ -166,6 +185,12 @@ print.tlseModel <- function(x, knots=FALSE, ...)
             cat("\t", notApp1, "\n", sep="")
         }
     } else  {
+        cat("Semiparametric TLSE Model\n")
+        cat("**************************\n\n")
+        cat("Selection method: ", x$method$select, "\n", sep="")
+        if (x$method$crit != "")
+            cat("Criterion: ", x$method$crit, "\n\n", sep = "")
+        
         cat("Lists of knots for the treated group\n")
         cat("************************************\n")
         for (sel in 1:length(x$knots1))
@@ -432,7 +457,7 @@ causalTLSE.tlseModel <- function(object,
                                  causal = c("ALL","ACT","ACE","ACN"),
                                  seType=c("analytic", "lm"),
                                  pvalT = function(p) 1/log(p),
-                                 vcov.=NULL, ...)
+                                 vcov.=vcovHC, ...)
 {
     selType <- match.arg(selType)
     seType <- match.arg(seType)
@@ -442,9 +467,7 @@ causalTLSE.tlseModel <- function(object,
         object <- selTLSE(object, selType, selCrit, pvalT, vcov., ...)
     res <- estModel(object)
     beta <- coef(res$lm.out)
-    if(is.null(vcov.))
-        v <- vcov(res$lm.out)
-    else v <- vcov.(res$lm.out, ...)
+    v <- vcov.(res$lm.out, ...)
     se.beta <- sqrt(diag(v))
     if (any(is.na(beta))) 
         warning(paste("\nThe regression is multicollinear.",
@@ -463,14 +486,12 @@ causalTLSE.tlseModel <- function(object,
 }
 
 causalTLSE.tlseFit <- function(object, seType=c("analytic", "lm"),
-                           causal = c("ALL","ACT","ACE","ACN"), vcov.=NULL, ...)
+                           causal = c("ALL","ACT","ACE","ACN"), vcov.=vcovHC, ...)
 {
     seType <- match.arg(seType)
     causal <- match.arg(causal)
     beta <- coef(object$lm.out)
-    if(is.null(vcov.))
-        v <- vcov(object$lm.out)
-    else v <- vcov.(object$lm.out, ...)
+    v <- vcov.(object$lm.out, ...)
     se.beta <- sqrt(diag(v))
     if (any(is.na(beta))) 
         warning(paste("\nThe regression is multicollinear.",
@@ -493,7 +514,7 @@ print.causaltlse <- function (x, ...)
 {
     cat("Causal Effect using Semiparametric TLSE\n")
     cat("***************************************\n")
-    cat("Selection Method: ", x$model$method$select, "\n", sep="")
+    cat("Selection method: ", x$model$method$select, "\n", sep="")
     if (x$model$method$crit != "")
     {
         cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
@@ -507,16 +528,16 @@ print.causaltlse <- function (x, ...)
     }
 }
 
-causalTLSE.formula <- function(object, data, nbases=function(n) n^0.3,
-                               knots0, knots1, userRem=NULL,
+causalTLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
+                               knots0, knots1, 
                                selType=c("SLSE","BTLSE","FTLSE"),
                                selCrit = c("AIC", "BIC", "ASY"),
                                causal = c("ALL","ACT","ACE","ACN"),
                                seType=c("analytic", "lm"),
                                pvalT = function(p) 1/log(p),
-                               vcov.=NULL, ...)
+                               vcov.=vcovHC, ...)
 {
-    model <- setModel(object, data, nbases,  knots0, knots1, userRem)
+    model <- setModel(object, data, nbasis,  knots0, knots1)
     selType <- match.arg(selType)
     seType <- match.arg(seType)
     causal <- match.arg(causal)
@@ -530,7 +551,7 @@ print.tlseFit <- function(x, ...)
 {
     cat("Semiparametric TLSE Estimate\n")
     cat("****************************\n")
-    cat("Selection Method: ", x$model$method$select, "\n", sep="")
+    cat("Selection method: ", x$model$method$select, "\n", sep="")
     if (x$model$method$crit != "")
     {
         cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
@@ -542,12 +563,10 @@ print.tlseFit <- function(x, ...)
     invisible()
 }
 
-summary.tlseFit <- function (object, vcov.=NULL, ...) 
+summary.tlseFit <- function (object, vcov.=vcovHC, ...) 
 {
     beta <- coef(object$lm.out)
-    if(is.null(vcov.))
-        v <- vcov(object$lm.out)
-    else v <- vcov.(object$lm.out, ...)
+    v <- vcov.(object$lm.out, ...)
     se <- sqrt(diag(v))
     t <- beta/se
     pv <- 2 * pnorm(-abs(t))
@@ -571,7 +590,7 @@ print.summary.tlseFit <- function(x, digits = 4,
 {
     cat("Semiparametric TLSE Estimate\n")
     cat("****************************\n")
-    cat("Selection Method: ", x$model$method$select, "\n", sep="")
+    cat("Selection method: ", x$model$method$select, "\n", sep="")
     if (x$model$method$crit != "")
     {
         cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
@@ -623,7 +642,7 @@ print.summary.causaltlse <- function (x, digits = 4,
 {
     cat("Causal Effect using Semiparametric TLSE\n")
     cat("****************************************\n")
-    cat("Selection Method: ", x$select, "\n", sep="")
+    cat("Selection method: ", x$select, "\n", sep="")
     if (x$crit != "")
         cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
     printCoefmat(x$causal, digits = digits, signif.stars = signif.stars, 
@@ -649,7 +668,7 @@ print.summary.causaltlse <- function (x, digits = 4,
 
 ## The BTLSE
 
-.getPvalB <- function (model, vcov.=NULL, ...) 
+.getPvalB <- function (model, vcov.=vcovHC, ...) 
 {
     data2 <- model$data
     data2$Xf1 <- multiSplines(model, TRUE)
@@ -659,9 +678,7 @@ print.summary.causaltlse <- function (x, digits = 4,
     fit <- lm(form, data2)
     p0 <- attr(data2$Xf0, "p")
     p1 <- attr(data2$Xf1, "p")
-    if(is.null(vcov.))
-        v <- vcov(fit)
-    else v <- vcov.(fit, ...)
+    v <- vcov.(fit, ...)
     pval0 <- lapply(1:length(model$knots0), function(i) {
         ki <- length(model$knots0[[i]])
         if (ki==0) NA else  .testKnots(fit, model, 1:ki, i , FALSE, v)
@@ -734,23 +751,23 @@ print.summary.causaltlse <- function (x, digits = 4,
     model
 }
 
-selTLSE <- function(model, method=c("FTLSE", "BTLSE"),
-                    crit = c("AIC", "BIC", "ASY"), 
-                    pvalT = function(p) 1/log(p), vcov.=NULL, ...)
+selTLSE <- function(model, selType=c("FTLSE", "BTLSE"),
+                    selCrit = c("AIC", "BIC", "ASY"), 
+                    pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
 {
-    crit <- match.arg(crit)
-    method <- match.arg(method)
-    critFct <- if (crit == "ASY") {
+    selCrit <- match.arg(selCrit)
+    selType <- match.arg(selType)
+    critFct <- if (selCrit == "ASY") {
                    .selASY
                } else {
                    .selIC
                }
-    if (method == "BTLSE")
+    if (selType == "BTLSE")
         pval <- .getPvalB(model, vcov., ...)
     else
         pval <- .getPvalF(model, vcov., ...)
-    model <- critFct(model, pval, pvalT, crit)
-    model$method <- list(select=method, crit=crit, pval=pval)
+    model <- critFct(model, pval, pvalT, selCrit)
+    model$method <- list(select=selType, crit=selCrit, pval=pval)
     model
 }
 
@@ -833,7 +850,7 @@ estModel <- function(model, w0=NULL, w1=NULL)
         ans})
 }
 
-.getPvalF <- function (model, vcov.=NULL, ...) 
+.getPvalF <- function (model, vcov.=vcovHC, ...) 
 {
     w0 <- lapply(1:length(model$knots0), function(i) NULL)
     w1 <- lapply(1:length(model$knots1), function(i) NULL)
@@ -861,9 +878,7 @@ estModel <- function(model, w0=NULL, w1=NULL)
             else
                 w0[[i]] <- selj
             res <- estModel(model, w0, w1)
-            if(is.null(vcov.))
-                v <- vcov(res$lm.out)
-            else v <- vcov.(res$lm.out, ...)
+            v <- vcov.(res$lm.out, ...)
             if (length(selj) == 1L)
             {
                 .testKnots(res$lm.out, res$model, 1L, i, treated, v)
@@ -957,7 +972,7 @@ setMethod("extract", signature = className("causaltlse", "causalTLSE"),
 
 
 predict.tlseFit <- function (object, interval = c("none", "confidence"), se.fit = FALSE, 
-                             newdata = NULL, level = 0.95, vcov. = NULL, ...) 
+                             newdata = NULL, level = 0.95, vcov. = vcovHC, ...) 
 {
     interval <- match.arg(interval)
     model <- object$model
@@ -979,9 +994,7 @@ predict.tlseFit <- function (object, interval = c("none", "confidence"), se.fit 
     pr0 <- c(X[Z == 0, naCoef] %*% b)
     pr1 <- c(X[Z == 1, naCoef] %*% b)
     if (se.fit | interval == "confidence") {
-        v <- if (is.null(vcov.)) 
-                 vcov(object$lm.out)
-             else vcov.(object$lm.out, ...)
+        v <- vcov.(object$lm.out, ...)
         se0 <- apply(X[Z == 0, naCoef], 1, function(x) sqrt(c(t(x) %*% 
                                                               v %*% x)))
         se1 <- apply(X[Z == 1, naCoef], 1, function(x) sqrt(c(t(x) %*% 
@@ -1001,7 +1014,7 @@ predict.tlseFit <- function (object, interval = c("none", "confidence"), se.fit 
 }
 
 plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
-                          level = 0.95, newdata = NULL, legendPos = "topright", vcov. = NULL,
+                          level = 0.95, newdata = NULL, legendPos = "topright", vcov. = vcovHC,
                           col0=1, col1=2, lty0=1, lty1=2,  add.=FALSE, addToLegend=NULL,
                           cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE, FUN=mean,
                           main=NULL, ...) 
@@ -1089,22 +1102,22 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
  }
 
 
-selTLSE2 <- function (model, method = c("FTLSE", "BTLSE"), crit = c("AIC", 
-    "BIC", "ASY"), pvalT = function(p) 1/log(p), vcov. = NULL, 
+selTLSE2 <- function (model, selType = c("FTLSE", "BTLSE"), selCrit = c("AIC", 
+    "BIC", "ASY"), pvalT = function(p) 1/log(p), vcov. = vcovHC, 
     ...) 
 {
-    crit <- match.arg(crit)
-    method <- match.arg(method)
-    critFct <- if (crit == "ASY") {
+    selCrit <- match.arg(selCrit)
+    selType <- match.arg(selType)
+    critFct <- if (selCrit == "ASY") {
         .selASY
     }
     else {
         .selICF
     }
-    if (method == "BTLSE") 
+    if (selType == "BTLSE") 
         pval <- .getPvalB(model, vcov., ...)
     else pval <- .getPvalF(model, vcov., ...)
-    critFct(model, pval, pvalT, crit)
+    critFct(model, pval, pvalT, selCrit)
 }
 
 .reshapeKnots <- function(model, w, mnk, treated)
