@@ -971,8 +971,10 @@ setMethod("extract", signature = className("causaltlse", "causalTLSE"),
           definition = extract.causaltlse)
 
 
-predict.tlseFit <- function (object, interval = c("none", "confidence"), se.fit = FALSE, 
-                             newdata = NULL, level = 0.95, vcov. = vcovHC, ...) 
+predict.tlseFit <- function (object, interval = c("none", "confidence"),
+                             se.fit = FALSE, 
+                             newdata = NULL, level = 0.95, vcov. = vcovHC,
+                             counterfactual=FALSE, ...) 
 {
     interval <- match.arg(interval)
     model <- object$model
@@ -982,8 +984,16 @@ predict.tlseFit <- function (object, interval = c("none", "confidence"), se.fit 
     Z <- model$data[[model$treated]]
     if (is.null(Z)) 
         stop("newdata must contain a treatment assignment variable")
-    newdata$Xf1 <- multiSplines(model, TRUE)
-    newdata$Xf0 <- multiSplines(model, FALSE)
+    newdata$Xf1 <- multiSplines(model, TRUE, "all")
+    newdata$Xf0 <- multiSplines(model, FALSE, "all")
+    if (counterfactual)
+    {
+        newdata$Xf1[Z==1,] <- 0
+        newdata$Xf0[Z==0,] <- 0
+    } else {
+        newdata$Xf1[Z==0,] <- 0
+        newdata$Xf0[Z==1,] <- 0
+    }
     tt <- terms(object$lm.out)
     tt <- delete.response(tt)
     m <- model.frame(tt, newdata, xlev = object$lm.out$xlevels)    
@@ -1013,11 +1023,14 @@ predict.tlseFit <- function (object, interval = c("none", "confidence"), se.fit 
     else list(treated = pr1, control = pr0)
 }
 
-plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
-                          level = 0.95, newdata = NULL, legendPos = "topright", vcov. = vcovHC,
-                          col0=1, col1=2, lty0=1, lty1=2,  add.=FALSE, addToLegend=NULL,
-                          cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE, FUN=mean,
-                          main=NULL, ...) 
+plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
+                          counterfactual=FALSE,
+                          level = 0.95, newdata = NULL, legendPos = "topright",
+                          vcov. = vcovHC, 
+                          col0=1, col1=2, lty0=1, lty1=2,  add.=FALSE,
+                          addToLegend=NULL,
+                          cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE,
+                          FUN=mean, main=NULL, ...) 
 {
     interval <- match.arg(interval)
     vnames <- all.vars(x$model$formX)
@@ -1054,8 +1067,9 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
                                            sum(1-Z)))    
     if (!is.null(newdata)) 
         for (ndi in nd) data[[ndi]] <- newdata[ndi]
-    res <- predict(x, interval = interval, level = level, newdata = data, 
-                    se.fit = FALSE, vcov. = vcov., ...)
+    res <- predict(x, interval = interval, level = level,
+                   newdata = data, se.fit = FALSE, vcov. = vcov.,
+                   counterfactual=counterfactual, ...)
     pr0 <- res$control
     pr1 <- res$treated
     if (interval == "confidence") {
@@ -1088,12 +1102,11 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     matplot(data[Z == 0, which], pr0, col = col0, type = "l", lty = lty0,
             lwd = lwd, add = TRUE)
     grid()
-    if (is.null(addToLegend))
-    {
-        Leg=c("Treated", "Control")
-    } else {
-        Leg=paste(c("Treated", "Control"), " (", addToLegend[1], ")", sep="")
-    }
+    Leg=c("Treated", "Control")
+    if(counterfactual)
+        Leg <- paste(Leg, "-counterfactual", sep="")
+    if (!is.null(addToLegend))
+        Leg=paste(Leg, " (", addToLegend[1], ")", sep="")
     if (addPoints) pch. <- c(21,22) else pch.=c(NA,NA)
     
     legend(legendPos, Leg, col = c(col1, col0), pch=pch., 

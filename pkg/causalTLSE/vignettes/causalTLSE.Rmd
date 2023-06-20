@@ -590,6 +590,31 @@ plot(fit1, "ed", col0="darkgreen", col1="darkred", lty0=2, lty1=4,
 plot(fit1, "re75", addPoints=TRUE)
 ```
 
+### Counterfactual
+
+We define the counterfactual predictions at $X=x$ for the treated and
+non-treated respectively as:
+
+\begin{eqnarray*}
+\hat{Y}_1 &=& \hat\beta_1 + \tp{\hat\psi_0}u_0(x) \\
+\hat{Y}_0 &=& \hat\beta_0 + \tp{\hat\psi_1}u_1(x) 
+\end{eqnarray*}
+
+It is computed by the `predict` method when the argument
+`counterfactual` is set to `TRUE`. We can also visualize the
+counterfactual prediction using `plot` with the same argument. In the
+following example, we compare the prediction with and the
+counterfactual prediction.
+
+```{r, fig.show='hold', out.width='50%'}
+plot(fit1, "ed", ylim=c(-30000, 50000))
+plot(fit1, "ed", counterfactual=TRUE, col0="green", col1="blue", lty0=4,
+     lty1=5, add.=TRUE, legendPos="topleft")
+plot(fit1, "re75", ylim=c(-30000, 50000))
+plot(fit1, "re75", counterfactual=TRUE, col0="green", col1="blue", lty0=4,
+     lty1=5, add.=TRUE, legendPos="topleft")
+```
+
 ## Optimal selection of the knots
 
 We propose two methods for selecting the knots: the backward (BTLSE)
@@ -918,7 +943,7 @@ effects. It allows the estimation in one step without having to first
 create a model.
 
 The arguments are the same as the ones from the `setModel` function
-and the `causalTLSE` method for `tlseModel' objects. It creates the
+and the `causalTLSE` method for `tlseModel` objects. It creates the
 model, select the knots and estimate the causal effects in one
 step. For example, we can create the previous table as follows:
 

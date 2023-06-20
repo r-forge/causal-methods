@@ -5,19 +5,22 @@
 Some plot utilities for object of class \code{tlseFit}.
 }
 \usage{
-\method{plot}{tlseFit}(x, y, which = y, interval = c("none", "confidence"), 
-                    level = 0.95, newdata = NULL, legendPos = "topright",
-                    vcov. = vcovHC, col0=1, col1=2, lty0=1, lty1=2,
-                    add.=FALSE, addToLegend=NULL,
-                    cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE,
-                    FUN=mean, main=NULL, ...) 
+\method{plot}{tlseFit}(x, y, which = y, interval = c("none", "confidence"),
+                       counterfactual=FALSE, level = 0.95, newdata = NULL,
+                       legendPos = "topright",
+                       vcov. = vcovHC, col0=1, col1=2, lty0=1, lty1=2,
+                       add.=FALSE, addToLegend=NULL,
+                       cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE,
+                       FUN=mean, main=NULL, ...) 
 }
 \arguments{
   \item{x}{Object of class \code{tlseFit}.}
   \item{y}{alias for \code{which} for compatibility with \code{plot}}
   \item{which}{Which covariate to plot against the outcome variable. It
     could be an integer or a character}
-  \item{interval}{The type of confidence interval. The default is \code{none}.}
+  \item{interval}{The type of confidence interval. The default is
+    \code{none}.}
+  \item{counterfactual}{Should we plot the counterfactual prediction?}
   \item{level}{The confidence interval level if included.}
   \item{newdata}{A named vector to fix some covariates. By default,
     covariates not selected by \code{which} are set to their sample means.}
