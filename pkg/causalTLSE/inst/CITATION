@@ -1,0 +1,15 @@
+bibentry(bibtype = "Manual",
+         title = "Semiparametric Thresholding Least Squares Inference for Causal Effects",
+         author = c(person(given = "Pierre", family = "Chausse",
+                           email = "pchausse@uwaterloo.ca"),
+                    person(given = "Mihai", family = "Giurcanu",
+                           email = "giurcanu@uchicago.edu"),
+                    person(given = "Marinela", family = "Capanu",
+                           email = "capanum@mskcc.org"),
+                    person(given = "George", family = "Luta",
+                           email = " George.Luta@georgetown.edu")),
+         year = "2023",
+         note = "R package version 0.1-0",
+	 url = "https://r-forge.r-project.org/projects/causal-methods/"
+)
+

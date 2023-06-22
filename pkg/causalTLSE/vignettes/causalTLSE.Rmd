@@ -615,6 +615,25 @@ plot(fit1, "re75", counterfactual=TRUE, col0="green", col1="blue", lty0=4,
      lty1=5, add.=TRUE, legendPos="topleft")
 ```
 
+This is an example with the model 1. How this counterfactual will
+enter the vignette will be modified once we have tested it.
+
+
+```{r}
+data(simDat1)
+mod <- setModel(Y~Z | ~X, data=simDat1)
+c1 <- causalTLSE(mod, selType="SLSE")
+```
+```{r, out.width='50%', fig.align='center'}
+plot(c1, "X", ylim=c(-6,12))
+plot(c1, "X", counterfactual=TRUE, col0="green", col1="blue", lty0=4,
+     lty1=5, add.=TRUE, legendPos="topleft")
+```
+
+
+
+
+
 ## Optimal selection of the knots
 
 We propose two methods for selecting the knots: the backward (BTLSE)
