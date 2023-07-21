@@ -8,8 +8,8 @@ This is the main function to select the knots in \code{tlseModel} objects. It re
 a model with non significant knots removed.
 }
 \usage{
-selTLSE(model, selType=c("FTLSE", "BTLSE"),
-        selCrit = c("AIC", "BIC", "ASY"), 
+selTLSE(model, selType=c("BTLSE", "FTLSE"),
+        selCrit = c("AIC", "BIC", "PVT"), 
         pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
 }
 \arguments{
@@ -29,7 +29,7 @@ selTLSE(model, selType=c("FTLSE", "BTLSE"),
 \examples{
 data(simDat3)
 mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
-selTLSE(mod1, "BTLSE")
+selTLSE(mod1, "FTLSE")
 }
 
 \keyword{causal effects}

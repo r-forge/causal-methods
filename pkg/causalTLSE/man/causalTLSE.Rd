@@ -15,7 +15,7 @@ thresholding least squares method. It returns an object of class
 \usage{
 \method{causalTLSE}{tlseModel}(object,
                                selType=c("SLSE","BTLSE","FTLSE"),
-                               selCrit = c("AIC", "BIC", "ASY"),
+                               selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
                                seType=c("analytic", "lm"),
                                pvalT = function(p) 1/log(p),
@@ -25,7 +25,7 @@ thresholding least squares method. It returns an object of class
 \method{causalTLSE}{formula}(object, data, nbasis=function(n) n^0.3,
                              knots0, knots1, 
                              selType=c("SLSE","BTLSE","FTLSE"),
-                             selCrit = c("AIC", "BIC", "ASY"),
+                             selCrit = c("AIC", "BIC", "PVT"),
                              causal = c("ALL","ACT","ACE","ACN"),
                              seType=c("analytic", "lm"),
                              pvalT = function(p) 1/log(p),

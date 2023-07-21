@@ -9,7 +9,7 @@ errors and confidence intervals.
 
 \method{predict}{tlseFit}(object, interval=c("none","confidence"),
                        se.fit=FALSE, newdata=NULL, level=0.95,
-                       vcov.=vcovHC, counterfactual=FALSE, ...)
+                       vcov.=vcovHC, ...)
 }
 \arguments{
   \item{object}{Object of class \code{tlseFit}.}
@@ -25,7 +25,6 @@ errors and confidence intervals.
   \item{vcov.}{An alternative function to compute the covariance
     matrix of the least squares estimates. The default is the
     \code{vcovHC} method for \code{lm} objects.}
-  \item{counterfactual}{Should we compute the counterfactual prediction?}
   \item{...}{Additional argument to pass to the \code{vcov.} function.}  
 }
 

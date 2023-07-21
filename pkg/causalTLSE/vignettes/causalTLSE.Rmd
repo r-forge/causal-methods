@@ -7,7 +7,7 @@ bibliography: tlse.bib
 output:
  pdf_document:
   number_sections: true
-abstract: "The vignette explains how to use the causalTLSE package to estimate causal effects using the semiparametric thresholding least squares methods developped by @tlse23."
+abstract: "This vignette explains how to use the causalTLSE package to estimate causal effects using the semiparametric thresholding least squares methods developed by @tlse23."
 vignette: >
   %\VignetteIndexEntry{Semiparametric Thresholding Least Squares Inference for Causal Effects}
   %\VignetteEngine{knitr::rmarkdown}
@@ -24,12 +24,12 @@ header-includes:
 
 # Introduction
 
-This document presents the `causalTLSE` package explaining in details
-all functions implemented in the package. It is intended for users
-interested in all the details about the methods presented in @tlse23
-and how they are implemented. 
+This document presents the `causalTLSE` package describing the
+functions implemented in the package. It is intended for users
+interested in the details about the methods presented in @tlse23
+and how they are implemented.
 
-The main model is 
+The general semiparametric additive regression model is 
 
 \begin{eqnarray*} 
 Y &=&  \beta_0 (1-Z) + \beta_1 Z + 
@@ -39,13 +39,13 @@ Y &=&  \beta_0 (1-Z) + \beta_1 Z +
 
 where $Y\in \reals$ is the response variable, $Z$ is the treatment
 indicator defined as $Z=1$ for the treated and $Z=0$ for the
-non-treated and $X\in \reals^q$ is a q-vector of confounders. We can
-approximate this model by the following regression:
+nontreated, and $X\in \reals^q$ is a q-vector of confounders. We 
+approximate this model by the following regression model:
 
 \begin{eqnarray*} 
 Y &=&  \beta_0 (1-Z) + \beta_1 Z + 
 \sum_{l=1}^q \tp{\psi_{l,0}}U_{l,0}(1-Z) + 
-\sum_{l=1}^q \tp{\psi_{l,1}}U_{l,1}Z +  \xi\\
+\sum_{l=1}^q \tp{\psi_{l,1}}U_{l,1}Z +  \zeta\\
 &\equiv&\beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(1-Z) + 
 \tp{\psi_1}U_1Z + \zeta\,, 
 \end{eqnarray*} 
@@ -56,14 +56,14 @@ corresponding to the l$^\mathrm{th}$ nonparametric component
 $f_{l,k}(X_l)$, $\psi_{l,k}\in\reals^{p_{l,k}}$ is an unknown vector
 of regression coefficients, $U_k=u_k(X)=(u_{l,k}(X_l)~:~ 1 \leq l \leq
 q)\in\reals^{p_k}$ and $\psi_k=(\psi_{l,k}~:~ 1 \leq l \leq
-q)\in\reals^{p_k}$, with $p_k=\sum_{l=1}^q p_{l,k}$. The paper
-proposes a data-driven method for selecting the vectors $U_0(X)$ and
-$U_1(X)$. Note that we allow the number of basis functions ($p_{l,k}$)
-to differ across confounders and groups.
+q)\in\reals^{p_k}$, with $p_k=\sum_{l=1}^q p_{l,k}$. In this paper, we
+propose a data-driven method for selecting the vectors of basis
+functions $u_0(X)$ and $u_1(X)$. Note that we allow the number of
+basis functions ($p_{l,k}$) to differ across confounders and groups.
 
 To understand the package, it is important to know how the
 $u_{l,k}(X_l)$'s are defined. For clarity, let's write
-$U_{l,k}=u_{l,k}(x_l)$ as $U=u(x) = (u_j(x)~:~ 1 \leq j \leq
+$U_{l,k}=u_{l,k}(X_l)$ as $U=u(X) = (u_j(X)~:~ 1 \leq j \leq
 p)\in\reals^{p}$. We just need to keep in mind that it is different
 for the treated and non-treated groups and also for different
 confounders. Let $\{\kappa_{1}, ..., \kappa_{p-1}\}$ be a set of $p-1$
@@ -80,21 +80,34 @@ u_p(x) &=& (x - \kappa_{p-1})I(x > \kappa_{p-1})
 
 Therefore, if the number of knots is equal to 1, we only have the two
 basis functions. Since the knots must be strictly inside the support
-of $X$, for any categorical variable with two levels, which includes
-as a special case binary variables, the number of knots must be equal
-to zero. In this case, $u(X)=X$. For general ordinal variables, the
-number of knots cannot exceed the number of levels minus two.
+of $X$, for any categorical variable with two levels, the number of
+knots must be equal to zero. In this case, $u(x)=x$. For general
+ordinal variables, the number of knots cannot exceed the number of
+levels minus two. The following illustrates the local linear basis
+function when the number of knots is equal to 3:
 
-Note that for the sample regression
+```{r, echo=FALSE, fig.align='center', out.width='50%', fig.width=10, fig.height=6}
+knots <- c(2,5,7.5)
+maxX <- 11.5
+minX <- -2
+plot(NULL, xlim=c(minX,maxX), ylim=c(minX,knots[2]), axes=FALSE, ylab="u(x)", xlab="x")
+axis(1, c("min(X)", expression(k[1]), expression(k[2]), expression(k[3]),
+          "max(X)"), at=c(minX, knots, maxX))
+curve(x*(x<=knots[1])+knots[1]*(x>knots[1]), minX, maxX, add=TRUE,lwd=2)
+curve((x-knots[3])*(x>knots[3]), knots[3], maxX, add=TRUE, col=4, lty=4,lwd=2)
+curve((x-knots[1])*(knots[1]<=x)*(x<=knots[2])+
+      (knots[2]-knots[1])*(x>knots[2]), knots[1], maxX, add=TRUE, col=2, lty=2,lwd=2)
+curve((x-knots[2])*(knots[2]<=x)*(x<=knots[3])+
+      (knots[3]-knots[2])*(x>knots[3]), knots[2], maxX, add=TRUE, col=3, lty=3,lwd=2)
+legend("topleft", c(expression(u[1](x)), expression(u[2](x)), expression(u[3](x)),
+                    expression(u[4](x))), col=1:4, lty=1:4, bty='n')
+box()
+```
 
-\[ 
-Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + 
-\tp{\psi_0}u_0(X_i)(1-Z_i) + \tp{\psi_1}u_1(X_i)Z_i + \zeta_i\,, 
-\] 
-
-for $i=1,...,n$, the knots of $X_l$, $l=1,...,k$, must be strictly
-inside the sample range of $\{X_{li}~:~1\leq i\leq n\}\in\reals^n$
-instead of inside the support of $X_l$.
+Note that for the sample regression, the knots of $X_l$ for group $k$,
+$l=1,...,q$, must be strictly inside the sample range of
+$\{X_{i,l}~:~1\leq i\leq n,~ Z_i=k\}\in\reals^{n_k}$, where $n_k$ is
+the sample size in group $k$, instead of inside the support of $X_l$.
 
 # The `causalTLSE` package
 
@@ -116,15 +129,15 @@ data(nsw)
 ```
 
 The outcome is the real income in 1978 (`re78`) and the purpose is to
-estimate the causal effect of a training program (`treat`) on the
-outcome. The dataset includes the continuous covariates age (`age`),
-education (`ed`), the 1975 real income (`re75`), and some binary
-variables (`black`, `hisp`, `married` and `nodeg`). We start by
-considering the covariates `age`, `re75`, `ed`, and ``married`. To
-setup the model, we simply by run the following command:
+estimate the causal effect of a training program (`treat`) on
+`re78`. The dataset includes the continuous covariates age (`age`),
+education (`ed`), the 1975 real income (`re75`), and binary variables
+(`black`, `hisp`, `married` and `nodeg`). We start by considering the
+variables `age`, `re75`, `ed`, and `married`. To setup the model, we
+simply run the following command:
 
 ```{r}
-model1 <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data=nsw)
+model1 <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
 ```
 
 The left of | is designated for the formula linking the outcome (re78)
@@ -136,22 +149,24 @@ an example:
 
 ```{r}
 model0 <-  setModel(re78 ~ treat | ~ age + I(age^2) + re75 + ed * married,
-                   data=nsw)
+                   data = nsw)
 ```
 
 This will create the vector of covariates {age, age$^2$, re75, ed,
-married, ed$\times$married}. The function `setModel` creates an object
-of class `tlseModel` with its own print method, which will be
-presented later. 
+married, ed$\times$married}. Note that adding `age`$^2$ is not
+recommended since we already model nonlinearities using basis
+functions. This is presented to give an example of what can be added
+to the formula. The function `setModel` creates an object of class
+`tlseModel` with its own print method, which will be presented later.
 
-The following sub-sections explain all arguments of the function.
+The following subsections explain the arguments of `setModel`.
 
 ### The starting knots
 
 By default, the function automatically generates knots for each
-variable based on the following procedure. This procedure is applied
-separately for the treated and control groups. The term `sample size`
-means the number of observations in the treated or control group.
+variable based on the following procedure applied separately for the
+treated and nontreated. The term `sample size` refers to the number of
+observations in the treated or nontreated group.
 
 1. The starting number of knots is a function of the sample size and
    is determined by the argument `nbasis`, a function of one argument,
@@ -160,36 +175,36 @@ means the number of observations in the treated or control group.
    therefore equal to the `floor` of what the function returns minus 1
    (or 0 if the function returns a value strictly less than 1). The
    default function is `function(n) n^0.3`. For example, if the total
-   sample size is 500, with 200 treated and 300 controls, the starting
-   number of knots in the treated and control groups are respectively
-   equal to 3=`floor(200^0.3)-1` and 4=`floor(300^0.3)-1`. It is
-   possible to have a number of knots that does not depend on the
-   sample size. All we need is to set the argument `nbasis` to a
-   function that returns an integer.
+   sample size is 500, with 200 treated and 300 nontreated, the
+   starting number of knots in the treated and nontreated groups are
+   respectively equal to 3=`floor(200^0.3)-1` and
+   4=`floor(300^0.3)-1`, respectively. It is possible to have a number
+   of knots that does not depend on the sample size. All we need is to
+   set the argument `nbasis` to a function that returns an integer.
    
 2. Let $(p-1)$ be the number of knots determined in the previous
-   step. The knots are obtained by computing $p+1$ quantiles of $X$
-   for equally spaced probabilities from 0 to 1, and by dropping the
-   first and last quantiles. For example, if the number of knots is 3,
-   then the initial knots are given by quantiles for the probabilities
-   0.25, 0.5 and 0.75.
+   step. The default knots are obtained by computing $p+1$ quantiles
+   of $X$ for equally spaced probabilities from 0 to 1, and by
+   dropping the first and last quantiles. For example, if the number
+   of knots is 3, then the initial knots are given by quantiles for
+   the probabilities 0.25, 0.5 and 0.75.
    
 3. We drop any duplicated knots and any knots equal to either the max
    or the min of X. If the resulting number of knots is equal to 0,
-   the vector of knots is set to `NULL`. When the knots is `NULL` for
-   a variable $X$, it means that $u(X)=X$.
+   the vector of knots is set to `NULL`. When the knots is equal to
+   `NULL` for a variable $X$, it means that $u(x)=x$.
    
 The last step implies that the number of knots for all categorical
-variables with two levels, which includes as a special case binary
-variables, is equal to 0. For nominal variables with a small number of
-levels, the number of knots may be smaller than the ones defined by
-`nbasis`. For example, when the number of levels for a nominal
-variable is 3, the number of knots cannot exceed 1.
+variables with two levels is equal to 0. For nominal variables with a
+small number of levels, the number of knots, a subset of the levels,
+may be smaller than the ones defined by `nbasis`. For example, when
+the number of levels for a nominal variable is 3, the number of knots
+cannot exceed 1.
 
 We can inspect the knots of the current model as follows. Note that
 each object in the package is S3-class, so the elements can be
 accessed using the operator $. The elements `knots0` and `knots1` are
-the list of knots for the control and treated groups. For example, in
+the list of knots for the nontreated and treated groups. For example, in
 our case the initial knots for the treated are:
 
 ```{r}
@@ -199,67 +214,75 @@ model1$knots1
 We see that it is set to `NULL` for `married`, because it is a binary
 variable. The sample size for the treated is `r sum(nsw$treat==1)`.
 Given the default `nbasis`, it implies a number of starting knots
-equal to `r floor(sum(nsw$treat==1)^.3)-1`=`floor(`$297^{0.3}$`)`-1. 
+equal to `r floor(sum(nsw$treat==1)^.3)-1`=`floor(`$297^{0.3}$`)`-1.
 This is the number of knots we have for `ed` and `age`, but not for
 `re75`. The reason is that `re75` contains a large fraction of
 zeros. Since the 20$^\mathrm{th}$ percentile is equal to 0 and 0 is
 also the minimum value of `ed75`, it is dropped (the `type` argument
 of the `quantile` function is the same as it is implemented in the
-package).
+package). This can be seen as follows:
 
 ```{r}
 quantile(nsw[nsw$treat==1,'re75'], c(.2,.4,.6,.8), type=1)
 ```
    
-By printing the object, we see a summary of the model. It includes the
-list of variables with a positive number of knots and the ones with no
-knots. 
+By printing the object, we see a description of the model. It includes
+the list of variables with a positive number of knots and with no
+knots.
 
 ```{r}
 model1
 ```
 
-Note that the selection method is set to SLSE, which stands for
-Semiparametric Least Squares Estimator. We refer to this when the
-knots are automatically selected by the method described above. Later
-in the document, we will present methods for selecting a subset of the
-SLSE using TLSE.
+Note that the selection method is set to `Default`. We refer to this
+method when the knots are automatically selected by the method
+described above. Later in the document, we will present methods for
+selecting a subset of `Default` using TLSE, which stands for
+Thresholding Least Squares Estimator (@giurcanu16).
 
-As another example, the simulated dataset `simDat4` contains special
-types of covariates. It helps to further illustrate how the knots are
-determined. The dataset contains a continuous variable `X1` with a
-large proportion of zeros, the nominal variables `X2` and `X3`, with 2
-and 3 levels respectively, and `X4` is a binary variable. The levels
-for `X2` are {3,4} and for `X3` the levels are {1,2,3}.
+We have also included, in the package, the simulated dataset
+`simDat4`, which contains special types of covariates. It helps to
+further illustrate how the knots are determined. The dataset contains
+a continuous variable `X1` with a large proportion of zeros, the
+categorical variable `X2` with 3 character-type levels, an ordinal
+variable `X3` with 3 levels, and a binary variable `X4`. The levels
+for `X2` are {"first","second","third"} and for `X3` the levels are
+{1,2,3}.
 
 ```{r}
 data(simDat4)
-model2 <- setModel(Y~Z |~X1+X2+X3+X4, data=simDat4)
+model2 <- setModel(Y ~ Z | ~ X1 + X2 + X3 + X4, data = simDat4)
 model2$knots0
 ```
 
-We see that the number of knots for the variables with 2 levels (`X2`
-and `X4`) are set to 0 and it is equal to 1 for the variable with 3
-levels (`X3`).
+Character-type variables are automatically converted into factors. It
+is also possible to define a numerical variable like `X3` as a factor
+by using the function `as.factor` in the formula. We see that the 2
+binary variables `X2second` and `X2third` are created and `X2first` is
+omitted to avoid multicollinearity. For the binary variable `X4`, the
+number of knots is set to 0.  For the ordinal variable `X3`, the
+number of knots is set to 1 because the min and max values 1 and 3
+cannot be selected.
 
 ### Setting the knots manually
 
-We have the control over the knots through the arguments `knots0` and
-`knots1`. When the arguments are missing (the default), all knots are
-set automatically. One way to set the number of knots to 0 for all
-variables in a given group is to set the argument to `NULL`. For
-example, the number of knots is equal to 0 for all variables of the
-treated group in the following:
+We have the control over the selection of knots through the arguments
+`knots0` and `knots1`. When the arguments are missing (the default),
+all knots are set automatically as described above. One way to set the
+number of knots to 0 for all variables in a given group is to set the
+argument to `NULL`. For example, the number of knots is equal to 0 for
+all variables of the treated group using the following command:
 
 ```{r}
-setModel(re78~treat | ~age+re75+ed+married, data=nsw, knots1=NULL)
+setModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
+         knots1 = NULL)
 ```
 
 Notice that the selection method is defined as "User Based" whenever
-knots are provided manually by the user. Also, the print method shows
-the lists of covariates by group only when they differ, which is the
-case here. The other option is to provide a list of knots. For each
-element, we have three options:
+the knots are provided manually by the user. Also, the print method
+shows the lists of covariates by group only when they differ, which is
+the case here. The other option is to provide a list of knots. For
+each element, we have three options:
 
 - `NA`: The knots are set automatically for this variable only.
 
@@ -269,62 +292,75 @@ element, we have three options:
    values and must be strictly inside the range of the variable for
    the group.
    
-The following explains all possible formats for the list of knots.
+In the following, we describe all possible formats for the list of
+knots.
 
-- An unnamed list of length equal to the number of covariates. In that
-  case, the knots must be defined in the same order of covariates
-  implied by the formula.
-
-  Suppose you want to set for the control group an automatic selection
-  for `age`, no knots for `ed`, the knots $\{1000, 5000, 10000\}$ for
-  `re75`, and the knots be automatically selected for the treated
-  group. We proceed as follows. Note that setting the value to `NA` or
-  `NULL` has the same effect for the binary variable `married`. In the
-  following, the argument `knots=TRUE` is added to the `print` method
-  to only print the knots.
+1. An unnamed list of length equal to the number of covariates. In
+  that case, the knots must be defined in the same order of covariates
+  implied by the formula. 
+  
+   Suppose we want to set for the nontreated group an automatic
+  selection for `age`, no knots for `ed`, the knots $\{1000, 5000,
+  10000\}$ for `re75`, and the knots to be automatically selected for
+  the treated group. We proceed as follows. Note that setting the
+  value to `NA` or `NULL` has the same effect for the binary variable
+  `married`. In the following, the argument `knots=TRUE` is added to
+  the `print` method to only print the knots.
 
 ```{r}
-model <- setModel(re78~treat | ~age+re75+ed+married, data=nsw,
-                  knots0=list(NA, c(1000,5000,10000), NULL, NA))
-print(model, knots=TRUE)
+model <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
+                  knots0 = list(NA, c(1000,5000,10000), NULL, NA))
 ```
 
-- A named list of length equal to the number of covariates. In that
-  case, the order does not matter. It will automatically be reorder to
-  match the order implied by the formula. The names must match
-  perfectly the covariate names generated by R. This is particularly
-  useful when we have interaction terms and we are not sure how R
-  orders them.
-
-  In the following example, we want to add the interaction between
-  `ed` and `age`. We want the same set of knots as in the previous
-  example and we want no knots for the interaction term. The name of
-  the interaction depends on how we enter it in the formula. When we
-  are uncertain about the names, we can print the knots of a model
-  with the default sets of knots. In the following, we change the
-  order of knots to show that the order does not matter.
+\newpage
 
 ```{r}
-knots <- list(married=NA, ed=NULL, 'age:ed'=NULL, 
-              re75=c(1000,5000,10000), age=NA)
-model <- setModel(re78~treat | ~age*ed+re75+married, data=nsw,
-                  knots0=knots)
+print(model, knots = TRUE)
+```
+
+2. A named list of length equal to the number of covariates. In that
+  case, the order of the list of variables does not matter. The
+	  `setModel` function will automatically reorder the variables to
+  match the order implied by the formula. The names must match
+  perfectly the covariate names generated by R. 
+
+   In the following example, we want to add the interaction between
+  `ed` and `age`. We want the same set of knots as in the previous
+  example and no knots for the interaction term. The name of the
+  interaction depends on how we enter it in the formula. For example,
+  it is "age:ed" if we enter `age*ed` in the formula and "ed:age" if
+  we enter `ed*age`. For factors, the names depend on which binary
+  variable is omitted. Using the above example with the `simDat4`
+  model, if we interact `X2` and `X4` by adding `X2*X4` to the
+  formula, the names of the interaction terms are "X2second:X4" and
+  "X2third:X4". When we are uncertain about the names, we can print
+  the knots of a model with the default sets of knots. In the
+  following, we change the order of knots to show that the order does
+  not matter.
+
+```{r}
+knots <- list(married = NA, ed = NULL, 'age:ed' = NULL, 
+              re75 = c(1000,5000,10000), age = NA)
+model <- setModel(re78 ~ treat | ~ age * ed + re75 + married, data = nsw,
+                  knots0 = knots)
 model$knots0
 ```
 
-- A named list of length strictly less than the number of
+3. A named list of length strictly less than the number of
   covariates. The names of the selected covariates must match
-  perfectly the names generated by R and the order does not matter.
+  perfectly the names generated by R and the order does not
+  matter. This is particularly useful when the number of covariates is
+  large.
   
-  If we consider the previous example, the knots are set manually only
+   If we consider the previous example, the knots are set manually only
   for `ed`, `ed:age` and `re75`. By default, all names not included in
   the list of knots are set to `NA`. Therefore, we can create the same
   model from the previous example as follows:
 
 ```{r}
-knots <- list(ed=NULL, 'age:ed'=NULL, re75=c(1000,5000,10000))
-model <- setModel(re78~treat | ~age*ed+re75+married, data=nsw,
-                  knots0=knots)
+knots <- list(ed = NULL, 'age:ed' = NULL, re75 = c(1000,5000,10000))
+model <- setModel(re78 ~ treat | ~ age * ed + re75 + married, data = nsw,
+                  knots0 = knots)
 model$knots0
 ```
 
@@ -334,32 +370,45 @@ to add more interaction terms and set the knots to 0 for all of
 them. We can proceed as follows. 
 
 ```{r}
-knots <- list('age:ed'=NULL, 'ed:re75'=NULL, 'ed:married'=NULL)
-model <- setModel(re78~treat | ~age*ed+re75*ed+married*ed, data=nsw,
-                  knots0=knots, knots1=knots)
+knots <- list('age:ed' = NULL, 'ed:re75' = NULL, 'ed:married' = NULL)
+model <- setModel(re78 ~ treat | ~ age * ed + re75 * ed + married * ed, data = nsw,
+                  knots0 = knots, knots1 = knots)
 model
 ```
+
+Note also that `setModel` deals with interaction terms as any other
+variable. For example, `ed:black` is like a continuous variable with
+a large proportion of zeros. The following shows the default selected
+knots for `ed:black`.
+
+
+```{r}
+model <- setModel(re78 ~ treat | ~ age + ed * black, data = nsw)         
+model$knots0[["ed:black"]]
+```
+
 
 ## Estimating the model
 
 Given the set of knots from the model object, the estimation is just a
-least squares method applied to the extended set of covariates. We
-want to estimate the parameters of model
+least squares method applied to the extended set of covariates defined
+as the basis functions corresponding to the set of knots. The
+regression model is given by:
 
 \[ 
 Y = \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(1-Z) + \tp{\psi_1}U_1Z + \zeta\,, 
 \] 
 
-where $U_0$ and $U_1$ are defined above (which depends on the model
-knots). The function that estimates the model is `estModel`. The
-function has three arguments, but two of them are mostly used
-internally by other functions. We present it in case it is needed. The
-arguments are:
+where $U_0=u_0(X)$ and $U_1=u_1(X)$ are defined above (which depend on
+the knots of the model). The function that estimates the model is
+`estModel`. The function has three arguments, but two of them are
+mainly used internally by other functions. We present them in case
+they are needed. The arguments are:
 
 - `model`: A model created by the function `setModel`.
 
-- `w0` and `w1`: lists of integers to select knots for the control and
-  treated groups respectively. For example, suppose we have 2
+- `w0` and `w1`: lists of integers to select knots for the nontreated and
+  treated respectively. For example, suppose we have 2
   covariates with 5 knots each. If we want to estimate the model with
   only the first knot for the first covariate and knots 3 and 5 for
   the second, we set `w0` to `list(1L,c(3L, 5L))`. By default they are
@@ -369,25 +418,26 @@ We illustrate the usage of `estModel` with a simple model containing 2
 covariates and one knot per variable.
 
 ```{r}
-model <- setModel(re78~treat | ~age+married, data=nsw,
-                  nbasis=function(n) 2)
-print(model, knots=TRUE)
+model <- setModel(re78 ~ treat | ~ age + married, data = nsw,
+                  nbasis = function(n) 2)
+print(model, knots = TRUE)
 fit <- estModel(model)
 fit
 ```
 
-The object has its own print method that returns the coefficient
-estimates. A more detrailed presentation of the results can be
-obtained using the `summary` method. The following is an example with
-just one knot per eligible variable.
+The object of class `tlseFit` returned by `estModel` has its own print
+method that returns the coefficient estimates. A more detailed
+presentation of the results can be obtained using the `summary`
+method. The following is an example with one knot per eligible
+variable.
 
 ```{r}
 summary(fit)
 ```
 
 For example, the coefficient of `Xf0age_1` is the effect of age for
-the control on `re78` when $age\leq 23$ and `Xf0age_2` is the effect
-when $age> 23$. Note that the $R^2$ and adjusted $R^2$ are different
+the control on `re78` when `age`$\leq 23$ and `Xf0age_2` is the effect
+when `age`$> 23$. Note that the $R^2$ and adjusted $R^2$ are different
 from what we obtain using the summary of the `lm` object:
 
 ```{r}
@@ -416,25 +466,24 @@ and
 R^2_{without} = 1-\frac{\sum_{i=1}^n \hat{e}_i^2}{\sum_{i=1}^n Y_i^2}\,.
 \]
 
-However, our model does contain an intercept since we include a binary
-variable for both the control and treated groups. 
 
-## The `predict` and `plot` method
+## The `predict` and `plot` methods
 
 The `predict` method is very similar to the `predict.lm` method. We
 use the same arguments: `object`, `interval`, `se.fit`, `newdata` and
 `level`. The difference is that it returns the predicted outcome for
-the treated and control groups separately, and the argument `vcov.`
+the treated and nontreated separately, and the argument `vcov.`
 provides a way of changing how the least squares covariance matrix is
 computed. By default, it is computed using `vcovHC` from the
-`sandwich` package of @sandwich. The function returns a list of 2
-elements, `treated` and `control`. By default (`se.fit=FALSE` and
+`sandwich` package (@sandwich). The function returns a list of 2
+elements, `treated` and `nontreated`. By default (`se.fit=FALSE` and
 `interval="none"`), each element contains a vector of
 predictions. Here is an example with the previously fitted model
 `fit`:
 
 ```{r}
-predict(fit, newdata=data.frame(treat=c(1,1,0,0),age=20:23, married=1))
+predict(fit,
+        newdata = data.frame(treat = c(1,1,0,0),age = 20:23, married = 1))
 ```
 
 If `interval` is set to "confidence", but $`se.fit` remains equal to
@@ -444,24 +493,26 @@ determined by the argument `level` (set to 0.95 by default). Here is
 an example with the same fitted model:
 
 ```{r}
-predict(fit, newdata=data.frame(treat=c(1,1,0,0),age=20:23, married=1),
-        interval="confidence")
+predict(fit,
+        newdata = data.frame(treat = c(1,1,0,0),age = 20:23, married = 1),
+        interval = "confidence")
 ```
 
-If `se.fit` is set to `TRUE`, each element, treated or control, is a
+If `se.fit` is set to `TRUE`, each element, treated or nontreated, is a
 list with the elements `pr`, containing the predictions, and `se.fit`,
 containing the standard errors. In the following, we only show the
 result for the treated:
 
 ```{r}
-predict(fit, newdata=data.frame(treat=c(1,1,0,0),age=20:23, married=1),
-        se.fit=TRUE)$treated
+predict(fit,
+        newdata = data.frame(treat = c(1,1,0,0),age = 20:23, married = 1),
+        se.fit = TRUE)$treated
 ```
 
 The `predict` method is called by the `plot` method to visually assess
-the predicted outcome for the treated and non-treated with respect to
-a given covariate, controlling for the other covariates in the
-model. The arguments of the `plot` method are:
+the predicted outcome for the treated and nontreated with respect to a
+given covariate, controlling for the other variables in the model. The
+arguments of the `plot` method are:
 
 - **x**: An object of class `tlseFit`.
 
@@ -472,15 +523,18 @@ model. The arguments of the `plot` method are:
   be an integer (the position of the covariate) or a character (the
   name of the covariate)
 
-- **interval**: The type of confidence interval to include. The
-  default is "none". The other alternative is "confidence".
+- **interval**: The type of confidence interval to display. The
+  default is "none". The alternative is "confidence".
   
 - **level**: The confidence level when `interval="confidence"`. The
   default is 0.95.
   
-- **newdata**: An optional named vector of fixed values for some or
-	all other covariates. The values of the covariates not specified
-	are determined by the argument `FUN`.
+- **fixedCov0 and fixedCov1**: Optional named lists of fixed values
+	for some or all other covariates in each group. The values of the
+	covariates not specified are determined by the argument `FUN`. By
+	default, `fixedCov1` is equal to `fixedCov0`, so it is not
+	necessary to set a value for `fixedCov1` if we want the same
+	covariates to be fixed to the same values in both groups.
   
 - **legendPos**: The position of the legend. The default is
   "topright".
@@ -491,14 +545,14 @@ model. The arguments of the `plot` method are:
   `type="HC3"`. 
 
 - **col0, col1, lty0, lty1**: The line colors and shapes for the
-  control and treated. The defaults are `col0=1` (black), `col1=2`
+  nontreated and treated. The defaults are `col0=1` (black), `col1=2`
   (red), `lty0=1` (solid) and `lty1=2` (dashed).
   
 - **add.**: Should the curves be added to an existing plot? The
   default is `FALSE`.
 
 - **addToLegend**: An optional character string to add to the legend
-  next to "treated" and "control".
+  next to "treated" and "nontreated".
 
 - **cex**: The font size for the legend. The default is 1. 
 
@@ -513,58 +567,76 @@ model. The arguments of the `plot` method are:
 
 - **main**: An optional title to replace the default one.
 
+- **plot**: By default, the method produces a graph. Alternatively, we
+  can set this argument to `FALSE` and it returns one `data.frame` per
+  group with the variable selected by `which` and the prediction.
+
 - **...**: Other arguments are passed to the `vcov.` function. For
   example, it is possible to change the type of `vcovHC` from the
   default HC3 to any available methods included in the `sandwich`
   package. 
 
-In the following, we illustrate some examples. Consider the model:
+In the following, we illustrate some examples. 
+
+
+#### Example 1:
+
+Consider the model:
 
 ```{r}
-model1 <- setModel(re78~treat | ~age+re75+ed+married, data=nsw)
+model1 <- setModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
 fit1 <- estModel(model1)
 ```
 
-Suppose we want to compare the predicted income with respect to age or
-education, holding the other covariates fixed to their group means
-(the default). 
-
-The following are two examples with some of the default arguments
-modified. Note that `vcov.lm` is used in the first plot function and
-`vcovHC` (the default) of type HC1 in the second plot.
+Suppose we want to compare the predicted income between the two
+treatment groups with respect to age or education, holding the other
+variables fixed to their group means (the default). The following are
+two examples with some of the default arguments modified. Note that
+`vcov.lm` is used in the first plot function and `vcovHC` (the
+default) of type HC1 in the second plot.
 
 ```{r, fig.show='hold', out.width='50%'}
 library(sandwich)
-plot(fit1, "ed", col0="darkgreen", col1="darkred", lty0=2, lty1=4,
-     legendPos="topleft", vcov.=vcov)
-plot(fit1, "age", interval='confidence', level=0.9, type="HC1")
+plot(fit1, "ed", col0 = "darkgreen", col1 = "darkred", lty0 = 2, lty1 = 4,
+     legendPos = "topleft", vcov. = vcov)
+plot(fit1, "age", interval = 'confidence', level = 0.9, type = "HC1")
 ```
+
+#### Example 2:
 
 If we want to fix the other covariates using another function, we can
 change the argument `FUN`. The new function must be a function of one
 argument. For example, if we want to fix the other covariates to their
 group medians, we set `FUN` to `median` (no quotes). We proceed the
-same way for any function that requires only one argument
-(e.g. `mode`). If the function requires more than one argument, we
-have to create a new function. For example, if we want to fix them to
-their 20\% group quantiles, we can set the argument to `function(x)
+same way for any function that requires only one argument. If the
+function requires more than one argument, we have to create a new
+function. For example, if we want to fix them to their 20\% group
+empirical quantiles, we can set the argument to `function(x)
 quantile(x, .20)`. The following illustrates the two cases:
 
 ```{r, fig.show='hold', out.width='50%'}
-plot(fit1, "age", FUN=mode)
-plot(fit1, "age", FUN=function(x) quantile(x, .20))
+plot(fit1, "age", FUN = median)
+plot(fit1, "age", FUN = function(x) quantile(x, 0.20))
 ```
+
+#### Example 3:
 
 It is also possible to set some of the other covariates to a specific
-value by changing the argument `newdata`. This argument must be a
-named vector with the names corresponding to the variables you want to
-fix. You can also add a description to the legend with the argument
-`addToLegend`.
+value by changing the argument `fixedCov0` and `fixedCov1`. By
+default, `fixedCov1` is equal to `fixedCov0`, so if we want to fixed
+the same covariates to the same values in both groups, we only need to
+set `fixedCov0`. The argument must be a named list with the names
+corresponding to the variables you want to fix. You can also add a
+description to the legend with the argument `addToLegend`.
 
 ```{r, fig.show='hold', out.width='50%'}
-plot(fit1, "age", newdata=c(married=1, re75=10000), addToLegend="married", cex=0.8)
-plot(fit1, "age", newdata=c(married=0, re75=10000), addToLegend="non-married", cex=0.8)
+plot(fit1, "age", fixedCov0 = list(married = 1, re75 = 10000),
+     addToLegend = "married", cex = 0.8)
+plot(fit1, "age", fixedCov0 = list(married = 0, re75 = 10000),
+     addToLegend = "non-married", cex = 0.8)
 ```
+
+#### Example 4:
 
 To better compare the two groups, it is also possible to have them
 plotted on the same graph by setting the argument `add.` to `TRUE`. We
@@ -574,84 +646,103 @@ shapes to different values and change the position of the legend in
 the second `plot` function.
 
 ```{r, fig.align='center', out.width='70%'}
-plot(fit1, "age", newdata=c(married=1, re75=10000), addToLegend="married", cex=0.8,
-     ylim.=c(3000,10000))
-plot(fit1, "age", newdata=c(married=0, re75=10000), addToLegend="non-married", cex=0.8,
-     legendPos='topleft', col0="darkgreen", col1="darkred", lty0=4, lty1=5,
-     add.=TRUE)
+plot(fit1, "age", fixedCov0 = list(married = 1, re75 = 10000),
+     addToLegend = "married", cex = 0.8, ylim. = c(3000,10000))
+plot(fit1, "age", fixedCov0 = list(married = 0, re75 = 10000),
+     addToLegend = "non-married", cex = 0.8, legendPos = 'topleft',
+     col0 = "darkgreen", col1 = "darkred", lty0 = 4, lty1 = 5,
+     add. = TRUE)
 ```
+
+
+#### Example 5:
 
 Finally, it is also possible to add the observed points to the graph.
 
 
 ```{r, fig.show='hold', out.width='50%'}
-plot(fit1, "ed", col0="darkgreen", col1="darkred", lty0=2, lty1=4,
-     legendPos="topleft", addPoints=TRUE)
-plot(fit1, "re75", addPoints=TRUE)
+plot(fit1, "ed", col0 = "darkgreen", col1 = "darkred", lty0 = 2, lty1 = 4,
+     legendPos = "topleft", addPoints = TRUE)
+plot(fit1, "re75", addPoints = TRUE)
 ```
 
-### Counterfactual
+### Factors, interactions and functions of covariates
 
-We define the counterfactual predictions at $X=x$ for the treated and
-non-treated respectively as:
-
-\begin{eqnarray*}
-\hat{Y}_1 &=& \hat\beta_1 + \tp{\hat\psi_0}u_0(x) \\
-\hat{Y}_0 &=& \hat\beta_0 + \tp{\hat\psi_1}u_1(x) 
-\end{eqnarray*}
-
-It is computed by the `predict` method when the argument
-`counterfactual` is set to `TRUE`. We can also visualize the
-counterfactual prediction using `plot` with the same argument. In the
-following example, we compare the prediction with and the
-counterfactual prediction.
-
-```{r, fig.show='hold', out.width='50%'}
-plot(fit1, "ed", ylim=c(-30000, 50000))
-plot(fit1, "ed", counterfactual=TRUE, col0="green", col1="blue", lty0=4,
-     lty1=5, add.=TRUE, legendPos="topleft")
-plot(fit1, "re75", ylim=c(-30000, 50000))
-plot(fit1, "re75", counterfactual=TRUE, col0="green", col1="blue", lty0=4,
-     lty1=5, add.=TRUE, legendPos="topleft")
-```
-
-This is an example with the model 1. How this counterfactual will
-enter the vignette will be modified once we have tested it.
-
+The package allows some of the covariates to be factors, functions of
+other covariates or interactions. For example, the dataset `simDat4`
+includes one factor, `X2`, with levels equal to "first", "second" and
+"third". We can include this covariate directly to the list of
+covariates. For example,
 
 ```{r}
-data(simDat1)
-mod <- setModel(Y~Z | ~X, data=simDat1)
-c1 <- causalTLSE(mod, selType="SLSE")
-```
-```{r, out.width='50%', fig.align='center'}
-plot(c1, "X", ylim=c(-6,12))
-plot(c1, "X", counterfactual=TRUE, col0="green", col1="blue", lty0=4,
-     lty1=5, add.=TRUE, legendPos="topleft")
+data(simDat4)
+mod <- setModel(Y ~ Z | ~ X1 + X2 + X4, data = simDat4)
+mod
 ```
 
+We see that R has created 2 binary variables, one for `X2="second"`
+and one for `X2="third"`. These two variables are automatically
+included in the group of covariates not approximated by SLSE because
+they are binary variables like `X4`. If we want to plot `Y` against
+`X1`, the binary variables `X2second`, `X2third` and `X4` are fixed to
+their group averages which, in case of binary variables, represent the
+proportions of ones in each group. 
 
+For interaction terms or functions of covariates, `FUN` is applied to
+the functions of covariates. This is how we have to proceed to obtain
+the average prediction in regression models. For example, if we
+interact `X2` and `X4`, we obtain:
 
+```{r}
+data(simDat4)
+mod <- setModel(Y ~ Z | ~ X1 + X2 * X4, data = simDat4)
+mod
+```
 
+In this case, when `FUN=mean`, `X2second:X4` is replaced by the
+proportion of ones in `X2second`$\times$`X4` for each group. It is not
+replaced by the proportion of ones in `X2second` times the proportion
+of ones in `X4`. The same applies to functions of covariates. For
+functions of covariates, which can be defined in the formula using a
+built-in function like `log` or using the identity function `I()`
+(e.g. we can interact `X1` and `X4` by using `I(X1*X4)`), `FUN` is
+applied to the function (e.g. the average `log(X)` or the average
+`I(X1*X4)`).
+
+To fix a factor to a specific level, we just set its value to the
+`fixedCov0` and `fixedCov1` arguments. In the following example, we
+fix `X2` to "first", so `X2second` and `X2third` are set to 0.
+
+```{r, eval=FALSE}
+fit <- estModel(mod)
+plot(fit, "X1", fixedCov0 = list(X2 = "first"))
+```
+
+Note that if a function of covariates (or an interaction) involves the
+covariate we want to plot the outcome against, we factorize the
+covariate out, apply `FUN` to the remaining of the function and add
+the covariate back. For example, if we interact `X1` with `X4` and
+`FUN=mean`, `X1:X4` is replaced by `X1` times the proportion of ones
+in `X4` for each group.
 
 ## Optimal selection of the knots
 
-We propose two methods for selecting the knots: the backward (BTLSE)
-and the forward (FTLSE) methods. For each method, we propose 3
-criteria: the asymptotic (ASY), the Akaike Information (AIC), and the
-Bayesian Information (BIC). The two selection methods can be
-summarized as follows:
+We have implemented two methods for selecting the knots: the backward
+TLSE (BTLSE) and the forward TLSE (FTLSE) methods. For each method, we
+have 3 criteria: the p-value threshold (PVT), the Akaike Information
+criterion (AIC), and the Bayesian Information criterion (BIC). The two
+selection methods can be summarized as follows:
 
 > **BTLSE**: 
 >
 > 1. We estimate the model with all knots included in the model.
 >
-> 2. For each knot, we test if the slopes of the basis function are
->    the same before and after, and return the p-value.
+> 2. For each knot, we test if the slopes of the basis functions
+>    adjacent to the knot are the same, and return the p-value.
 >
 > 3. The knots are selected using one of the following criteria
 >
->    - **ASY**: We remove all knots with a p-value greater than a
+>    - **PVT**: We remove all knots with a p-value greater than a
 >      specified threshold.
 >
 >     - **AIC** or **BIC**: We order the p-values in
@@ -665,28 +756,26 @@ summarized as follows:
 >
 > 1. We estimate the model by including a subset of the knots, one
 >    variable at the time. When we test a knot for one covariate, the
->    number of knots is set to 0 for all the other covariates. 
+>    number of knots is set to 0 for all other variables. 
 >
-> 2. For each knot, we test if the slope of the piecewise linear
->    polynomial is the same before and after, and return the
->    p-value. The set of knots used for each test depends on the
->    following:
+> 2. For each knot, we test if the adjacent slopes to the knot is the
+>    same, and return the p-value. The set of knots used for each test
+>    depends on the following:
 >
 >    - Variables with 1 knot: we return the p-value of the test of
->      equality before and after the knot.
+>      equality of the slopes adjacent to the knot.
 >
 >    - Variables with 2 knots: we include the two knots and return the
->      p-values of the test of equality before and after for each
->      knot.
+>      p-values of the test of equality of the slopes adjacent to each knot.
 >
->    - Variables with $p$ knots ($p>2$): We test the equality before
->      and after the knot $i$, for $i=1,...,p$, using the sets of
+>    - Variables with $p$ knots ($p>2$): We test the equality of the
+>      slopes adjacent to knot $i$, for $i=1,...,p$, using the sets of
 >      knots $\{1,2\}$, $\{1,2,3\}$, $\{2,3,4\}$, ..., $\{p-2,p-1,p\}$
 >      and $\{p-1,p\}$ respectively.
 >
 > 3. The knots are selected using one of the following criteria
 >
->    - **ASY**: We remove all knots with a p-value greater than a
+>    - **PVT**: We remove all knots with a p-value greater than a
 >      specified threshold.
 >
 >     - **AIC** or **BIC**: We order the p-values in ascending
@@ -702,10 +791,10 @@ The knot selection is done using the function `selTLSE`. The arguments are:
 - **model**: An object of class `tlseModel`.
 
 - **selType**: This is the selection method. We have the choice between
-  "FTLSE" (the default) and "BTLSE".
+  "FTLSE" and "BTLSE" (the default).
 
 - **selCrit**: This is the criterion used by the selection method. We
-  have the choice between "AIC" (the default), "BIC" or "ASY".
+  have the choice between "AIC" (the default), "BIC" or "PVT".
   
 - **pvalT**: This is a function that returns the p-value threshold. It
   is a function of one argument, the average number of basis functions
@@ -714,7 +803,7 @@ The knot selection is done using the function `selTLSE`. The arguments are:
   different for the treated and non-treated. It is also possible to
   set it to a fix threshold. For example, `function(p) 0.20` sets the
   threshold to 0.2. This argument affects the result only when
-  `method` is set to "ASY".
+  `method` is set to "PVT".
   
 - **vcov.**: An optional function to compute the least squares
   standard errors. By default, the p-values are computed using the
@@ -728,20 +817,20 @@ selection of knots. For example, we can compare the starting knots of
 
 \footnotesize
 ```{r}
-print(model1, knots=TRUE)
+print(model1, knots = TRUE)
 model2 <- selTLSE(model1)
-print(model2, knots=TRUE)
+print(model2, knots = TRUE)
 ```
 \normalsize
 
-For example, the FTLSE-AIC method has removed all knots from `re75`
-for the treated group and kept two knots for the control group. The
+For example, the BTLSE-AIC method has removed all knots from `re75`
+for the treated and kept two knots for the nontreated. The
 print method indicates which method was used to select the knots. In
 the following example, we see BTLSE as selection method and BIC as
 criterion. Note that the BIC selects 0 knots for all covariates.
 
 ```{r}
-model3 <- selTLSE(model1, selType="BTLSE", selCrit="BIC")
+model3 <- selTLSE(model1, selType = "BTLSE", selCrit = "BIC")
 model3
 ```
 
@@ -749,7 +838,7 @@ Since the function `selTLSE` function returns a new model, we can
 apply the `estModel` to it:
 
 ```{r}
-estModel(selTLSE(model1, selType="FTLSE", selCrit="BIC"))
+estModel(selTLSE(model1, selType = "FTLSE", selCrit = "BIC"))
 ```
 
 ## The `causalTLSE` method for `tlseFit` objects
@@ -758,22 +847,22 @@ The regression model estimated by `estModel`, as described in the
 introduction, can be written as
 
 \[ 
-Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \psi_0'u_0(X_i)(1-Z_i) + 
-\psi_1'u_1(X_i)Z_i + \zeta_i\mbox{ for } i=1,...,n\,.
+Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \psi_0'U_{i,0}(1-Z_i) + 
+\psi_1'U_{i,1}Z_i + \zeta_i\mbox{ for } i=1,...,n\,.
 \] 
 
 Let $\hat\beta_0$, $\hat\beta_1$, $\hat\psi_0$ and $\hat\psi_1$ be the
-least squares estimates of the above parameters. Then, the TLSE
+least squares estimates of the regression parameters. Then, the TLSE
 average causal effect (ACE), causal effect on the treated (ACT) and
 causal effect on the non-treated (ACN) are defined respectively as
 follows:
 
 \begin{eqnarray*}
-\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1} -
+\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \hat{\psi}_1'\overline{U_1} -
 \hat{\phi}_0'\overline{U_0} \\
-\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1Z} -
+\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \hat{\psi}_1'\overline{U_1Z} -
 \hat{\phi}_0'\overline{U_0Z} \\
-\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \hat{\phi}_1'\overline{U_1(1-Z)} -
+\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \hat{\psi}_1'\overline{U_1(1-Z)} -
 \hat{\phi}_0'\overline{U_0(1-Z)} \,,
 \end{eqnarray*}
 
@@ -785,7 +874,7 @@ where
 \overline{U_j(1-Z)} &=& \frac{1}{n_0}\sum_{i=1}^n u_j(X_i)(1-Z_i) \mbox{, for j=0,1}
 \end{eqnarray*}
 
-and $n_0$ and $n_1$ are the sample size in the control and treated
+and $n_0$ and $n_1$ are the sample size in the nontreated and treated
 groups. The method `causalTLSE` estimates the causal effects from
 `tlseFit` objects using the knots included in the estimated model. The
 arguments of the method are:
@@ -847,8 +936,8 @@ plot(ce2, "re75")
 
 The package comes with an `extract` method for objects of class
 `causaltlse`, which is a required method for creating Latex tables
-using the `texreg` package of @texreg. For example, we can compare different
-methods in a single table.
+using the `texreg` package (@texreg). For example, we can compare
+different methods in a single table.
 
 ```{r, eval=FALSE}
 library(texreg)
@@ -880,17 +969,16 @@ appears right after the code instead of being placed somewhere else by
 Latex. The arguments of the `extract` methods, which control what is
 printed and can be modified through the `texreg` function, are:
 
-- **include.nobs**: Should the number of observations be printed? The
+- **include.nobs**: Include the number of observations. The
   default is `TRUE`.
   
-- **include.nknots**: Should the number of knots be printed?  The
-  default is `TRUE`.
-
-- **include.rsquared**: Should the $R^2$ be printed?  The default is
+- **include.nknots**: Include the number of knots.  The default is
   `TRUE`.
+
+- **include.rsquared**: Include the $R^2$.  The default is `TRUE`.
   
-- **include.adjrsquared**: Should the adjusted $R^2$ be printed?  The
-  default is `TRUE`.
+- **include.adjrsquared**: Include the adjusted $R^2$.  The default is
+  `TRUE`.
 
 - **which**: Which causal effects should be printed? The options are
   "ALL" (the default), "ACE", "ACT", "ACN", "ACE-ACT", "ACE-ACN" or
@@ -930,7 +1018,7 @@ Optimal selection of knots.
   performs no selection, so all knots from the model are kept. 
 
 - **selCrit**: This is the criterion used by the selection method when
-  `selType` is set to "FTLSE" or "BTLSE".
+  `selType` is set to "FTLSE" or "BTLSE". The default is "AIC".
   
 - **pvalT**: This is a function that returns the p-value threshold. We
   explained this argument when we presented the `selTLSE` function.
@@ -959,12 +1047,10 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 
 This last method, offers an alternative way of estimating the causal
 effects. It allows the estimation in one step without having to first
-create a model.
-
-The arguments are the same as the ones from the `setModel` function
-and the `causalTLSE` method for `tlseModel` objects. It creates the
-model, select the knots and estimate the causal effects in one
-step. For example, we can create the previous table as follows:
+create a model. The arguments are the same as of the `setModel`
+function and the `causalTLSE` method for `tlseModel` objects. It
+creates the model, selects the knots and estimates the causal effects
+in one step. For example, we can create the previous table as follows:
 
 ```{r, eval=FALSE}
 c1 <- causalTLSE(re78 ~ treat | ~ age + re75 + ed + married, data=nsw,
@@ -979,10 +1065,10 @@ texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
 \begin{center}
 \footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
-c1 <- causalTLSE(model1, selType="SLSE")
-c2 <- causalTLSE(model1, selType="BTLSE")
-c3 <- causalTLSE(model1, selType="FTLSE")
-texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
+c1 <- causalTLSE(model1, selType = "SLSE")
+c2 <- causalTLSE(model1, selType = "BTLSE")
+c3 <- causalTLSE(model1, selType = "FTLSE")
+texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table = FALSE, digits = 4)
 ```
 \normalsize
 \end{center}
@@ -1016,46 +1102,45 @@ $10^7$). We can start by building starting model:
 
 ```{r}
 data(simDat1)
-mod <- setModel(Y~Z | ~X, data=simDat1)
+mod <- setModel(Y ~ Z | ~ X, data = simDat1)
 ```
 
 Then we can compare three different methods:
 
 ```{r, eval=FALSE}
-c1 <- causalTLSE(mod, selType="SLSE")
-c2 <- causalTLSE(mod, selType="BTLSE", selCrit="BIC")
-c3 <- causalTLSE(mod, selType="FTLSE", selCrit="BIC")
-texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
+c1 <- causalTLSE(mod, selType = "SLSE")
+c2 <- causalTLSE(mod, selType = "BTLSE", selCrit = "BIC")
+c3 <- causalTLSE(mod, selType = "FTLSE", selCrit = "BIC")
+texreg(list(SLSE = c1, BTLSE = c2, FTLSE = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
 \footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
-c1 <- causalTLSE(mod, selType="SLSE")
-c2 <- causalTLSE(mod, selType="BTLSE", selCrit="BIC")
-c3 <- causalTLSE(mod, selType="FTLSE", selCrit="BIC")
-texreg(list(SLSE=c1, BTLSE=c2, FTLSE=c3), table=FALSE, digits=4)
+c1 <- causalTLSE(mod, selType = "SLSE")
+c2 <- causalTLSE(mod, selType = "BTLSE", selCrit = "BIC")
+c3 <- causalTLSE(mod, selType = "FTLSE", selCrit = "BIC")
+texreg(list(SLSE = c1, BTLSE = c2, FTLSE = c3), table = FALSE, digits = 4)
 ```
 \normalsize
 \end{center}
 
-
 We see that both selection methods choose to assign 0 knots for the
 treated group, which is not surprising since the true $f_1(x)$ is
 linear. We can compare the different fits (we ignore the FTLSE because
-the selected knots are the same):
+the selected knots are the same). 
 
 ```{r, out.width='50%', fig.show='hold'}
 plot(c1, "X")
-curve(1-2*x, -3,3, col="darkgreen", lty=4, lwd=3, add=TRUE)
-curve(1+x+x^2, -3,3, col="darkorange", lty=4, lwd=3, add=TRUE)
-legend("bottomleft", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=4, lwd=3, bty='n')
+curve(1 - 2 * x, -3, 3, col = "darkgreen", lty = 4, lwd = 3, add = TRUE)
+curve(1 + x + x^2, -3, 3, col = "darkorange", lty = 4, lwd = 3, add = TRUE)
+legend("bottomleft", c("True-treated", "True-nontreated"),
+       col=c("darkgreen", "darkorange"), lty = 4, lwd = 3, bty = 'n')
 plot(c2, "X")
-curve(1-2*x, -3,3, col="darkgreen", lty=4, lwd=3, add=TRUE)
-curve(1+x+x^2, -3,3, col="darkorange", lty=4, lwd=3, add=TRUE)
-legend("bottomleft", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=4, lwd=3, bty='n')
+curve(1 - 2 * x, -3, 3, col="darkgreen", lty = 4, lwd = 3, add = TRUE)
+curve(1 + x + x^2, -3, 3, col = "darkorange", lty = 4, lwd = 3, add = TRUE)
+legend("bottomleft", c("True-treated", "True-nontreated"),
+       col = c("darkgreen", "darkorange"), lty = 4, lwd = 3, bty = 'n')
 ```
 
 We see that the piecewise polynomials are very close to the true
@@ -1068,9 +1153,8 @@ plot(c1, "X", addPoints=TRUE)
 
 ## A simulated data set from Model 2
 
-The dataset `datSim2` was generated using the following data
-generating process. It is a change point regression model (with
-unknown location of change points).
+The dataset `datSim2` is a change point regression model (with unknown
+location of change points) defined as follows:
 
 \begin{eqnarray*}
 Y(0) &=& (1+X)I(X\leq-1) + (-1-X)I(X>-1) + \epsilon(0)\\
@@ -1083,7 +1167,7 @@ where $I(A)$ is the indicator function equal to 1 if $A$ is true, and
 $X$, $\epsilon(0)$ and $\epsilon(1)$ are independent standard
 normal. The causal effects ACE, ACT and ACN are approximately equal to
 3.763, 3.858 and 3.545 (estimated with a sample size of $10^7$). We
-can compare the SLSE, BTLSE with AIC and BTLSE with BIC.
+can compare the SLSE, BTLSE-AIC and BTLSE-BIC.
 
 ```{r}
 data(simDat2)
@@ -1091,19 +1175,19 @@ mod <- setModel(Y~Z | ~X, data=simDat2)
 ```
 
 ```{r, eval=FALSE}
-c1 <- causalTLSE(mod, selType="SLSE")
-c2 <- causalTLSE(mod, selType="BTLSE", selCrit="BIC")
-c3 <- causalTLSE(mod, selType="BTLSE", selCrit="AIC")
-texreg(list(SLSE=c1, BTLSE.BIC=c2, BTLSE.AIC=c3), table=FALSE, digits=4)
+c1 <- causalTLSE(mod, selType = "SLSE")
+c2 <- causalTLSE(mod, selType = "BTLSE", selCrit = "BIC")
+c3 <- causalTLSE(mod, selType = "BTLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, BTLSE.BIC = c2, BTLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
 \footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
-c1 <- causalTLSE(mod, selType="SLSE")
-c2 <- causalTLSE(mod, selType="BTLSE", selCrit="BIC")
-c3 <- causalTLSE(mod, selType="BTLSE", selCrit="AIC")
-texreg(list(SLSE=c1, BTLSE.BIC=c2, BTLSE.AIC=c3), table=FALSE, digits=4)
+c1 <- causalTLSE(mod, selType = "SLSE")
+c2 <- causalTLSE(mod, selType = "BTLSE", selCrit = "BIC")
+c3 <- causalTLSE(mod, selType = "BTLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, BTLSE.BIC = c2, BTLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 \normalsize
 \end{center}
@@ -1112,21 +1196,20 @@ The following shows the fit of BTLSE-AIC with the true $f_1(x)$ and
 $f_0(x)$, and the observations.
 
 ```{r, out.width='50%', fig.show='hold'}
-plot(c2, "X", legendPos="right", cex=.8)
-curve((1-2*x)*(x<=0)+(1+2*x)*(x>0), -3,3,
-      col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve((1+x)*(x<=-1)+(-1-x)*(x>-1),
-      -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
-legend("left", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
-plot(c2, "X", addPoints=TRUE, legendPos="topleft", cex=.8)
+plot(c2, "X", legendPos = "right", cex = .8)
+curve((1 -2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
+      col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
+curve((1 + x) * (x <= -1) + (-1 - x) * (x > -1),
+      -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
+legend("left", c("True-treated", "True-nontreated"),
+       col = c("darkgreen", "darkorange"), lty = 3, lwd = 3, bty = 'n', cex = .8)
+plot(c2, "X", addPoints = TRUE, legendPos = "topleft", cex = .8)
 ```
 
 ## A simulated data set from Model 3
 
-In the package, the data set `datSim3` is generated using the
-following data generating process with a sample size of 300. This
-model is presented as a case of multiple covariates.
+The data set `datSim3` is generated from model with multiple
+confounders defined as follows:
 
 \begin{eqnarray*}
 Y(0) &=& [1+X_1+X_1^2] + [(1+X_2)I(X_2\leq-1) + (-1-X_2)I(X_2>-1)] + 
@@ -1144,23 +1227,23 @@ $10^7$). We can compare the SLSE, FTLSE with AIC and FTLSE with BIC.
 
 ```{r}
 data(simDat3)
-mod <- setModel(Y~Z | ~X1+X2, data=simDat3)
+mod <- setModel(Y ~ Z | ~ X1 + X2, data = simDat3)
 ```
 
 ```{r, eval=FALSE}
-c1 <- causalTLSE(mod, selType="SLSE")
-c2 <- causalTLSE(mod, selType="FTLSE", selCrit="BIC")
-c3 <- causalTLSE(mod, selType="FTLSE", selCrit="AIC")
-texreg(list(SLSE=c1, FTLSE.BIC=c2, FTLSE.AIC=c3), table=FALSE, digits=4)
+c1 <- causalTLSE(mod, selType = "SLSE")
+c2 <- causalTLSE(mod, selType = "FTLSE", selCrit = "BIC")
+c3 <- causalTLSE(mod, selType = "FTLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, FTLSE.BIC = c2, FTLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
 \footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
-c1 <- causalTLSE(mod, selType="SLSE")
-c2 <- causalTLSE(mod, selType="FTLSE", selCrit="BIC")
-c3 <- causalTLSE(mod, selType="FTLSE", selCrit="AIC")
-texreg(list(SLSE=c1, FTLSE.BIC=c2, FTLSE.AIC=c3), table=FALSE, digits=4)
+c1 <- causalTLSE(mod, selType = "SLSE")
+c2 <- causalTLSE(mod, selType = "FTLSE", selCrit = "BIC")
+c3 <- causalTLSE(mod, selType = "FTLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, FTLSE.BIC = c2, FTLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 \normalsize
 \end{center}
@@ -1170,40 +1253,39 @@ plot the outcome against one covariate holding the other fixed. The
 default is to fix it to its sample mean. For the true curve, we fix it
 to its population mean, which is 0. We first look at the outcome
 against $X_1$. By fixing $X_2$ to 0, the true curve is $X_1+X_1^2$ for
-the control and $2-2X_1$ for the treated. The following graphs show how
+the untreated and $2-2X_1$ for the treated. The following graphs show how
 the FTLSE-BIC method fits the curves.
 
 ```{r, out.width='50%', fig.show='hold'}
-plot(c2, "X1", legendPos="right", cex=.8)
-curve(x+x^2, -3,3, col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve(2-2*x, -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
-legend("topleft", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
-plot(c2, "X1", addPoints=TRUE, legendPos="topleft", cex=.8)
+plot(c2, "X1", legendPos = "right", cex = .8)
+curve(x + x^2, -3, 3, col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
+curve(2 - 2 * x, -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
+legend("topleft", c("True-treated", "True-nontreated"),
+       col = c("darkgreen", "darkorange"), lty = 3, lwd = 3, bty = 'n', cex = .8)
+plot(c2, "X1", addPoints = TRUE, legendPos = "topleft", cex = .8)
 ```
 
 If we fix $X_1$ to 0, the true curve is $1+[(1+X_2)I(X_2\leq-1) +
-(-1-X_2)I(X_2>-1)]$ for the control and $1+[(1-2X_2)I(X_2\leq 0) +
+(-1-X_2)I(X_2>-1)]$ for the nontreated and $1+[(1-2X_2)I(X_2\leq 0) +
 (1+2X_2)I(X_2>0)]$ for the treated. The following graphs illustrates
 how these curves are approximated by FTLSE-AIC.
 
 ```{r, out.width='50%', fig.show='hold'}
-plot(c2, "X2", legendPos="right", cex=.8)
-curve(1+(1-2*x)*(x<=0)+(1+2*x)*(x>0), -3,3,
-      col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve(1+(1+x)*(x<=-1)+(-1-x)*(x>-1),
-      -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
-legend("left", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
-plot(c2, "X2", addPoints=TRUE, legendPos="topleft", cex=.8)
+plot(c2, "X2", legendPos = "right", cex = .8)
+curve(1 + (1 - 2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
+      col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
+curve(1 + (1 + x) * (x <= -1) + (-1 - x) * (x > -1),
+      -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
+legend("left", c("True-treated", "True-nontreated"),
+       col = c("darkgreen", "darkorange"), lty = 3, lwd = 3, bty = 'n', cex = .8)
+plot(c2, "X2", addPoints = TRUE, legendPos = "topleft", cex = .8)
 ```
 
-## A simulated data set from Model 4
+## A simulated data set with interactions
 
-In the package, the data set `datSim5` is generated using the
-following data generating process with a sample size of 300. This
-model is presented as a case of multiple covariates with
-interactions..
+
+The data set `datSim5` is generated using the following data
+generating process with a sample size of 300.
 
 \begin{eqnarray*}
 Y(0) &=& [1+X_1+X_1^2] + [(1+X_2)I(X_2\leq-1) + (-1-X_2)I(X_2>-1)] \\
@@ -1217,7 +1299,7 @@ Y &=& Y(1)Z + Y(0) (1-Z)\,,
 where$X_1$, $X_2$, $e$ and $u$ are independent standard normal. The
 causal effects ACE, ACT and ACN are approximately equal to 1.763,
 0.998 and 3.194 (estimated with a sample size of $10^7$). We can
-compare the SLSE, FTLSE with AIC and FTLSE with BIC.
+compare the SLSE, FTLSE-AIC and FTLSE-BIC.
 
 ```{r, echo=FALSE}
 sim_model <- function(n)
@@ -1232,21 +1314,21 @@ sim_model <- function(n)
 		(-1 - X2) * (X2 > -1) + (1+X1*X2 + X1^2*X2^2) + er0
 	Y1 <- (1 - 2*X1) + (1 - 2*X2)*(X2 <= 0) + 
 		(1 + 2*X2) * (X2 > 0) + (1-2*X1*X2) + er1
-	Y <- Y0 * (1 - Z) + Y1 * Z   
+	Y <- Y0 * (1 - Z) + Y1 * Z
 	data.frame(Y=Y, X1=X1, X2=X2, Z=Z, Y1=Y1, Y0=Y0)
 }
 ```
 
 ```{r}
 data(simDat5)
-mod <- setModel(Y~Z | ~X1*X2, data=simDat5)
+mod <- setModel(Y ~ Z | ~ X1 * X2, data = simDat5)
 ```
 
 ```{r, eval=FALSE}
-c1 <- causalTLSE(mod, selType="SLSE")
-c2 <- causalTLSE(mod, selType="BTLSE", selCrit="BIC")
-c3 <- causalTLSE(mod, selType="BTLSE", selCrit="AIC")
-texreg(list(SLSE=c1, FTLSE.BIC=c2, FTLSE.AIC=c3), table=FALSE, digits=4)
+c1 <- causalTLSE(mod, selType = "SLSE")
+c2 <- causalTLSE(mod, selType = "FTLSE", selCrit = "BIC")
+c3 <- causalTLSE(mod, selType = "FTLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, FTLSE.BIC = c2, FTLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
@@ -1265,52 +1347,63 @@ fitted outcome with respect to one covariate depends on the value of
 the other covariates. Without interaction, changing the value of the
 other covariates only shifts the fitted line without changing its
 shape. The following graphs compare the estimated relationship between
-$Y$ and $X_1$ for $X_2$ equal to its mean (left graph) and 1 (right
-graph). When $X_2$ is equal to its population mean, the true curves
-are $(1+x+x^2)$ for the treated and $(3-2x)$ for the control. If
-$X_2=1$, the true curves become $2x+2x^2$ for the treated and $(5-4x)$
-for the control.
+$Y$ and $X_1$ for $X_2$ equal to the group means (left graph) and 1
+(right graph). Using a sample of $10^7$, we obtain that $\Ex(X_2|Z=1)$
+and $\Ex(X_2|Z=0)$ are approximately equal to 0.1982 and -0,3698,
+respectively. Therefore, the true curves are
+$(1.3698+0.6302x+1.1368x^2)$ for the nontreated and $(3.3964-2.3964x)$ for the
+treated. If $X_2=1$, the true curves become $2x+2x^2$ for the treated
+and $(5-4x)$ for the nontreated.
 
 ```{r, out.width='50%', fig.show='hold'}
-plot(c2, "X1", legendPos="right", cex=.8,
-     main="Y VS X1 (X2 = sample mean)")
-curve(1+x+x^2, -3,3, col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve(3-2*x, -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
-legend("top", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
-plot(c2, "X1", newdata=c(X2=1), legendPos="right", cex=.8,
-     main="Y VS X1 (X2 = 1)")
-curve(2*x+2*x^2, -3,3, col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve(5-4*x, -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
-legend("top", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
+x20 <- mean(subset(simDat5, Z == 0)$X2)
+x21 <- mean(subset(simDat5, Z == 1)$X2)
+plot(c2, "X1", fixedCov0 = list(X2 = x20), fixedCov1 = list(X2 = x21),
+     legendPos = "right", cex = .8,
+     main="Y vs X1 (X2 = sample mean for each group)")
+curve(1.3698 + 0.6302 * x + 1.1368 * x^2, -3, 3,
+      col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
+curve(3.3964 - 2.3964 * x, -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
+legend("top", c("True-treated", "True-nontreated"),
+       col=c("darkorange", "darkgreen"), lty = 3, lwd = 3, bty = 'n', cex = .8)
+plot(c2, "X1", fixedVoc0 = list(X2 = 1), legendPos = "right", cex = .8,
+     main="Y vS X1 (X2 = 1 for each group)")
+curve(2 * x + 2 * x^2, -3, 3, col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
+curve(5 - 4 * x, -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
+legend("top", c("True-treated", "True-nontreated"),
+       col = c("darkgreen", "darkorange"), lty = 3, lwd = 3, bty = 'n', cex = .8)
 ```
 
 The following graphs illustrate the relationship between $Y$ and $X_2$
-for a given $X_1$. When $X_1$ is equal to its population mean, the
-true curves are $[2+(1-2x)(x\leq 0)+(1+2x)(x>0)]$ for the treated and
-$[2+(1+x)(x\leq-1)+(-1-x)(x>-1)]$ for the control. If $X_1=1$, the
-true curves become $[-2x+(1-2x)(x\leq 0)+(1+2x)(x>0)]$ for the treated
-and $[(4+x+x^2)+(1+x)(x\leq-1)+(-1-x)(x>-1)]$ for the control.
+for a given $X_1$. When $X_1$ is equal its population group means
+(they are equal to the population means of $X_2$), the true curves are
+$[1.6036-0.3964x)(x\leq 0)+(1+2x)(x>0)]$ for the treated and
+$[(1.767-0.3698x+0.1368x^2)+ (1+x)(x\leq-1)+(-1-x)(x>-1)]$ for the
+nontreated. If $X_1=1$, the true curves become $[-2x+(1-2x)(x\leq
+0)+(1+2x)(x>0)]$ for the treated and
+$[(4+x+x^2)+(1+x)(x\leq-1)+(-1-x)(x>-1)]$ for the nontreated.
 
 
 ```{r, out.width='50%', fig.show='hold'}
-plot(c2, "X2", legendPos="right", cex=.8,
-     main="Y VS X2 (X1 = sample mean)")
-curve(2+(1-2*x)*(x<=0)+(1+2*x)*(x>0), -3,3,
-      col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve(2+(1+x)*(x<=-1)+(-1-x)*(x>-1),
-      -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
-legend("top", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
-plot(c2, "X2", newdata=c(X1=1), legendPos="right", cex=.8,
-     main="Y VS X2 (X1 = 1)")
-curve(-2*x+(1-2*x)*(x<=0)+(1+2*x)*(x>0), -3,3,
-      col="darkgreen", lty=3, lwd=3, add=TRUE)
-curve(4+(1+x)*(x<=-1)+(-1-x)*(x>-1)+x+x^2,
-      -3,3, col="darkorange", lty=3, lwd=3, add=TRUE)
-legend("top", c("True-treated","True-control"),
-       col=c("darkgreen","darkorange"), lty=3, lwd=3, bty='n', cex=.8)
+x10 <- mean(subset(simDat5, Z == 0)$X1)
+x11 <- mean(subset(simDat5, Z == 1)$X1)
+plot(c2, "X2", fixedCov0 = list(X1 = x10), fixedCov1 = list(X1 = x11),
+     legendPos = "right", cex = .8,
+     main = "Y vs X2 (X1 = sample mean for each group)")
+curve(1.603900 - .3964 * x + (1 - 2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
+      col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
+curve(1.767 - 0.3698 * x + 0.1368 * x^2 + (1 + x) * (x <= -1) + (-1 - x) * (x > -1),
+      -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
+legend("top", c("True-treated", "True-nontreated"),
+       col = c("darkorange", "darkgreen"), lty = 3, lwd = 3, bty = 'n', cex = .8)
+plot(c2, "X2", fixedCov0 = list(X1 = 1), legendPos = "right", cex = .8,
+     main="Y vS X2 (X1 = 1 for each group)")
+curve(-2 * x + (1 - 2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
+      col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
+curve(4 + (1 + x) * (x <= -1) + (-1 - x) * (x > -1) + x + x^2,
+      -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
+legend("top", c("True-treated", "True-nontreated"),
+       col = c("darkgreen", "darkorange"), lty = 3, lwd = 3, bty = 'n', cex = .8)
 ```
 
 \newpage 

@@ -5,7 +5,7 @@
     noNA <- !any(is.na(knots))
     isNum <- is.numeric(knots)
     noDup <- !any(duplicated(knots))
-    inRange <- (min(knots, na.rm=TRUE)>min(x))&
+   inRange <- (min(knots, na.rm=TRUE)>min(x))&
         (max(knots, na.rm=TRUE)<max(x))
     chk <- noNA&isNum&noDup&inRange
     if (!all(chk))
@@ -42,7 +42,7 @@ setKnots <- function(x, sel=1:length(x), nbasis=function(n) n^0.3,
 
 model.matrix.tlseModel <- function(object, ...)
 {
-    X <- model.matrix(object$formX, object$data)    
+    X <- model.matrix(object$formX, object$data, xlev=object$xlevels)    
     if (attr(terms(object$formX), "intercept") == 1) 
         X <- X[, -1, drop = FALSE]
     X
@@ -111,8 +111,11 @@ setModel <- function (form, data, nbasis = function(n) n^0.3,
     if (!all(Z %in% c(0, 1))) 
         stop("The right hand side must be a binary variable")
     formY <- as.formula(paste(tmp[2], "~factor(", tmp2[1], ")+Xf0+Xf1-1"), 
-        env = .GlobalEnv)
-    X <- model.matrix(formX, data)
+                        env = .GlobalEnv)
+    mf <- model.frame(formX, data)
+    mt <- attr(mf, "terms")
+    X <- model.matrix(mt, mf)
+    xlevels <- .getXlevels(mt,mf)
     if (attr(terms(formX), "intercept") == 1) 
         X <- X[, -1, drop = FALSE]
     na <- na.omit(cbind(Y,Z,X))
@@ -128,7 +131,7 @@ setModel <- function (form, data, nbasis = function(n) n^0.3,
     nameX <- colnames(X)
     nameY <- all.vars(formY)[1]
     nameZ <- colnames(Z)
-    select <- ifelse(missing(knots0) & missing(knots1), "SLSE",
+    select <- ifelse(missing(knots0) & missing(knots1), "Default",
                      "User Based")
     knots0 <- .firstknots(nameX, knots0)
     knots1 <- .firstknots(nameX, knots1)    
@@ -139,7 +142,7 @@ setModel <- function (form, data, nbasis = function(n) n^0.3,
     names(knots0) <- names(knots1) <- nameX
     obj <- list(na=na, formY=formY, formX=formX, treated=nameZ, nameY=nameY,
                 knots0=knots0, knots1=knots1, data=data, nameX=nameX,
-                method=list(select=select, crit=""))
+                method=list(select=select, crit=""), xlevels=xlevels)
     class(obj) <- "tlseModel"
     obj
 }
@@ -149,15 +152,15 @@ print.tlseModel <- function(x, knots=FALSE, ...)
     Z <- x$data[[x$treated]]
     if (!knots)
     {
-        cat("Semiparametric TLSE Model\n")
-        cat("**************************\n\n")
+        cat("Semiparametric LSE Model\n")
+        cat("************************\n\n")
         cat("Number of treated: ", sum(Z), "\n")
-        cat("Number of control: ", sum(Z==0), "\n")
+        cat("Number of nontreated: ", sum(Z==0), "\n")
         cat("Number of missing values: ", length(x$na), "\n")
         cat("Selection method: ", x$method$select, "\n", sep="")
         if (x$method$crit != "")
             cat("Criterion: ", x$method$crit, "\n\n", sep = "")
-        cat("Covariates approximated by semiparametric TLSE:\n")
+        cat("Covariates approximated by SLSE:\n")
         w0 <- sapply(x$knots0, is.null)
         w1 <- sapply(x$knots1, is.null)    
         selPW0 <- x$nameX[!w0]
@@ -172,27 +175,27 @@ print.tlseModel <- function(x, knots=FALSE, ...)
         if (!allSame)
         {
             cat("\tTreated: ", isApp1, "\n", sep="")
-            cat("\tControl: ", isApp0, "\n", sep="")
+            cat("\tNontreated: ", isApp0, "\n", sep="")
         } else {
             cat("\t", isApp1, "\n", sep="")
         }
-        cat("Covariates not approximated by semiparametric TLSE:\n")   
+        cat("Covariates not approximated by SLSE:\n")   
         if (!allSame)
         {
             cat("\tTreated: ", notApp1, "\n", sep="")
-            cat("\tControl: ", notApp0, "\n", sep="")
+            cat("\tNontreated: ", notApp0, "\n", sep="")
         } else {
             cat("\t", notApp1, "\n", sep="")
         }
     } else  {
-        cat("Semiparametric TLSE Model\n")
-        cat("**************************\n\n")
+        cat("Semiparametric LSE Model\n")
+        cat("************************\n\n")
         cat("Selection method: ", x$method$select, "\n", sep="")
         if (x$method$crit != "")
             cat("Criterion: ", x$method$crit, "\n\n", sep = "")
         
-        cat("Lists of knots for the treated group\n")
-        cat("************************************\n")
+        cat("Lists of knots for the treated\n")
+        cat("******************************\n")
         for (sel in 1:length(x$knots1))
         {
             cat(x$nameX[sel],":\n", sep="")
@@ -203,8 +206,8 @@ print.tlseModel <- function(x, knots=FALSE, ...)
                               quote = FALSE)
 
         }
-        cat("\nLists of knots for the Control group\n")
-        cat("************************************\n")
+        cat("\nLists of knots for the nontreated\n")
+        cat("*********************************\n")
         for (sel in 1:length(x$knots0))
         {
             cat(x$nameX[sel],":\n", sep="")
@@ -453,7 +456,7 @@ causalTLSE <- function(object, ...)
 
 causalTLSE.tlseModel <- function(object,
                                  selType=c("SLSE","BTLSE","FTLSE"),
-                                 selCrit = c("AIC", "BIC", "ASY"),
+                                 selCrit = c("AIC", "BIC", "PVT"),
                                  causal = c("ALL","ACT","ACE","ACN"),
                                  seType=c("analytic", "lm"),
                                  pvalT = function(p) 1/log(p),
@@ -512,8 +515,8 @@ causalTLSE.tlseFit <- function(object, seType=c("analytic", "lm"),
 
 print.causaltlse <- function (x, ...) 
 {
-    cat("Causal Effect using Semiparametric TLSE\n")
-    cat("***************************************\n")
+    cat("Causal Effect using Semiparametric LSE\n")
+    cat("**************************************\n")
     cat("Selection method: ", x$model$method$select, "\n", sep="")
     if (x$model$method$crit != "")
     {
@@ -531,7 +534,7 @@ print.causaltlse <- function (x, ...)
 causalTLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
                                knots0, knots1, 
                                selType=c("SLSE","BTLSE","FTLSE"),
-                               selCrit = c("AIC", "BIC", "ASY"),
+                               selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
                                seType=c("analytic", "lm"),
                                pvalT = function(p) 1/log(p),
@@ -549,8 +552,8 @@ causalTLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
 
 print.tlseFit <- function(x, ...)
 {
-    cat("Semiparametric TLSE Estimate\n")
-    cat("****************************\n")
+    cat("Semiparametric LSE Estimate\n")
+    cat("***************************\n")
     cat("Selection method: ", x$model$method$select, "\n", sep="")
     if (x$model$method$crit != "")
     {
@@ -588,8 +591,8 @@ print.summary.tlseFit <- function(x, digits = 4,
                                   signif.stars = getOption("show.signif.stars"),
                                   ...)
 {
-    cat("Semiparametric TLSE Estimate\n")
-    cat("****************************\n")
+    cat("Semiparametric LSE Estimate\n")
+    cat("***************************\n")
     cat("Selection method: ", x$model$method$select, "\n", sep="")
     if (x$model$method$crit != "")
     {
@@ -640,8 +643,8 @@ print.summary.causaltlse <- function (x, digits = 4,
                                 signif.stars = getOption("show.signif.stars"), 
                                 beta = FALSE, knots = FALSE, ...) 
 {
-    cat("Causal Effect using Semiparametric TLSE\n")
-    cat("****************************************\n")
+    cat("Causal Effect using Semiparametric LSE\n")
+    cat("**************************************\n")
     cat("Selection method: ", x$select, "\n", sep="")
     if (x$crit != "")
         cat("Criterion: ", x$model$method$crit, "\n\n", sep = "")
@@ -654,12 +657,12 @@ print.summary.causaltlse <- function (x, digits = 4,
             na.print = "NA", ...)
     }
     if (knots) {
-        cat("\nNumber of selected knots per variables\n")
-        cat("***************************************\n")
-        cat("Treated group:\n")
+        cat("\nNumber of selected knots per covariate\n")
+        cat("****************************************\n")
+        cat("Treated:\n")
         print.default(format(sapply(x$knots1, length)), print.gap = 2L, 
             quote = FALSE)
-        cat("Control group:\n")
+        cat("Nontreated:\n")
         print.default(format(sapply(x$knots0, length)), print.gap = 2L, 
             quote = FALSE)
         cat("\n")
@@ -726,7 +729,7 @@ print.summary.causaltlse <- function (x, digits = 4,
 }
 
 
-.selASY <- function (model, pvalRes, pvalT = function(p) 1/log(p),
+.selPVT <- function (model, pvalRes, pvalT = function(p) 1/log(p),
                      crit=NULL, ...)
 {
     pval <- c(do.call("c", pvalRes$pval0), do.call("c", pvalRes$pval1))
@@ -751,14 +754,14 @@ print.summary.causaltlse <- function (x, digits = 4,
     model
 }
 
-selTLSE <- function(model, selType=c("FTLSE", "BTLSE"),
-                    selCrit = c("AIC", "BIC", "ASY"), 
+selTLSE <- function(model, selType=c("BTLSE", "FTLSE"),
+                    selCrit = c("AIC", "BIC", "PVT"), 
                     pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
 {
     selCrit <- match.arg(selCrit)
     selType <- match.arg(selType)
-    critFct <- if (selCrit == "ASY") {
-                   .selASY
+    critFct <- if (selCrit == "PVT") {
+                   .selPVT
                } else {
                    .selIC
                }
@@ -922,7 +925,7 @@ extract.causaltlse <- function (model, include.nobs = TRUE, include.nknots = TRU
         rs1 <- length(unlist(model$model$knots0))
         rs2 <- length(unlist(model$model$knots1))        
         gof <- c(gof, rs1, rs2)
-        gof.names <- c(gof.names, "Num. knots (Control)", "Num. knots (Treated)")
+        gof.names <- c(gof.names, "Num. knots (Nontreated)", "Num. knots (Treated)")
         gof.decimal <- c(gof.decimal, FALSE, FALSE)
    }
     if (isTRUE(include.numcov)) {
@@ -936,7 +939,7 @@ extract.causaltlse <- function (model, include.nobs = TRUE, include.nknots = TRU
         n1 <- sum(Z)
         n0 <- sum(1-Z)
         gof <- c(gof, n0, n1)
-        gof.names <- c(gof.names, "Num. obs. (Control)", "Num. obs. (Treated)")
+        gof.names <- c(gof.names, "Num. obs. (Nontreated)", "Num. obs. (Treated)")
         gof.decimal <- c(gof.decimal, FALSE, FALSE)
     }
     if (isTRUE(include.rsquared)) {
@@ -973,8 +976,7 @@ setMethod("extract", signature = className("causaltlse", "causalTLSE"),
 
 predict.tlseFit <- function (object, interval = c("none", "confidence"),
                              se.fit = FALSE, 
-                             newdata = NULL, level = 0.95, vcov. = vcovHC,
-                             counterfactual=FALSE, ...) 
+                             newdata = NULL, level = 0.95, vcov. = vcovHC, ...) 
 {
     interval <- match.arg(interval)
     model <- object$model
@@ -986,14 +988,9 @@ predict.tlseFit <- function (object, interval = c("none", "confidence"),
         stop("newdata must contain a treatment assignment variable")
     newdata$Xf1 <- multiSplines(model, TRUE, "all")
     newdata$Xf0 <- multiSplines(model, FALSE, "all")
-    if (counterfactual)
-    {
-        newdata$Xf1[Z==1,] <- 0
-        newdata$Xf0[Z==0,] <- 0
-    } else {
-        newdata$Xf1[Z==0,] <- 0
-        newdata$Xf0[Z==1,] <- 0
-    }
+    newdata$Xf1[Z==0,] <- 0
+    newdata$Xf0[Z==1,] <- 0
+    
     tt <- terms(object$lm.out)
     tt <- delete.response(tt)
     m <- model.frame(tt, newdata, xlev = object$lm.out$xlevels)    
@@ -1018,12 +1015,77 @@ predict.tlseFit <- function (object, interval = c("none", "confidence"),
             crit * se1)
     }
     if (se.fit) 
-        list(treated = list(fit = pr1, se.fit = se1), control = list(fit = pr0, 
+        list(treated = list(fit = pr1, se.fit = se1), nontreated = list(fit = pr0, 
             se.fit = se0))
-    else list(treated = pr1, control = pr0)
+    else list(treated = pr1, nontreated = pr0)
 }
 
-plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
+
+.prDatak <- function(object, varCov=NULL, conCov=NULL, sel=NULL, FUN = mean)
+{
+    model <- object$model
+    if (is.null(sel))
+        sel <- 1:nrow(model$data)
+    data <- model$data[sel,]
+    vnames <- all.vars(model$formX)
+    if (!is.null(varCov))
+    {
+        if (!is.character(varCov)) 
+            stop("varCov must be a character vector")
+        if (!all(varCov  %in% vnames))
+            stop("Some variables in varCov do not exist")
+        varCov <- unique(varCov)
+    } else {
+        varCov <- character()
+    }
+    if (!is.null(conCov))
+    {
+        if (!is.list(conCov))
+            stop("conCov must be a list")
+        if (any(sapply(conCov, length) !=1))
+            stop("The elements of conCov must have a length of 1")
+        if (is.null(names(conCov)))
+            stop("conCov must be a named list")
+        if (!all(names(conCov) %in% vnames))
+            stop("Some variables in conCov do not exist")
+        conCov <- conCov[!duplicated(names(conCov))]
+        if (length(varCov))
+            if (any(names(conCov) %in% varCov))
+                stop("You cannot have the same covariates in conCov and varCov")
+        for (i in 1:length(conCov))
+            data[,names(conCov)[i]] <- conCov[[i]]
+    }
+    
+    model$data <- data
+    X <- model.matrix(model)
+    data[,colnames(X)] <- X
+    f <- if (ncol(X)==1)
+         {
+             paste("~", colnames(X))
+         } else {
+             paste("~", paste(colnames(X), collapse="+"))
+         }   
+    formX <- formula(f, .GlobalEnv)
+    xlevels <- list()
+    funVar <- colnames(X)[!(colnames(X) %in% c(varCov, names(conCov)))]
+    for (fi in funVar)
+    {
+        formi <- formula(paste("~",fi,"-1",sep=""), .GlobalEnv)
+        vari <- all.vars(formi)
+        dati <- data[,vari,drop=FALSE]
+        chk <- vari %in% varCov
+        if (any(!chk))
+        {
+            for (vi in vari[!chk])
+                dati[,vi] <- FUN(dati[,vi])
+        }
+        data[,fi] <- model.matrix(formi, dati)
+    }
+    list(data=data, formX=formX, xlevels=xlevels)
+}
+
+
+plotOLD <- function (x, y, which = y, interval = c("none", "confidence"),
                           counterfactual=FALSE,
                           level = 0.95, newdata = NULL, legendPos = "topright",
                           vcov. = vcovHC, 
@@ -1070,7 +1132,7 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     res <- predict(x, interval = interval, level = level,
                    newdata = data, se.fit = FALSE, vcov. = vcov.,
                    counterfactual=counterfactual, ...)
-    pr0 <- res$control
+    pr0 <- res$nontreated
     pr1 <- res$treated
     if (interval == "confidence") {
         lty0 = c(lty0, 3, 3)
@@ -1081,7 +1143,7 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
         lwd = 2
     }
     if (is.null(main))
-        main <- paste("Outcome VS ", which, " using TLSE", 
+        main <- paste("Outcome VS ", which, " using SLSE", 
                       sep = "")
     if (addPoints)
     {
@@ -1102,7 +1164,7 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     matplot(data[Z == 0, which], pr0, col = col0, type = "l", lty = lty0,
             lwd = lwd, add = TRUE)
     grid()
-    Leg=c("Treated", "Control")
+    Leg=c("Treated", "Nontreated")
     if(counterfactual)
         Leg <- paste(Leg, "-counterfactual", sep="")
     if (!is.null(addToLegend))
@@ -1114,15 +1176,101 @@ plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     invisible()
  }
 
+plot.tlseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
+                   counterfactual = FALSE, level = 0.95, fixedCov0 = NULL,
+                   fixedCov1 = fixedCov0, legendPos = "topright", 
+                   vcov. = vcovHC, col0 = 1, col1 = 2, lty0 = 1, lty1 = 2, add. = FALSE, 
+                   addToLegend = NULL, cex = 1, ylim. = NULL, xlim. = NULL, 
+                   addPoints = FALSE, FUN = mean, main = NULL, plot=TRUE, ...) 
+{
+    interval <- match.arg(interval)
+    vnames <- all.vars(x$model$formX)
+    treat <- x$model$treated
+    if (is.numeric(which)) 
+        which <- vnames[which]
+    if (!is.character(which) & length(which) != 1) 
+        stop("which must be a character type")
+    if (!(which %in% vnames)) 
+        stop("which must be one of the names of the variables")
+    if (addPoints) {
+        Yp <- x$model$data[, x$model$nameY]
+        Xp <- x$model$data[, which]
+        Zp <- x$model$data[, treat]
+    }
+    ind <- order(x$model$data[, which])
+    x$model$data <- x$model$data[ind, ]
+    Z <-  x$model$data[, treat]
+    obj1 <- .prDatak(x, which, fixedCov1, Z==1, FUN)
+    obj0 <- .prDatak(x, which, fixedCov0, Z==0, FUN)    
+    x$model$data <- rbind(obj1$data, obj0$data)
+    Z <-  x$model$data[, treat]
+    x$model$xlevels <- obj1$xlevels
+    x$model$formX <- obj1$formX
+    res <- predict(object=x, interval = interval, level = level, newdata=x$model$data,
+        se.fit = FALSE, vcov. = vcov., counterfactual = counterfactual, 
+        ...)
+    pr0 <- res$nontreated
+    pr1 <- res$treated
+    if (!plot)
+    {
+        pr0 <- cbind(x$model$data[which][Z==0,], as.data.frame(pr0))
+        pr1 <- cbind(x$model$data[which][Z==1,], as.data.frame(pr1))
+        if (interval == "none")
+            names(pr0)[2] <- names(pr1)[2] <- "fit"
+        return(list(treated=pr1, nontreated=pr0))
+    }
+    if (interval == "confidence") {
+        lty0 = c(lty0, 3, 3)
+        lty1 = c(lty1, 3, 3)
+        lwd = c(2, 1, 1)
+    }
+    else {
+        lwd = 2
+    }
+    outcome <- x$model$nameY
+    if (is.null(main)) 
+        main <- paste(outcome, " vs ", which, " using SLSE", sep = "")
+    if (addPoints) {
+        add. = TRUE
+        pcol <- rep(col1, length(Zp))
+        pcol[Zp == 0] <- col0
+        pch. <- 21 * (Zp == 1) + 22 * (Zp == 0)
+        plot(Xp, Yp, pch = pch., col = pcol, main = main, ylab = x$model$nameY, 
+            xlab = which)
+    }
+    if (is.null(ylim.)) 
+        ylim. <- range(c(pr0, pr1))
+    if (is.null(xlim.)) 
+        xlim. <- range(x$model$data[, which])
+    matplot(x$model$data[Z == 1, which], pr1, col = col1, ylim = ylim., 
+        type = "l", lty = lty1, lwd = lwd, main = main, ylab = x$model$nameY, 
+        xlab = which, add = add., xlim = xlim.)
+    matplot(x$model$data[Z == 0, which], pr0, col = col0, type = "l", 
+        lty = lty0, lwd = lwd, add = TRUE)
+    grid()
+    Leg = c("Treated", "Nontreated")
+    if (counterfactual) 
+        Leg <- paste(Leg, "-counterfactual", sep = "")
+    if (!is.null(addToLegend)) 
+        Leg = paste(Leg, " (", addToLegend[1], ")", sep = "")
+    if (addPoints) 
+        pch. <- c(21, 22)
+    else pch. = c(NA, NA)
+    legend(legendPos, Leg, col = c(col1, col0), pch = pch., lty = c(lty1[1], 
+        lty0[1]), lwd = 2, bty = "n", cex = cex)
+    invisible()
+}
+
+
 
 selTLSE2 <- function (model, selType = c("FTLSE", "BTLSE"), selCrit = c("AIC", 
-    "BIC", "ASY"), pvalT = function(p) 1/log(p), vcov. = vcovHC, 
+    "BIC", "PVT"), pvalT = function(p) 1/log(p), vcov. = vcovHC, 
     ...) 
 {
     selCrit <- match.arg(selCrit)
     selType <- match.arg(selType)
-    critFct <- if (selCrit == "ASY") {
-        .selASY
+    critFct <- if (selCrit == "PVT") {
+        .selPVT
     }
     else {
         .selICF
