@@ -1,6 +1,6 @@
 Package: causalTLSE
 Version: 0.1-0
-Date: 2023-04-17
+Date: 2023-07-20
 Title: Thresholding Least Squares Inference for Causal Effects
 Authors@R: c(person("Pierre Chausse", "Developer", role = c("aut", "cre"),
                      email = "pchausse@uwaterloo.ca"),
@@ -11,9 +11,5 @@ Depends: R (>= 4.0.0)
 Suggests: knitr, rmarkdown
 Imports: stats, sandwich, texreg, methods
 License: GPL (>= 2)
-NeedsCompilation: tes
-Packaged: 2022-06-07 19:15:24 UTC; pierrechausse
-Author: Pierre Chausse Developer [aut, cre],
-  Mihai Giurcanu Developer [aut]
-Maintainer: Pierre Chausse Developer <pchausse@uwaterloo.ca>
+NeedsCompilation: yes
 VignetteBuilder: knitr
