@@ -6,7 +6,7 @@ Authors@R: c(person("Pierre Chausse", "Developer", role = c("aut", "cre"),
                      email = "pchausse@uwaterloo.ca"),
              person("Mihai Giurcanu", "Developer", role = "aut",
 	             email = "giurcanu@uchicago.edu"))
-Description: Several causal effects are measured using least squares regressions and basis function approximations. Backward and forward selection methods based on different criteria are used to select the bases.
+Description: Several causal effects are measured using least squares regressions and basis function approximations. Backward and forward selection methods based on different criteria are used to select the bases. This package is no longer maintained. It is replaced by causalSLSE.
 Depends: R (>= 4.0.0)
 Suggests: knitr, rmarkdown
 Imports: stats, sandwich, texreg, methods
