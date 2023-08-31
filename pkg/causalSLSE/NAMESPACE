@@ -7,24 +7,28 @@ importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)
 importFrom(methods, setMethod)
 
-export(setModel, print.slseModel, causalSLSE, print.causalslse,
-       summary.causalslse, selSLSE, print.summary.causalslse, plot.slseFit,
-       extract, predict.slseFit, estModel, print.slseFit,
-       summary.slseFit, print.summary.slseFit, causalSLSE, causalSLSE.slseModel,
+export(cslseModel, print.cslseModel, causalSLSE, print.cslse,
+       summary.cslse, selSLSE, selSLSE.cslseModel, 
+       print.summary.cslse, plot.slseFit,
+       extract, predict.slseFit, estSLSE, estSLSE.cslseModel,
+       print.slseFit,
+       summary.slseFit, print.summary.slseFit, causalSLSE, causalSLSE.cslseModel,
        causalSLSE.slseFit, causalSLSE.formula)
  
-S3method(summary, causalslse)
+S3method(summary, cslse)
 S3method(summary, slseFit)
 S3method(causalSLSE, slseFit)
-S3method(causalSLSE, slseModel)
+S3method(causalSLSE, cslseModel)
 S3method(causalSLSE, formula)
-S3method(print, slseModel)
-S3method(print, causalslse)
-S3method(print, summary.causalslse)
+S3method(selSLSE, cslseModel)
+S3method(estSLSE, cslseModel)
+S3method(print, cslseModel)
+S3method(print, cslse)
+S3method(print, summary.cslse)
 S3method(print, summary.slseFit)
 S3method(plot, slseFit)
 S3method(print, slseFit)
 S3method(predict, slseFit)
-S3method(model.matrix, slseModel)
+S3method(model.matrix, cslseModel)
 
 

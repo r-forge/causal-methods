@@ -30,7 +30,7 @@ errors and confidence intervals.
 
 \examples{
 data(simDat3)
-mod <- setModel(Y~Z|~X1+X2, data=simDat3)
+mod <- cslseModel(Y~Z|~X1+X2, data=simDat3)
 fit <- causalSLSE(mod, seType="lm")
 pr <- predict(fit, interval="confidence")
 }

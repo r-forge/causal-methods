@@ -1,18 +1,18 @@
 \name{print}
-\alias{print.slseModel}
-\alias{print.causalslse}
+\alias{print.cslseModel}
+\alias{print.cslse}
 \alias{print.slseFit}
-\alias{print.summary.causalslse}
+\alias{print.summary.cslse}
 \alias{print.summary.slseFit}
 \title{Print methods}
 \description{
 Print methods for different objects from the package.
 }
 \usage{
-\method{print}{slseModel}(x, knots=FALSE, ...)
-\method{print}{causalslse}(x, ...)
+\method{print}{cslseModel}(x, knots=FALSE, ...)
+\method{print}{cslse}(x, ...)
 \method{print}{slseFit}(x, ...)
-\method{print}{summary.causalslse}(x, digits = 4,
+\method{print}{summary.cslse}(x, digits = 4,
                               signif.stars = getOption("show.signif.stars"),
                               beta=FALSE, knots = FALSE,...)
 \method{print}{summary.slseFit}(x, digits = 4,
@@ -31,13 +31,13 @@ Print methods for different objects from the package.
 
 \examples{
 data(simDat3)
-mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
+mod1 <- cslseModel(Y~Z|~X1*X2, data=simDat3)
 print(mod1)
 causal <- causalSLSE(mod1)
 print(causal)
 s <- summary(causal)
 print(s)
-fit <- estModel(mod1)
+fit <- estSLSE(mod1)
 print(fit)
 summary(fit)
 }

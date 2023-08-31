@@ -1,5 +1,5 @@
 bibentry(bibtype = "Manual",
-         title = "Semiparametric Thresholding Least Squares Inference for Causal Effects",
+         title = "Semiparametric Least Squares Inference for Causal Effects",
          author = c(person(given = "Pierre", family = "Chausse",
                            email = "pchausse@uwaterloo.ca"),
                     person(given = "Mihai", family = "Giurcanu",

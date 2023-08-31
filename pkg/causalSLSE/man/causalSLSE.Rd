@@ -1,6 +1,6 @@
 \name{causalSLSE}
 \alias{causalSLSE}
-\alias{causalSLSE.slseModel}
+\alias{causalSLSE.cslseModel}
 \alias{causalSLSE.slseFit}
 \alias{causalSLSE.formula}
 \title{
@@ -9,11 +9,11 @@ Causal Effect based on semiparametric Least Squares models
 \description{
 This is the main method to estimate the causal effects using the semiparametric
 least squares method. It returns an object of class
-\code{causalslse} and is registered for objects of class
-\code{slseModel} and \code{slseFit}.
+\code{cslse} and is registered for objects of class
+\code{cslseModel} and \code{slseFit}.
 }
 \usage{
-\method{causalSLSE}{slseModel}(object,
+\method{causalSLSE}{cslseModel}(object,
                                selType=c("SLSE","BSLSE","FSLSE"),
                                selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
@@ -32,8 +32,8 @@ least squares method. It returns an object of class
                              vcov.=vcovHC, ...)
 }
 \arguments{
-  \item{object}{An object of class \code{slseModel} created by the
-    \code{setModel} function, \code{slseFit} created by \code{estModel}
+  \item{object}{An object of class \code{cslseModel} created by the
+    \code{cslseModel} function, \code{slseFit} created by \code{estSLSE}
     or \code{formula}.}
   \item{data}{A \code{data.frame} with all variables included in \code{form}.}
   \item{nbasis}{A function to determined the number of bases. It has to
@@ -62,7 +62,7 @@ least squares method. It returns an object of class
 
 \examples{
 data(simDat3)
-mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
+mod1 <- cslseModel(Y~Z|~X1*X2, data=simDat3)
 fit1 <- causalSLSE(mod1, selType="BSLSE", type="HC1")
 causalSLSE(Y~Z|~X1*X2, data=simDat3, selType="BSLSE", type="HC1")
 }

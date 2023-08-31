@@ -1,9 +1,9 @@
-\name{extract,causalslse-method}
-\alias{extract,causalslse-method}
-\alias{extract.causalslse}
-\title{\code{\link{extract}} method for \code{causalslse} objects}
+\name{extract,cslse-method}
+\alias{extract,cslse-method}
+\alias{extract.cslse}
+\title{\code{\link{extract}} method for \code{cslse} objects}
 \usage{
-\S4method{extract}{causalslse}(
+\S4method{extract}{cslse}(
   model,
   include.nobs = TRUE,
   include.nknots = TRUE,
@@ -35,6 +35,6 @@
 not in use.}
 }
 \description{
-\code{\link{extract}} method for \code{causalslse} objects created by the
+\code{\link{extract}} method for \code{cslse} objects created by the
 \code{\link[causalSLSE]{causalSLSE}} function.
 }

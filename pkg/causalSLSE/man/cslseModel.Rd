@@ -1,5 +1,5 @@
-\name{setModel}
-\alias{setModel}
+\name{cslseModel}
+\alias{cslseModel}
 \title{
 Thresholding Least Squares estimator model
 }
@@ -10,7 +10,7 @@ the starting knots for the control and treated group for the piecewise
 polynomial.
 }
 \usage{
-setModel(form, data, nbasis = function(n) n^0.3, 
+cslseModel(form, data, nbasis = function(n) n^0.3, 
          knots0, knots1)
 }
 \arguments{
@@ -30,7 +30,7 @@ setModel(form, data, nbasis = function(n) n^0.3,
 
 \examples{
 data(simDat3)
-mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
+mod1 <- cslseModel(Y~Z|~X1*X2, data=simDat3)
 mod1
 }
 

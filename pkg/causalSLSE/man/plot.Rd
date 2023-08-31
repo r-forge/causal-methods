@@ -53,7 +53,7 @@ Some plot utilities for object of class \code{slseFit}.
 
 \examples{
 data(simDat3)
-mod <- setModel(Y~Z|~X1+X2, data=simDat3)
+mod <- cslseModel(Y~Z|~X1+X2, data=simDat3)
 fit <- causalSLSE(mod, seType="lm") 
 plot(fit, "X1")
 }
