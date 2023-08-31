@@ -1,0 +1,15 @@
+Package: causalSLSE
+Version: 0.1-0
+Date: 2023-08-31
+Title: Semiparametric Least Squares Inference for Causal Effects
+Authors@R: c(person("Pierre Chausse", "Developer", role = c("aut", "cre"),
+                     email = "pchausse@uwaterloo.ca"),
+             person("Mihai Giurcanu", "Developer", role = "aut",
+	             email = "giurcanu@uchicago.edu"))
+Description: Several causal effects are measured using least squares regressions and basis function approximations. Backward and forward selection methods based on different criteria are used to select the basis functions.
+Depends: R (>= 4.0.0)
+Suggests: knitr, rmarkdown
+Imports: stats, sandwich, texreg, methods
+License: GPL (>= 2)
+NeedsCompilation: yes
+VignetteBuilder: knitr

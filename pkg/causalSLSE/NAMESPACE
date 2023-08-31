@@ -1,0 +1,30 @@
+useDynLib(causalSLSE, .registration = TRUE, .fixes="F_")
+importFrom(stats, quantile, lm, predict, coef, vcov, printCoefmat, cov, pnorm,
+           as.formula, model.frame, model.matrix, delete.response, formula, 
+           na.omit, pf, qnorm, residuals, terms, var, fitted, nobs, .getXlevels)
+importFrom(graphics, grid, legend, matplot)
+importFrom(sandwich, vcovHC, vcovHAC)
+importFrom(texreg, extract, createTexreg)
+importFrom(methods, setMethod)
+
+export(setModel, print.slseModel, causalSLSE, print.causalslse,
+       summary.causalslse, selSLSE, print.summary.causalslse, plot.slseFit,
+       extract, predict.slseFit, estModel, print.slseFit,
+       summary.slseFit, print.summary.slseFit, causalSLSE, causalSLSE.slseModel,
+       causalSLSE.slseFit, causalSLSE.formula)
+ 
+S3method(summary, causalslse)
+S3method(summary, slseFit)
+S3method(causalSLSE, slseFit)
+S3method(causalSLSE, slseModel)
+S3method(causalSLSE, formula)
+S3method(print, slseModel)
+S3method(print, causalslse)
+S3method(print, summary.causalslse)
+S3method(print, summary.slseFit)
+S3method(plot, slseFit)
+S3method(print, slseFit)
+S3method(predict, slseFit)
+S3method(model.matrix, slseModel)
+
+

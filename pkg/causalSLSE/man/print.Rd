@@ -1,0 +1,55 @@
+\name{print}
+\alias{print.slseModel}
+\alias{print.causalslse}
+\alias{print.slseFit}
+\alias{print.summary.causalslse}
+\alias{print.summary.slseFit}
+\title{Print methods}
+\description{
+Print methods for different objects from the package.
+}
+\usage{
+\method{print}{slseModel}(x, knots=FALSE, ...)
+\method{print}{causalslse}(x, ...)
+\method{print}{slseFit}(x, ...)
+\method{print}{summary.causalslse}(x, digits = 4,
+                              signif.stars = getOption("show.signif.stars"),
+                              beta=FALSE, knots = FALSE,...)
+\method{print}{summary.slseFit}(x, digits = 4,
+                                signif.stars = getOption("show.signif.stars"),
+                                ...)
+}
+\arguments{
+  \item{x}{Model of fit objects.}
+  \item{digits}{The number of digits to print.}
+  \item{signif.stars}{Should we print the significant stars?}
+  \item{beta}{Should we print the coefficient matrix of the piecewise
+    polynomials?}
+  \item{knots}{Should we print the knots of the piecewise polynomial?}
+\item{...}{Argument for other type of objects}
+}
+
+\examples{
+data(simDat3)
+mod1 <- setModel(Y~Z|~X1*X2, data=simDat3)
+print(mod1)
+causal <- causalSLSE(mod1)
+print(causal)
+s <- summary(causal)
+print(s)
+fit <- estModel(mod1)
+print(fit)
+summary(fit)
+}
+
+
+
+
+
+
+
+
+
+
+
+
