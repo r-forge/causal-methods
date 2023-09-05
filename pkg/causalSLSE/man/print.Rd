@@ -9,7 +9,8 @@
 Print methods for different objects from the package.
 }
 \usage{
-\method{print}{cslseModel}(x, knots=FALSE, ...)
+\method{print}{cslseModel}(x, which=c("Model", "selKnots", "Pvalues"), 
+                            ...)
 \method{print}{cslse}(x, ...)
 \method{print}{slseFit}(x, ...)
 \method{print}{summary.cslse}(x, digits = 4,
@@ -26,6 +27,7 @@ Print methods for different objects from the package.
   \item{beta}{Should we print the coefficient matrix of the piecewise
     polynomials?}
   \item{knots}{Should we print the knots of the piecewise polynomial?}
+  \item{which}{What info form the model should be printed?}
 \item{...}{Argument for other type of objects}
 }
 

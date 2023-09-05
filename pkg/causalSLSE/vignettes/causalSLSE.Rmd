@@ -308,8 +308,8 @@ knots.
   10000\}$ for `re75`, and the knots to be automatically selected for
   the treated group. We proceed as follows. Note that setting the
   value to `NA` or `NULL` has the same effect for the binary variable
-  `married`. In the following, the argument `knots=TRUE` is added to
-  the `print` method to only print the knots.
+  `married`. In the following, the argument `which=selknots` is added
+  to the `print` method to print the knots.
 
 ```{r}
 model <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
@@ -319,7 +319,7 @@ model <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
 \newpage
 
 ```{r}
-print(model, knots = TRUE)
+print(model, which = "selKnots")
 ```
 
 2. A named list of length equal to the number of covariates. In that
@@ -424,7 +424,7 @@ covariates and one knot per variable.
 ```{r}
 model <- cslseModel(re78 ~ treat | ~ age + married, data = nsw,
                   nbasis = function(n) 2)
-print(model, knots = TRUE)
+print(model, which="selKnots")
 fit <- estSLSE(model)
 fit
 ```
@@ -821,9 +821,9 @@ selection of knots. For example, we can compare the starting knots of
 
 \footnotesize
 ```{r}
-print(model1, knots = TRUE)
+print(model1, which = "selKnots")
 model2 <- selSLSE(model1)
-print(model2, knots = TRUE)
+print(model2,  which = "selKnots")
 ```
 \normalsize
 

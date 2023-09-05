@@ -144,13 +144,15 @@ cslseModel <- function (form, data, nbasis = function(n) n^0.3,
                 knots0=knots0, knots1=knots1, data=data, nameX=nameX,
                 method=list(select=select, crit=""), xlevels=xlevels)
     class(obj) <- "cslseModel"
+    obj$method$pval <- pvalSLSE(obj, "SLSE")
     obj
 }
 
-print.cslseModel <- function(x, knots=FALSE, ...)
+print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"), ...)
 {
     Z <- x$data[[x$treated]]
-    if (!knots)
+    which <- match.arg(which)
+    if (which == "Model")
     {
         cat("Semiparametric LSE Model\n")
         cat("************************\n\n")
@@ -187,36 +189,53 @@ print.cslseModel <- function(x, knots=FALSE, ...)
         } else {
             cat("\t", notApp1, "\n", sep="")
         }
-    } else  {
-        cat("Semiparametric LSE Model\n")
-        cat("************************\n\n")
+    } else if (which == "selKnots") {
+        cat("Semiparametric LSE Model: Selected knots\n")
+        cat("****************************************\n")
         cat("Selection method: ", x$method$select, "\n", sep="")
         if (x$method$crit != "")
             cat("Criterion: ", x$method$crit, "\n\n", sep = "")
         
-        cat("Lists of knots for the treated\n")
-        cat("******************************\n")
-        for (sel in 1:length(x$knots1))
-        {
+        cat("Treated:\n")
+ 	cat("********\n")
+ 	for (sel in 1:length(x$knots1))
+ 	{
             cat(x$nameX[sel],":\n", sep="")
             if (is.null(x$knots1[[sel]]))
                 cat("None\n")
             else
-                print.default(format(x$knots1[[sel]], ...), print.gap = 2L, 
+                print.default(format(x$knots1[[sel]], ...), print.gap = 2L,
                               quote = FALSE)
-
         }
-        cat("\nLists of knots for the nontreated\n")
-        cat("*********************************\n")
-        for (sel in 1:length(x$knots0))
-        {
+        cat("\nNontreated:\n")
+ 	cat("*************\n")
+ 	for (sel in 1:length(x$knots0))
+ 	{
             cat(x$nameX[sel],":\n", sep="")
             if (is.null(x$knots0[[sel]]))
                 cat("None\n")
             else
-                print.default(format(x$knots0[[sel]], ...), print.gap = 2L, 
+                print.default(format(x$knots0[[sel]], ...), print.gap = 2L,
                               quote = FALSE)
-            
+        }
+    } else {
+        cat("Semiparametric LSE Model: P-Values of original knots\n")
+        cat("****************************************************\n")
+
+        if (!(x$method$select %in% c("BTLSE","FTLSE")))
+        {
+            cat("The knots have not been selected, so no p-values are available\n")
+        } else {        
+            cat("Selection method: ", x$method$select, "\n", sep="")
+            if (x$method$crit != "")
+                cat("Criterion: ", x$method$crit, "\n\n", sep = "")
+        
+            cat("Treated\n")
+            cat("******************************\n")
+            print(x$method$pval$treated, ...)        
+            cat("\nNontreated\n")
+            cat("*********************************\n")
+            print(x$method$pval$nontreated, ...)
         }
     }
     invisible()
@@ -672,6 +691,64 @@ print.summary.cslse <- function (x, digits = 4,
 
 ## The BSLSE
 
+pvalSLSE <- function(model, ...)
+{
+    UseMethod("pvalSLSE")
+}
+
+pvalSLSE.cslseModel <- function(model, method=c("BSLSE", "FSLSE", "SLSE"),
+                                vcov.=vcovHC, ...)
+{
+    method <- match.arg(method)
+    if (method == "SLSE")
+    {
+        pv <- list(p0=sapply(model$knots0, function(ki) length(ki)+1),
+                   p1=sapply(model$knots1, function(ki) length(ki)+1),
+                   pval0=lapply(length(model$knots0), function(i) NULL),
+                   pval1=lapply(length(model$knots1), function(i) NULL))
+    } else {
+        pv <- if (method=="BSLSE")  .getPvalB(model, vcov., ...)
+              else .getPvalF(model, vcov., ...)
+    }
+    ans <- list(treated=list(pval=pv$pval1, knots=model$knots1, p=pv$p1,
+                              method=method),
+                nontreated=list(pval=pv$pval0, knots=model$knots0, p=pv$p0,
+                                 method=method))
+    class(ans$treated) <-  class(ans$nontreated) <- "slsePval"
+    ans
+}
+
+print.slsePval <- function(x, ...)
+{
+    w <- sapply(x$knots, is.null)
+    selPW <- names(x$knots)[!w]
+    nonselPW <- names(x$knots)[w]
+    notApp <- if (length(nonselPW))
+              {
+                  paste(nonselPW, collapse = ", ", sep = "")
+              } else {
+                  "None"
+              }
+    cat("\nCovariates with no knots:\n")
+    cat("\t", notApp, "\n", sep = "")
+    cat("\nCovariates with knots:\n")
+    if (length(selPW) == 0)
+    {
+        cat("None\n")
+    } else {
+        for (ki in selPW)
+        {
+            cat(ki,":\n")
+            pvi <- rbind(x$knots[[ki]], x$pval[[ki]])
+            rownames(pvi) <- c("Knots", "P-Value")[1:nrow(pvi)]
+            print.default(pvi, quote=FALSE, ...)
+            cat("\n")
+        }
+    }
+    invisible()
+}
+    
+
 .getPvalB <- function (model, vcov.=vcovHC, ...) 
 {
     data2 <- model$data
@@ -697,24 +774,25 @@ print.summary.cslse <- function (x, digits = 4,
 
 .selIC <- function (model, pvalRes, pvalT = NULL, crit)
 {
-    pval <- c(do.call("c", pvalRes$pval0), do.call("c", pvalRes$pval1))
+    pval <- c(do.call("c", pvalRes$nontreated$pval),
+              do.call("c", pvalRes$treated$pval))
     pval_sort <- sort(pval)    
     q <- length(pval)
-    p <- sum(pvalRes$p0) + sum(pvalRes$p1)
-    w0 <- lapply(1:length(pvalRes$pval0), function(i) NULL)
-    w1 <- lapply(1:length(pvalRes$pval1), function(i) NULL)
+    p <- sum(pvalRes$treated$p) + sum(pvalRes$nontreated$p)
+    w0 <- lapply(1:length(pvalRes$nontreated$pval), function(i) NULL)
+    w1 <- lapply(1:length(pvalRes$treated$pval), function(i) NULL)
     res0 <- estSLSE(model, w0, w1)
     icV <- ic_seq0 <- get(crit)(res0$lm.out)   
     for (i in 1:q) {
-        w0 <- lapply(1:length(pvalRes$pval0), function(j)
+        w0 <- lapply(1:length(pvalRes$nontreated$pval), function(j)
         {
-            w <- which(pvalRes$pval0[[j]] <= pval_sort[i])
+            w <- which(pvalRes$nontreated$pval[[j]] <= pval_sort[i])
             if (length(w)==0)
                 w <- NULL
             w})
-        w1 <- lapply(1:length(pvalRes$pval1), function(j)
+        w1 <- lapply(1:length(pvalRes$treated$pval), function(j)
         {
-            w <- which(pvalRes$pval1[[j]] <= pval_sort[i])
+            w <- which(pvalRes$treated$pval[[j]] <= pval_sort[i])
             if (length(w)==0)
                 w <- NULL
             w})
@@ -729,24 +807,24 @@ print.summary.cslse <- function (x, digits = 4,
     res0$model
 }
 
-
 .selPVT <- function (model, pvalRes, pvalT = function(p) 1/log(p),
                      crit=NULL, ...)
 {
-    pval <- c(do.call("c", pvalRes$pval0), do.call("c", pvalRes$pval1))
+    pval <- c(do.call("c", pvalRes$nontreated$pval),
+              do.call("c", pvalRes$treated$pval))
     n <- nrow(model$data)
     q <- length(pval)
-    p <- mean(c(pvalRes$p0,pvalRes$p1))
+    p <- mean(c(pvalRes$nontreated$p,pvalRes$treated$p))
     crit <- pvalT(p)
     w0 <- lapply(1:length(model$knots0), function(i)
     {
-        w <- which(pvalRes$pval0[[i]]<crit)
+        w <- which(pvalRes$nontreated$pval[[i]]<crit)
         if (length(w) == 0)
             w <- NULL
         w})
     w1 <- lapply(1:length(model$knots1), function(i)
     {
-        w <- which(pvalRes$pval1[[i]]<crit)
+        w <- which(pvalRes$treated$pval[[i]]<crit)
         if (length(w) == 0)
             w <- NULL
         w})
@@ -772,10 +850,7 @@ selSLSE.cslseModel <- function(model, selType=c("BSLSE", "FSLSE"),
                } else {
                    .selIC
                }
-    if (selType == "BSLSE")
-        pval <- .getPvalB(model, vcov., ...)
-    else
-        pval <- .getPvalF(model, vcov., ...)
+    pval <- pvalSLSE(model, selType, vcov., ...)
     model <- critFct(model, pval, pvalT, selCrit)
     model$method <- list(select=selType, crit=selCrit, pval=pval)
     model
@@ -864,6 +939,8 @@ estSLSE.cslseModel <- function(model, w0=NULL, w1=NULL, ...)
         names(ans) <- NULL
         ans})
 }
+
+## The FSLSE
 
 .getPvalF <- function (model, vcov.=vcovHC, ...) 
 {
