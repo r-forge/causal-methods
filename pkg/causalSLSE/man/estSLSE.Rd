@@ -10,7 +10,7 @@ generates the basis functions based on the knots specified in the model
 and estimates it by least squares.
 }
 \usage{
-\method{estSLSE}{cslseModel}(model, w0=NULL, w1=NULL)
+\method{estSLSE}{cslseModel}(model, w0=NULL, w1=NULL, ...)
 }
 \arguments{
   \item{model}{A model of class \code{cslseModel} created by the
@@ -21,6 +21,8 @@ and estimates it by least squares.
   \item{w1}{An optional list of integers to select the knots for the
     treated group from the list of knots specified by the model. By
     default, the knots from the model are used.}
+  \item{...}{Additional arguments to pass to other methods. Currently
+    not used.}
 }
 
 \examples{

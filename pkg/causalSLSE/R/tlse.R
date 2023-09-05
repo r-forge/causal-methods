@@ -816,7 +816,7 @@ estSLSE <- function(model, ...)
     UseMethod("estSLSE")
 }
 
-estSLSE.cslseModel <- function(model, w0=NULL, w1=NULL)
+estSLSE.cslseModel <- function(model, w0=NULL, w1=NULL, ...)
 {
     if (!inherits(model, "cslseModel"))
         stop("model must be an object of class cslseModel")
