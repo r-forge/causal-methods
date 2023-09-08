@@ -1,7 +1,7 @@
 useDynLib(causalSLSE, .registration = TRUE, .fixes="F_")
 importFrom(stats, quantile, lm, predict, coef, vcov, printCoefmat, cov, pnorm,
            as.formula, model.frame, model.matrix, delete.response, formula, 
-           na.omit, pf, qnorm, residuals, terms, var, fitted, nobs, .getXlevels)
+           na.omit, pf, qnorm, residuals, terms, var, fitted, nobs, .getXlevels, update)
 importFrom(graphics, grid, legend, matplot)
 importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)
@@ -11,7 +11,7 @@ export(cslseModel, print.cslseModel, causalSLSE, print.cslse,
        summary.cslse, selSLSE, selSLSE.cslseModel, 
        print.summary.cslse, plot.slseFit,
        extract, predict.slseFit, estSLSE, estSLSE.cslseModel,
-       print.slseFit,
+       print.slseFit, 
        summary.slseFit, print.summary.slseFit, causalSLSE, causalSLSE.cslseModel,
        causalSLSE.slseFit, causalSLSE.formula)
  
@@ -23,8 +23,9 @@ S3method(causalSLSE, formula)
 S3method(selSLSE, cslseModel)
 S3method(estSLSE, cslseModel)
 S3method(pvalSLSE, cslseModel)
-S3method(print, slsePval)
+S3method(update, cslseKnots)
 S3method(print, cslseModel)
+S3method(print, cslseKnots)
 S3method(print, cslse)
 S3method(print, summary.cslse)
 S3method(print, summary.slseFit)

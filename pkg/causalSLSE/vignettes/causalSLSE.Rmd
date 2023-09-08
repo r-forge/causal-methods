@@ -1,7 +1,6 @@
 ---
 title: "Semiparametric Least Squares Inference for Causal Effects with R"
-author: "Pierre Chausse^[University of Waterloo, pchausse@uwaterloo.ca], Mihai Giurcanu^[University of Chicago, giurcanu@uchicago.edu], Marinela Capanu^[Memorial
-Sloan Kettering Cancer Center, capanum@mskcc.org], George Luta^[Georgetown University, George.Luta@georgetown.edu]"
+author: "Pierre Chausse^[University of Waterloo, pchausse@uwaterloo.ca], Mihai Giurcanu^[University of Chicago, giurcanu@uchicago.edu], Marinela Capanu^[Memorial Sloan Kettering Cancer Center, capanum@mskcc.org], George Luta^[Georgetown University, George.Luta@georgetown.edu]"
 date: ""
 bibliography: slse.bib 
 output:
@@ -207,13 +206,15 @@ cannot exceed 1.
 
 We can inspect the knots of the current model as follows. Note that
 each object in the package is S3-class, so the elements can be
-accessed using the operator $. The elements `knots0` and `knots1` are
-the list of knots for the nontreated and treated groups,
-respectively. For example, in our case the initial knots for the
-treated are:
+accessed using the operator $. The element `knots` is an object of
+class `cslseKnots` and it contains all knots for the treated and
+nontreated. Its print method shows all knots for both groups. To print
+the knots of a specific group, we just specify which one we want to
+see. For example, to print the knots of the treated we proceed as
+follows:
 
 ```{r}
-model1$knots1
+model1$knots$treated
 ```
 
 We see that it is set to `NULL` for `married`, because it is a binary
@@ -256,7 +257,7 @@ categorical variable `X2` with 3 levels, an ordinal variable `X3` with
 ```{r}
 data(simDat4)
 model2 <- cslseModel(Y ~ Z | ~ X1 + X2 + X3 + X4, data = simDat4)
-model2$knots0
+model2$knots$nontreated
 ```
 
 Character-type variables are automatically converted into factors. It
@@ -270,16 +271,17 @@ cannot be selected.
 
 ### Setting the knots manually
 
-The user has control over the selection of knots through the arguments
-`knots0` and `knots1`. When the arguments are missing (the default),
-all knots are set automatically as described above. One way to set the
-number of knots to 0 for all variables in a given group is to set the
-argument to `NULL`. For example, the number of knots is equal to 0 for
-all variables of the treated group using the following command:
+The user has control over the selection of knots through the argument
+`knots`. When the argument is missing (the default), all knots for
+both groups are set automatically as described above. One way to set
+the number of knots to 0 for all variables in a given group is to set
+the argument to `NULL`. For example, the number of knots is equal to 0
+for all variables of the treated group using the following command:
 
 ```{r}
+selK <- list(treated=NULL)
 cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
-         knots1 = NULL)
+         knots = selK)
 ```
 
 Notice that the selection method is defined as "User Based" whenever
@@ -312,15 +314,15 @@ knots.
   to the `print` method to print the knots.
 
 ```{r}
+selK <- list(nontreated=list(NA, c(1000,5000,10000), NULL, NA))
 model <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
-                  knots0 = list(NA, c(1000,5000,10000), NULL, NA))
-```
-
-\newpage
-
-```{r}
+                    knots = selK)
 print(model, which = "selKnots")
 ```
+
+Note that this is equivalent to printing the knots using the command
+`print(model$knots)`.
+
 
 2. A named list of length equal to the number of covariates. In that
   case, the order of the list of variables does not matter. The
@@ -343,11 +345,11 @@ print(model, which = "selKnots")
   not matter.
 
 ```{r}
-knots <- list(married = NA, ed = NULL, 'age:ed' = NULL, 
-              re75 = c(1000,5000,10000), age = NA)
+selK <- list(nontreated=list(married = NA, ed = NULL, 'age:ed' = NULL, 
+                             re75 = c(1000,5000,10000), age = NA))
 model <- cslseModel(re78 ~ treat | ~ age * ed + re75 + married, data = nsw,
-                  knots0 = knots)
-model$knots0
+                  knots = selK)
+model$knots$nontreated
 ```
 
 3. A named list of length strictly less than the number of
@@ -362,10 +364,10 @@ model$knots0
   model from the previous example as follows:
 
 ```{r}
-knots <- list(ed = NULL, 'age:ed' = NULL, re75 = c(1000,5000,10000))
+selK <- list(nontreated=list(ed = NULL, 'age:ed' = NULL, re75 = c(1000,5000,10000)))
 model <- cslseModel(re78 ~ treat | ~ age * ed + re75 + married, data = nsw,
-                  knots0 = knots)
-model$knots0
+                    knots = selK)
+model$knots$nontreated
 ```
 
 Note that the previous case offers an easy way of setting the number
@@ -374,9 +376,11 @@ to add more interaction terms and set the knots to 0 for all of
 them. We can proceed as follows. 
 
 ```{r}
-knots <- list('age:ed' = NULL, 'ed:re75' = NULL, 'ed:married' = NULL)
+selK <- list()
+selK$treated <- selK$nontreated <- list('age:ed' = NULL, 'ed:re75' = NULL,
+                                        'ed:married' = NULL)
 model <- cslseModel(re78 ~ treat | ~ age * ed + re75 * ed + married * ed, data = nsw,
-                  knots0 = knots, knots1 = knots)
+                    knots = selK)
 model
 ```
 
@@ -388,7 +392,7 @@ knots for `ed:black`.
 
 ```{r}
 model <- cslseModel(re78 ~ treat | ~ age + ed * black, data = nsw)         
-model$knots0[["ed:black"]]
+model$knots$nontreated[["ed:black"]]
 ```
 
 
@@ -411,12 +415,15 @@ needed. The arguments are:
 
 - `model`: A model created by the function `cslseModel`.
 
-- `w0` and `w1`: lists of integers to select knots for the nontreated and
-  treated respectively. For example, suppose we have 2
-  covariates with 5 knots each. If we want to estimate the model with
-  only the first knot for the first covariate and knots 3 and 5 for
-  the second, we set `w0` to `list(1L,c(3L, 5L))`. By default they are
-  set to `NULL` and all the knots from the model are used.
+- `selKnots`: As for the `knots` argument of `cslseModel`, it is a
+  list of one or two elements, one for each group. Each element is a
+  list of integers to select knots for the associated group. For
+  example, suppose we have 2 covariates with 5 knots each. If we want
+  to estimate the model with only the first knot for the first
+  covariate and knots 3 and 5 for the second for the treated and all
+  knots for the nontreated, we set `selKnots` to
+  `list(treated=list(1L,c(3L, 5L)))`. By default it is set to `NULL`
+  and all the knots from the model are used.
 
 We illustrate the use of `estSLSE` with a simple model containing 2
 covariates and one knot per variable.

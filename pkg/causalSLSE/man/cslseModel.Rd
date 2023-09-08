@@ -11,7 +11,7 @@ polynomial.
 }
 \usage{
 cslseModel(form, data, nbasis = function(n) n^0.3, 
-         knots0, knots1)
+         knots)
 }
 \arguments{
   \item{form}{A formula for the regression (outcome versus treatment
@@ -21,11 +21,12 @@ cslseModel(form, data, nbasis = function(n) n^0.3,
   \item{nbasis}{A function to determined the number of bases. It has to
     be a function of one argument, the sample size. To fix it, simply
     input a function that returns an integer.}
-  \item{knots0}{A list of knots for the control group. The length must
-    be equal to the number of covariates. The number of knots is 0 if an
-    element of the list is set to \code{NULL}. If missing, the knots are
-  automatically generated.}
-  \item{knots1}{A list of knots for the control group. See \code{knots0}.}  
+  \item{knots}{A list of knots for the treated and nontreated
+    groups. The list must be named using the group names. Each element
+    of the list is also a list  of length  equal to the number of
+    covariates. The choice for each covariate is NULL for no knots or
+    numeric to provide specific values. If missing, the knots are 
+    automatically generated.}
 }
 
 \examples{

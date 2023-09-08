@@ -23,7 +23,7 @@ least squares method. It returns an object of class
 \method{causalSLSE}{slseFit}(object, seType=c("analytic", "lm"),
        causal = c("ALL","ACT","ACE","ACN"), vcov.=vcovHC, ...)
 \method{causalSLSE}{formula}(object, data, nbasis=function(n) n^0.3,
-                             knots0, knots1, 
+                             knots, 
                              selType=c("SLSE","BSLSE","FSLSE"),
                              selCrit = c("AIC", "BIC", "PVT"),
                              causal = c("ALL","ACT","ACE","ACN"),
@@ -39,11 +39,12 @@ least squares method. It returns an object of class
   \item{nbasis}{A function to determined the number of bases. It has to
     be a function of one argument, the sample size. To fix it, simply
     input a function that returns an integer.}
-  \item{knots0}{A list of knots for the control group. The length must
-    be equal to the number of covariates. The number of knots is 0 if an
-    element of the list is set to \code{NULL}. If missing, the knots are
-  automatically generated.}
-  \item{knots1}{A list of knots for the control group. See \code{knots0}.}  
+  \item{knots}{A list of knots for the treated and nontreated
+    groups. The list must be named using the group names. Each element
+    of the list is also a list  of length  equal to the number of
+    covariates. The choice for each covariate is NULL for no knots or
+    numeric to provide specific values. If missing, the knots are 
+    automatically generated.}
   \item{selType}{The method for selecting the piecewise polynomial
     knots. By default (SLSE), all knots from the model are kept.}
   \item{selCrit}{The criterion to select the piecewise polynomial knots.}
