@@ -1,7 +1,7 @@
 \name{cslseModel}
 \alias{cslseModel}
 \title{
-Thresholding Least Squares estimator model
+Semiparametric Least Squares Estimator model
 }
 \description{
 This function creates an object of class \code{slseModel}. The model

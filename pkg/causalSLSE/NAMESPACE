@@ -13,7 +13,8 @@ export(cslseModel, print.cslseModel, causalSLSE, print.cslse,
        extract, predict.slseFit, estSLSE, estSLSE.cslseModel,
        print.slseFit, 
        summary.slseFit, print.summary.slseFit, causalSLSE, causalSLSE.cslseModel,
-       causalSLSE.slseFit, causalSLSE.formula)
+       causalSLSE.slseFit, causalSLSE.formula,
+       slseKnots, cslseKnots, print.slseKnots, print.cslseKnots)
  
 S3method(summary, cslse)
 S3method(summary, slseFit)
