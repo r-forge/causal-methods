@@ -9,14 +9,14 @@
 Print methods for different objects from the package.
 }
 \usage{
-\method{print}{cslseModel}(x, which=c("Model", "selKnots", "Pvalues"), 
-                            ...)
-\method{print}{cslse}(x, ...)
-\method{print}{slseFit}(x, ...)
-\method{print}{summary.cslse}(x, digits = 4,
+\method{print}{cslseModel}(x, which=c("Model", "selKnots", "Pvalues"),
+                           digits = max(3L, getOption("digits") - 3L), ...)
+\method{print}{cslse}(x, digits = max(3L, getOption("digits") - 3L), ...)
+\method{print}{slseFit}(x, digits = max(3L, getOption("digits") - 3L), ...)
+\method{print}{summary.cslse}(x, digits = max(3L, getOption("digits") - 3L),
                               signif.stars = getOption("show.signif.stars"),
                               beta=FALSE, knots = FALSE,...)
-\method{print}{summary.slseFit}(x, digits = 4,
+\method{print}{summary.slseFit}(x, digits = max(3L, getOption("digits") - 3L),
                                 signif.stars = getOption("show.signif.stars"),
                                 ...)
 }

@@ -23,6 +23,15 @@ header-includes:
 
 # Introduction
 
+```{r, include=FALSE}
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  paste0("\n \\", "footnotesize","\n\n", x, "\n\n \\normalsize")
+})
+knitr::opts_chunk$set(comment="")
+```
+
 This document presents the `causalSLSE` package describing the
 functions implemented in the package. It is intended for users
 interested in the details about the methods presented in @tlse23
@@ -207,11 +216,13 @@ cannot exceed 1.
 We can inspect the knots of the current model as follows. Note that
 each object in the package is S3-class, so the elements can be
 accessed using the operator $. The element `knots` is an object of
-class `cslseKnots` and it contains all knots for the treated and
-nontreated. Its print method shows all knots for both groups. To print
-the knots of a specific group, we just specify which one we want to
-see. For example, to print the knots of the treated we proceed as
-follows:
+class `cslseKnots` and a list of objects of class `slseKnots`. 
+
+it
+contains all knots for the treated and nontreated. Its print method
+shows all knots for both groups. To print the knots of a specific
+group, just specify which one we want to see. For example, to print
+the knots of the treated we proceed as follows:
 
 ```{r}
 model1$knots$treated
@@ -826,18 +837,23 @@ The function returns a model of class `cslseModel` with the optimal
 selection of knots. For example, we can compare the starting knots of
 `model1`, with the model selected by the default arguments.
 
-\footnotesize
 ```{r}
 print(model1, which = "selKnots")
 model2 <- selSLSE(model1)
 print(model2,  which = "selKnots")
 ```
-\normalsize
 
 For example, the BSLSE-AIC method has removed all knots from `re75`
-for the treated and kept two knots for the nontreated. The
-print method indicates which method was used to select the knots. In
-the following example, we see BSLSE as selection method and BIC as
+for the treated and kept two knots for the nontreated. The print
+method indicates which method was used to select the knots. It is
+possible to recover the p-values of all original knots by setting the
+argument `which` to `Pvalue`.
+
+```{r}
+print(model2, which="Pvalues")
+```
+
+In the following example, we see BSLSE as selection method and BIC as
 criterion. Note that the BIC selects 0 knots for all covariates.
 
 ```{r}
@@ -961,7 +977,6 @@ texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
 ```
 
 \begin{center}
-\footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 library(texreg)
 c1 <- causalSLSE(fit1)
@@ -971,7 +986,6 @@ c2 <- causalSLSE(fit2)
 c3 <- causalSLSE(fit3)
 texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
 ```
-\normalsize
 \end{center}
 
 The option `table=FALSE`, from the `texreg` package, is used to remove
@@ -1003,12 +1017,10 @@ texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE,
 ```
 
 \begin{center}
-\footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE,
        which="ACE-ACT", include.adjrsquared=FALSE)
 ```
-\normalsize
 \end{center}
 
 ## The `causalSLSE` method for `cslseModel` objects
@@ -1044,14 +1056,12 @@ texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
 ```
 
 \begin{center}
-\footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(model1, selType="SLSE")
 c2 <- causalSLSE(model1, selType="BSLSE")
 c3 <- causalSLSE(model1, selType="FSLSE")
 texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
 ```
-\normalsize
 \end{center}
 
 ## The `causalSLSE` method for `formula` objects
@@ -1074,14 +1084,12 @@ texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
 ```
 
 \begin{center}
-\footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(model1, selType = "SLSE")
 c2 <- causalSLSE(model1, selType = "BSLSE")
 c3 <- causalSLSE(model1, selType = "FSLSE")
 texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table = FALSE, digits = 4)
 ```
-\normalsize
 \end{center}
 
 Note that this method calls `cslseModel`, `selSLSE`, `estSLSE` and the
@@ -1126,14 +1134,12 @@ texreg(list(SLSE = c1, BSLSE = c2, FSLSE = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
-\footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
 c2 <- causalSLSE(mod, selType = "BSLSE", selCrit = "BIC")
 c3 <- causalSLSE(mod, selType = "FSLSE", selCrit = "BIC")
 texreg(list(SLSE = c1, BSLSE = c2, FSLSE = c3), table = FALSE, digits = 4)
 ```
-\normalsize
 \end{center}
 
 We see that both selection methods choose to assign 0 knots for the
@@ -1193,14 +1199,12 @@ texreg(list(SLSE = c1, BSLSE.BIC = c2, BSLSE.AIC = c3), table = FALSE, digits = 
 ```
 
 \begin{center}
-\footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
 c2 <- causalSLSE(mod, selType = "BSLSE", selCrit = "BIC")
 c3 <- causalSLSE(mod, selType = "BSLSE", selCrit = "AIC")
 texreg(list(SLSE = c1, BSLSE.BIC = c2, BSLSE.AIC = c3), table = FALSE, digits = 4)
 ```
-\normalsize
 \end{center}
 
 The following shows the fit of BSLSE-AIC with the true $f_1(x)$ and
@@ -1249,14 +1253,12 @@ texreg(list(SLSE = c1, FSLSE.BIC = c2, FSLSE.AIC = c3), table = FALSE, digits = 
 ```
 
 \begin{center}
-\footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
 c2 <- causalSLSE(mod, selType = "FSLSE", selCrit = "BIC")
 c3 <- causalSLSE(mod, selType = "FSLSE", selCrit = "AIC")
 texreg(list(SLSE = c1, FSLSE.BIC = c2, FSLSE.AIC = c3), table = FALSE, digits = 4)
 ```
-\normalsize
 \end{center}
 
 To illustrate the method, since we have two covariates, we need to
@@ -1343,14 +1345,12 @@ texreg(list(SLSE = c1, FSLSE.BIC = c2, FSLSE.AIC = c3), table = FALSE, digits = 
 ```
 
 \begin{center}
-\footnotesize
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(mod, selType="SLSE")
 c2 <- causalSLSE(mod, selType="FSLSE", selCrit="BIC")
 c3 <- causalSLSE(mod, selType="FSLSE", selCrit="AIC")
 texreg(list(SLSE=c1, FSLSE.BIC=c2, FSLSE.AIC=c3), table=FALSE, digits=4)
 ```
-\normalsize
 \end{center}
 
 In the case of multiple covariates with interactions, the shape of the

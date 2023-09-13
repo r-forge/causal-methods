@@ -19,9 +19,9 @@ least squares method. It returns an object of class
                                causal = c("ALL","ACT","ACE","ACN"),
                                seType=c("analytic", "lm"),
                                pvalT = function(p) 1/log(p),
-                               vcov.=vcovHC, ...)
+                               vcov.=vcovHC, dfCorr=FALSE, ...)
 \method{causalSLSE}{slseFit}(object, seType=c("analytic", "lm"),
-       causal = c("ALL","ACT","ACE","ACN"), vcov.=vcovHC, ...)
+       causal = c("ALL","ACT","ACE","ACN"), vcov.=vcovHC, dfCorr=FALSE, ...)
 \method{causalSLSE}{formula}(object, data, nbasis=function(n) n^0.3,
                              knots, 
                              selType=c("SLSE","BSLSE","FSLSE"),
@@ -29,7 +29,7 @@ least squares method. It returns an object of class
                              causal = c("ALL","ACT","ACE","ACN"),
                              seType=c("analytic", "lm"),
                              pvalT = function(p) 1/log(p),
-                             vcov.=vcovHC, ...)
+                             vcov.=vcovHC, dfCorr=FALSE, ...)
 }
 \arguments{
   \item{object}{An object of class \code{cslseModel} created by the
@@ -58,6 +58,7 @@ least squares method. It returns an object of class
   \item{vcov.}{An alternative function to compute the covariance matrix
     of the least squares estimators. The default is the \code{vcovHC}
     method for \code{lm} objects.}
+  \item{dfCorr}{Should we correct the residuals for the degrees of freedom.}
   \item{...}{Additional arguments to pass to \code{vcov.}}
 }
 
