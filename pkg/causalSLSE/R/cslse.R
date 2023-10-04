@@ -16,13 +16,13 @@ slseKnots <- function(form, data, X, nbasis = function(n) n^0.3,
         X <- na.omit(X)
     }
     nameX <- colnames(X)
+    select <- ifelse(missing(knots), "Default", "User Based")        
     if (missing(knots))
     {
         knots <- as.list(rep(NA, length(nameX)))
         names(knots) <- nameX
     }
     knots <- .firstknots(nameX, knots)
-    select <- ifelse(missing(knots), "Default", "User Based")    
     knots <- lapply(1:ncol(X), function(i)
         setKnots(X[,i], 1:nrow(X), nbasis, knots[[i]]))
     names(knots) <- nameX
@@ -143,6 +143,10 @@ print.slseKnots <- function(x, which=c("selKnots", "Pvalues"),
 cslseKnots <- function (form, data, X, Z, nbasis = function(n) n^0.3, 
                         knots)
 {
+    select <- ifelse(missing(knots), "Default", "User Based")            
+    groups <- c("treated", "nontreated")
+    groupsi <- c(1,0)
+    names(groupsi) <- groups
     if (missing(form))
     {
         if (missing(Z) | missing(X))
@@ -173,44 +177,49 @@ cslseKnots <- function (form, data, X, Z, nbasis = function(n) n^0.3,
     if (!is.null(attr(na, "omit")))
         stop("Missing values in X and/or Z are not allowed")
     nameX <- colnames(X)
-    select <- ifelse(missing(knots), "Default", "User Based")
     if (missing(knots))
-    {
         knots <- list()
-        knots$treated <- knots$nontreated <- as.list(rep(NA, length(nameX)))
-        names(knots$treated) <- names(knots$nontreated) <- nameX
-    } else {
-        if (!is.list(knots))
-            stop("knots must be a list")
+    if (is.null(knots))
+    {
+        knots <- lapply(groups, function(gi) NULL)
+        names(knots) <- groups
+    }
+    if (!is.list(knots))
+        stop("knots must be a list")
+    if (length(knots))
+    {
         if (is.null(names(knots)))
             stop("knots must be a named list")
-        if (!all(names(knots) %in% c("treated", "nontreated")))
-            stop("The names of knots must be treated, nontreated or both")
-        if (is.null(knots$treated))
+        if (!all(names(knots) %in% groups))
+            stop(paste("The names of knots must be in: ",
+                       paste(groups, collapse=", ", sep=""), sep=""))
+    }
+    k <- list()
+    for (gi in groups)
+    {
+        if (!(gi %in% names(knots)))
         {
-            knots$treated <- as.list(rep(NA, length(nameX)))
-            names(knots$treated) <- nameX
-        }
-        if (is.null(knots$nontreated))
-        {
-            knots$nontreated <- as.list(rep(NA, length(nameX)))
-            names(knots$nontreated) <- nameX
+            k[[gi]] <- slseKnots(X=X[Z==groupsi[gi], , drop=FALSE],
+                                 nbasis=nbasis)
+        } else {
+            k[[gi]] <- slseKnots(X=X[Z==groupsi[gi], , drop=FALSE],
+                                 nbasis=nbasis, knots=knots[[gi]])
         }
     }
-    knots$treated <- slseKnots(X=X[Z==1, , drop=FALSE],
-                               nbasis=nbasis, knots=knots$treated)
-    knots$nontreated <- slseKnots(X=X[Z==0, , drop=FALSE],
-                                  nbasis=nbasis, knots=knots$nontreated)
-    attr(knots, "initSel") <- attr(knots, "curSel") <-
-        list(select=select, crit="")
-    class(knots) <- "cslseKnots"
-    knots    
+    class(k) <- "cslseKnots"
+    attr(k, "initSel") <- attr(k, "curSel") <-
+        list(select=select, crit="")    
+    k    
 }
 
-update.slseKnots <- function(object, selKnots=NULL, ...)
+update.slseKnots <- function(object, selKnots, ...)
 {
-    if (is.null(selKnots))
+    if (missing(selKnots))
         return(object)
+    if (is.null(selKnots))
+    {
+        selKnots <- lapply(object, function(ki) NULL)
+    }
     if (!is.list(selKnots))
         stop("selKnots must be a list")
     if (is.null(names(selKnots)))
@@ -218,51 +227,51 @@ update.slseKnots <- function(object, selKnots=NULL, ...)
     nameSel <- names(selKnots)
     if (any(duplicated(nameSel)))
         stop("selKnots has duplicated names")
-    if (length(nameSel) != length(object))
-        stop(paste("The length of the knots selection list",
-                   " does not match the number of covariates", sep=""))
-    mN <- match(names(object), nameSel)
-    if (any(is.na(mN)))
-        stop("Some names in selKnots do not match the names of the covariates")
-    selKnots <- selKnots[mN]
-    k <- lapply(1:length(selKnots), function(i) {
-        ki <- object[[i]]
-        wi <- selKnots[[i]]
-        if (is.null(ki))
-            return(NULL)
-        if (is.null(wi))
-            return(NULL)
-        if (any(is.na(wi)))
-            stop("The knots selection list cannot contain NAs")
-        if (!is.integer(wi))
-            stop("The knots selection list can only contain integers")
-        wi <- unique(wi)
-        if (any(wi<1) | any(wi>length(ki)))
-            stop("Knot selection out of bound.")
-        ki <- ki[wi]})
-    names(k) <- names(object)
+    if (!all(names(nameSel) %in% names(object)))
+        stop("Some names in selKnots are not in the slseKnots object")
+    k <- lapply(1:length(object), function(i) {
+        if (names(object)[i] %in% nameSel)
+        {
+            wi <- selKnots[[names(object)[i]]]
+            if (is.null(wi))
+                return(NULL)
+            if (any(is.na(wi)))
+                stop("The knots selection list cannot contain NAs")
+            if (!is.integer(wi))
+                stop("The knots selection list can only contain integers")
+            wi <- unique(wi)
+            if (any(wi<1) | any(wi>length(object[[i]])))
+                stop("Knot selection out of bound.")
+            object[[i]][wi]
+        } else {
+            object[[i]]
+        }})
+        names(k) <- names(object)
     attr(k, "curSel") <- list(select="Manual selection", crit="")
     attr(k, "initSel") <- attr(object, "initSel")
-    k    
+    class(k) <- "slseKnots"
+    k        
 }
 
-update.cslseKnots <- function(object, selKnots=NULL, ...)
+update.cslseKnots <- function(object, selKnots, ...)
 {
-    if (is.null(selKnots))
+    if (missing(selKnots))
         return(object)
+    if (is.null(selKnots))
+        selKnots <- list(treated=NULL, nontreated=NULL)
     if (!is.list(selKnots))
         stop("selKnots must be a list")
     if (is.null(names(selKnots)))
         stop("selKnots must be named")
     if (!all(names(selKnots) %in% names(object)))
         stop("The names of selKnots must be included in the group names of the knots")
-    if (all(sapply(selKnots, is.null)))
-        return(object)
     for (gi in names(selKnots))
     {
         object[[gi]] <- update(object[[gi]], selKnots[[gi]])        
         attr(object[[gi]], "curSel") <- list(select="Manual selection", crit="")
     }
+    if (any(names(selKnots) %in% names(object)))
+        attr(object, "curSel") <- list(select="Manual selection", crit="")    
     object
 }
 
@@ -346,7 +355,7 @@ print.cslseKnots <- function(x, which=c("selKnots", "Pvalues"),
 estSLSE <- function(model, ...)
     UseMethod("estSLSE")
        
-estSLSE.cslseModel <- function(model, selKnots=NULL, ...)
+estSLSE.cslseModel <- function(model, selKnots, ...)
 {
     model$knots <- update(model$knots, selKnots)
     data <- model$data
@@ -421,7 +430,7 @@ cslseModel <- function (form, data, nbasis = function(n) n^0.3,
     nameX <- colnames(X)
     nameY <- all.vars(formY)[1]
     nameZ <- colnames(Z)
-    knots <- cslseKnots(X=X, Z=Z, nbasis=nbasis, knots=knots)                 
+    knots <- cslseKnots(X=X, Z=Z, nbasis=nbasis, knots=knots)
     obj <- list(na=na, formY=formY, formX=formX, treated=nameZ, nameY=nameY,
                 knots=knots, data=data, nameX=nameX, xlevels=xlevels)
     class(obj) <- "cslseModel"
@@ -749,108 +758,9 @@ model.matrix.cslseModel <- function(object, ...)
         X <- X[, -1, drop = FALSE]
     X
 }
- 
-.analSe <- function(model, fit, X0, X1, beta0, beta1,
-                   causal=c("ACE", "ACT", "ACN", "ALL"), dfCorr=FALSE)
-{
-    causal <- match.arg(causal)
-    id0 <- model$data[[model$treated]]==0    
-    n <- nrow(model$data)
-    n0 <- sum(id0)
-    phat0 <- n0/n
-    e <- residuals(fit)    
-    if (dfCorr)
-    {
-        df0 <- sqrt(n0/(n0-ncol(X0)-1))
-        df1 <- sqrt((n-n0)/(n-n0-ncol(X1)-1))
-        e[id0] <- e[id0]*df0
-        e[!id0] <- e[!id0]*df1
-    }    
-    sig <- var(e[id0])/phat0 + var(e[!id0])/(1-phat0)
-    Sigma11 <- var(X1[!id0,,drop=FALSE])
-    Sigma00 <- var(X0[id0,,drop=FALSE])
-
-    if (causal %in% c("ACT","ALL"))
-    {
-        Ubar01 <- colMeans(X0[!id0,,drop=FALSE])
-        Sigma01 <- var(X0[!id0,,drop=FALSE])
-        Psi1 <- cov(X0[!id0,,drop=FALSE],X1[!id0,,drop=FALSE])  
-    }
-        
-    if (causal %in% c("ACN","ALL"))   
-    {
-        Ubar10 <- colMeans(X1[id0,,drop=FALSE])
-        Sigma10 <- var(X1[id0,,drop=FALSE])    
-        Psi0 <- cov(X1[id0,,drop=FALSE],X0[id0,,drop=FALSE])
-    }
-
-    if (causal %in% c("ACE","ALL"))
-    {
-        Ubar0 <- colMeans(X0)
-        Ubar1 <- colMeans(X1)    
-        Sigma1 <- var(X1)
-        Sigma0 <- var(X0)
-        Psi <- cov(X0,X1)
-    }
-    
-    if (causal != "ACN")       
-        {
-            Ubar00 <- colMeans(X0[id0,,drop=FALSE])
-            Omega00 <- var(scale(X0[id0,,drop=FALSE], scale=FALSE)*e[id0])
-            nu00 <- c(cov(e[id0],scale(X0[id0,,drop=FALSE],scale=FALSE)*e[id0]))
-        }
-
-    if (causal != "ACT")
-    {
-        Ubar11 <- colMeans(X1[!id0,,drop=FALSE])
-        Omega11 <- var(scale(X1[!id0,,drop=FALSE], scale=FALSE)*e[!id0])    
-        nu11 <- c(cov(e[!id0],scale(X1[!id0,,drop=FALSE],scale=FALSE)*e[!id0]))    
-    }
-
-    se <- c()
-    if (causal %in% c("ACE","ALL"))
-    {
-    se.ace <- sig +
-    (crossprod(Ubar00 - Ubar0,
-               solve(Sigma00) %*% Omega00 %*% solve(Sigma00, Ubar00 - Ubar0)) - 
-    2 * crossprod(Ubar00 - Ubar0, solve(Sigma00, nu00)))/phat0 + 
-    (crossprod(Ubar11 - Ubar1, 
-     solve(Sigma11) %*% Omega11 %*% solve(Sigma11, Ubar11 - Ubar1)) - 
-    2 * crossprod(Ubar11 - Ubar1, solve(Sigma11, nu11)))/(1-phat0) + 
-    crossprod(beta1, Sigma1 %*% beta1) +
-    crossprod(beta0, Sigma0 %*% beta0) - 
-    2 * crossprod(beta0, Psi %*% beta1)
-    se <- c(se, ACE=sqrt(se.ace/n))
-    }
-
-    if (causal %in% c("ACT","ALL"))
-    {  
-    se.act <- sig + 
-    (crossprod(Ubar00 - Ubar01, 
-               solve(Sigma00) %*% Omega00 %*% solve(Sigma00, Ubar00 - Ubar01)) - 
-     2 * crossprod(Ubar00 - Ubar01, solve(Sigma00, nu00)))/phat0 +
-    (crossprod(beta1, Sigma11 %*% beta1) +
-     crossprod(beta0, Sigma01 %*% beta0) - 
-     2 * crossprod(beta0, Psi1 %*% beta1))/(1-phat0)
-    se <- c(se, ACT=sqrt(se.act/n))    
-    }
-
-    if (causal %in% c("ACN","ALL"))
-    {  
-    se.acn <- sig + 
-    (crossprod(Ubar10 - Ubar11, 
-               solve(Sigma11) %*% Omega11 %*% solve(Sigma11, Ubar10 - Ubar11)) - 
-     2 * crossprod(Ubar10 - Ubar11, solve(Sigma11, nu11)))/(1-phat0) +
-        (crossprod(beta1, Sigma10 %*% beta1) +
-         crossprod(beta0, Sigma00 %*% beta0) - 
-    2 * crossprod(beta1, Psi0 %*% beta0))/phat0
-    se <- c(se, ACN=sqrt(se.acn/n))        
-    }
-    se
-}                      
 
 .causali <- function(model, beta, vcov, X0, X1,
-                     beta0, beta1, causal, islm=TRUE)
+                     beta0, beta1, causal, e)
 {
     Z <- model$data[[model$treated]]
     id <- switch(causal,
@@ -858,32 +768,38 @@ model.matrix.cslseModel <- function(object, ...)
                  ACT=Z==1,
                  ACN=Z==0)
     n <- sum(id)
+    X <- cbind(1-Z, Z, X0*(1-Z), X1*Z)
+    SigmaX <- crossprod(X)
     X0 <- X0[id,, drop = FALSE]
     X1 <- X1[id,, drop = FALSE]
     Xbar0 <- colMeans(X0)
     Xbar1 <- colMeans(X1)
     est <- c(beta[2] - beta[1] + sum(beta1*Xbar1) - sum(beta0*Xbar0))
-    if (!islm)
-        return(est)
     vcovXf0 <- cov(X0)
     vcovXf1 <- cov(X1)
     vcovXf01 <- cov(X0, X1)
     Dvec <- c(-1, 1, -Xbar0, Xbar1)
+    e <- e[id]
+    X <- X[id,,drop=FALSE]
+    X1 <- c(scale(X1, scale=FALSE)%*%beta1)
+    X0 <- c(scale(X0, scale=FALSE)%*%beta0)
+    tmp2 <- c(e*X%*%solve(SigmaX, Dvec))
+    addT <- 2*mean(X1*tmp2) - 2*mean(X0*tmp2)
     se <- (sum(Dvec*c(crossprod(vcov, Dvec))) +
            sum(beta0*c(crossprod(vcovXf0, beta0)))/n +
            sum(beta1*c(crossprod(vcovXf1, beta1)))/n -
-           2 * c(beta0 %*% vcovXf01 %*% beta1)/n)^0.5
+           2 * c(beta0 %*% vcovXf01 %*% beta1)/n +
+           2*mean(X1*tmp2) -
+           2*mean(X0*tmp2))^0.5
     ans <- c(est, se)
     names(ans) <- c("est","se")
     ans
 }
 
 .causal <- function(model, fit, vcov, X0, X1,
-                    causal=c("ACE", "ACT", "ACN", "ALL"),
-                    type=c("analytic","lm"), dfCorr=FALSE)
+                    causal=c("ACE", "ACT", "ACN", "ALL"))
 {
     causal <- match.arg(causal)
-    type <- match.arg(type)
     p0 <- ncol(X0)
     p1 <- ncol(X1)
     beta <- coef(fit)
@@ -895,27 +811,9 @@ model.matrix.cslseModel <- function(object, ...)
     beta1 <- na.omit(beta1)
     if (length(notNA0))  X0 <- X0[, notNA0, drop=FALSE]
     if (length(notNA1))  X1 <- X1[, notNA1, drop=FALSE]
-    if (type == "lm")
-    {
-        if (causal == "ALL") causal <- c("ACE","ACT","ACN")                
-        ans <- lapply(causal, function(ci)
-            .causali(model, beta, vcov, X0, X1,
-                     beta0, beta1, ci, TRUE))
-    } else {
-        se <- .analSe(model, fit, X0, X1, beta0, beta1,
-                     causal, dfCorr)
-        if (causal == "ALL") causal <- c("ACE","ACT","ACN")
-        ans <- lapply(1:length(causal), function(i)
-        {
-            est <- .causali(model, beta, vcov, X0, X1,
-                            beta0, beta1, causal[i], FALSE)
-            sei  <- se[causal[i]]
-            est <- c(est, sei)
-            names(est) <- NULL
-            names(est) <- c("est","se")
-            est
-        })
-    }
+    if (causal == "ALL") causal <- c("ACE","ACT","ACN")                
+    ans <- lapply(causal, function(ci)
+        .causali(model, beta, vcov, X0, X1, beta0, beta1, ci, residuals(fit)))
     names(ans) <- causal
     ans
 }
@@ -929,12 +827,10 @@ causalSLSE.cslseModel <- function(object,
                                   selType=c("SLSE","BSLSE","FSLSE"),
                                   selCrit = c("AIC", "BIC", "PVT"),
                                   causal = c("ALL","ACT","ACE","ACN"),
-                                  seType=c("analytic", "lm"),
                                   pvalT = function(p) 1/log(p),
-                                  vcov.=vcovHC, dfCorr=FALSE, ...)
+                                  vcov.=vcovHC, ...)
 {
     selType <- match.arg(selType)
-    seType <- match.arg(seType)
     causal <- match.arg(causal)
     selCrit <- match.arg(selCrit)
     if (selType != "SLSE")
@@ -951,7 +847,7 @@ causalSLSE.cslseModel <- function(object,
                             collapse = ", "), "\n", sep = ""))
     X0 <- multiSplines(object, "nontreated", "all")
     X1 <- multiSplines(object, "treated", "all")
-    ans <- .causal(object, res$lm.out, v, X0, X1, causal, seType, dfCorr)
+    ans <- .causal(object, res$lm.out, v, X0, X1, causal)
     ans <- c(ans, 
              list(beta = beta, se.beta = se.beta, lm.out = res$lm.out, 
                   model=object))
@@ -959,11 +855,40 @@ causalSLSE.cslseModel <- function(object,
     ans    
 }
 
-causalSLSE.slseFit <- function(object, seType=c("analytic", "lm"),
-                               causal = c("ALL","ACT","ACE","ACN"),
-                               vcov.=vcovHC, dfCorr=FALSE, ...)
+cslseSE <- function(object, vcov.=vcovHC, ...)    
 {
-    seType <- match.arg(seType)
+    if(!inherits(object, "cslse"))
+        stop("object must be of class cslse")
+    causal <- c("ACE","ACT","ACN")
+    causal <- causal[which(causal %in% names(object))]
+    if (length(causal)>1)
+        causal <- "ALL"
+    X0 <- multiSplines(object$model, "nontreated", "all")
+    X1 <- multiSplines(object$model, "treated", "all")
+    p0 <- ncol(X0)
+    p1 <- ncol(X1)
+    beta <- coef(object$lm.out)
+    beta0 <- beta[3:(p0 + 2)]
+    beta1 <- beta[(p0 + 3):(p0 + p1 + 2)]
+    notNA0 <- !is.na(beta0)
+    notNA1 <- !is.na(beta1)
+    beta0 <- na.omit(beta0)
+    beta1 <- na.omit(beta1)
+    if (length(notNA0))  X0 <- X0[, notNA0, drop=FALSE]
+    if (length(notNA1))  X1 <- X1[, notNA1, drop=FALSE]
+    if ("ALL" %in% causal)
+        causal <- c("ACE","ACT","ACN")
+    vcov <- vcov.(object$lm.out, ...)
+    se <- sapply(causal, function(ci)
+        .causali(object$model, beta, vcov, X0, X1,
+                 beta0, beta1, ci, residuals(object$lm.out))["se"])
+    names(se) <- causal   
+    se
+}
+
+causalSLSE.slseFit <- function(object, causal = c("ALL","ACT","ACE","ACN"),
+                               vcov.=vcovHC, ...)
+{
     causal <- match.arg(causal)
     beta <- coef(object$lm.out)
     v <- vcov.(object$lm.out, ...)
@@ -976,7 +901,7 @@ causalSLSE.slseFit <- function(object, seType=c("analytic", "lm"),
                             collapse = ", "), "\n", sep = ""))
     X0 <- multiSplines(object$model, "nontreated", "all")
     X1 <- multiSplines(object$model, "treated", "all")
-    ans <- .causal(object$model, object$lm.out, v, X0, X1, causal, seType, dfCorr)
+    ans <- .causal(object$model, object$lm.out, v, X0, X1, causal)
     ans <- c(ans, 
              list(beta = beta, se.beta = se.beta, lm.out = object$lm.out, 
                   model=object$model))
@@ -1028,18 +953,16 @@ causalSLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
                                selType=c("SLSE","BSLSE","FSLSE"),
                                selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
-                               seType=c("analytic", "lm"),
                                pvalT = function(p) 1/log(p),
-                               vcov.=vcovHC, dfCorr=FALSE, ...)
+                               vcov.=vcovHC, ...)
 {
     model <- cslseModel(object, data, nbasis,  knots)
     selType <- match.arg(selType)
-    seType <- match.arg(seType)
     causal <- match.arg(causal)
     selCrit <- match.arg(selCrit)
     causalSLSE(object=model, selType = selType, selCrit = selCrit,
-               causal = causal, seType = seType, pvalT =  pvalT,
-               vcov. = vcov., dfCorr = dfCorr, ...)    
+               causal = causal, pvalT =  pvalT,
+               vcov. = vcov., ...)    
 }
 
 print.slseFit <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
@@ -1399,97 +1322,6 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
     }
     list(data=data, formX=formX, xlevels=xlevels)
 }
-
-plotOLD <- function (x, y, which = y, interval = c("none", "confidence"),
-                          counterfactual=FALSE,
-                          level = 0.95, newdata = NULL, legendPos = "topright",
-                          vcov. = vcovHC, 
-                          col0=1, col1=2, lty0=1, lty1=2,  add.=FALSE,
-                          addToLegend=NULL,
-                          cex=1, ylim.=NULL, xlim.=NULL, addPoints=FALSE,
-                          FUN=mean, main=NULL, ...) 
-{
-    interval <- match.arg(interval)
-    vnames <- all.vars(x$model$formX)
-    treat <- x$model$treated    
-    if (!is.null(newdata)) {
-        if (!is.numeric(newdata)) 
-            stop("newdata must be a vector of numeric values")
-        if (is.null(names(newdata))) 
-            stop("newdata must be a named vector")
-        if (any(names(newdata) == "")) 
-            stop("All elements of newdata must be named")
-        nd <- names(newdata)
-    }
-    if (is.numeric(which)) 
-        which <- vnames[which]
-    if (!is.character(which) & length(which) != 1) 
-        stop("which must be a character type")
-    if (!(which %in% vnames)) 
-        stop("which must be one of the names of the variables")
-    if (addPoints)
-    {
-        Yp <- x$model$data[,x$model$nameY]
-        Xp <- x$model$data[,which]
-        Zp <- x$model$data[,treat]
-    }
-    ind <- order(x$model$data[, which])
-    data <- x$model$data[ind, ]
-    Z <- data[,treat]    
-    data[Z==1, !(names(data) %in% c(which, treat))] <- sapply(which(!(names(data) %in% 
-        c(which, treat))), function(i) rep(FUN(data[Z==1, i]), 
-                                           sum(Z)))
-    data[Z==0, !(names(data) %in% c(which, treat))] <- sapply(which(!(names(data) %in% 
-        c(which, treat))), function(i) rep(FUN(data[Z==0, i]), 
-                                           sum(1-Z)))    
-    if (!is.null(newdata)) 
-        for (ndi in nd) data[[ndi]] <- newdata[ndi]
-    res <- predict(x, interval = interval, level = level,
-                   newdata = data, se.fit = FALSE, vcov. = vcov.,
-                   counterfactual=counterfactual, ...)
-    pr0 <- res$nontreated
-    pr1 <- res$treated
-    if (interval == "confidence") {
-        lty0 = c(lty0, 3, 3)
-        lty1 = c(lty1, 3, 3)
-        lwd = c(2, 1, 1)
-    }
-    else {
-        lwd = 2
-    }
-    if (is.null(main))
-        main <- paste("Outcome VS ", which, " using SLSE", 
-                      sep = "")
-    if (addPoints)
-    {
-        add.=TRUE
-        pcol <- rep(col1, length(Zp))
-        pcol[Zp==0] <- col0
-        pch. <- 21*(Zp==1)+22*(Zp==0)
-        plot(Xp, Yp, pch=pch., col=pcol, 
-             main=main, ylab = x$model$nameY, xlab = which)
-    }
-    if (is.null(ylim.))
-        ylim. <- range(c(pr0, pr1))
-    if (is.null(xlim.))
-        xlim. <- range(data[, which])
-    matplot(data[Z == 1, which], pr1, col = col1, ylim = ylim., type = "l", 
-        lty = lty1, lwd = lwd, main = main, ylab = x$model$nameY, 
-        xlab = which, add=add., xlim=xlim.)
-    matplot(data[Z == 0, which], pr0, col = col0, type = "l", lty = lty0,
-            lwd = lwd, add = TRUE)
-    grid()
-    Leg=c("Treated", "Nontreated")
-    if(counterfactual)
-        Leg <- paste(Leg, "-counterfactual", sep="")
-    if (!is.null(addToLegend))
-        Leg=paste(Leg, " (", addToLegend[1], ")", sep="")
-    if (addPoints) pch. <- c(21,22) else pch.=c(NA,NA)
-    
-    legend(legendPos, Leg, col = c(col1, col0), pch=pch., 
-           lty = c(lty1[1], lty0[1]), lwd = 2, bty = "n", cex=cex)
-    invisible()
- }
 
 plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
                    counterfactual = FALSE, level = 0.95, fixedCov0 = NULL,

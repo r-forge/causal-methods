@@ -17,19 +17,17 @@ least squares method. It returns an object of class
                                selType=c("SLSE","BSLSE","FSLSE"),
                                selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
-                               seType=c("analytic", "lm"),
                                pvalT = function(p) 1/log(p),
-                               vcov.=vcovHC, dfCorr=FALSE, ...)
-\method{causalSLSE}{slseFit}(object, seType=c("analytic", "lm"),
-       causal = c("ALL","ACT","ACE","ACN"), vcov.=vcovHC, dfCorr=FALSE, ...)
+                               vcov.=vcovHC, ...)
+\method{causalSLSE}{slseFit}(object, causal = c("ALL","ACT","ACE","ACN"),
+                             vcov.=vcovHC, ...)
 \method{causalSLSE}{formula}(object, data, nbasis=function(n) n^0.3,
                              knots, 
                              selType=c("SLSE","BSLSE","FSLSE"),
                              selCrit = c("AIC", "BIC", "PVT"),
                              causal = c("ALL","ACT","ACE","ACN"),
-                             seType=c("analytic", "lm"),
                              pvalT = function(p) 1/log(p),
-                             vcov.=vcovHC, dfCorr=FALSE, ...)
+                             vcov.=vcovHC, ...)
 }
 \arguments{
   \item{object}{An object of class \code{cslseModel} created by the
@@ -49,16 +47,12 @@ least squares method. It returns an object of class
     knots. By default (SLSE), all knots from the model are kept.}
   \item{selCrit}{The criterion to select the piecewise polynomial knots.}
   \item{causal}{What causal effect should we compute.}
-  \item{seType}{Should the causal effect standard errors be computed
-    based on an analytic expression or based on least squares
-    asymptotics (\code{vcov.lm}).}
   \item{pvalT}{A function to determine the p-value threshold for the
     significance of the coefficients. It has to be a function of one
     parameter, which is the average number of knots in the model.}
   \item{vcov.}{An alternative function to compute the covariance matrix
     of the least squares estimators. The default is the \code{vcovHC}
     method for \code{lm} objects.}
-  \item{dfCorr}{Should we correct the residuals for the degrees of freedom.}
   \item{...}{Additional arguments to pass to \code{vcov.}}
 }
 

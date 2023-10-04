@@ -10,7 +10,7 @@ generates the basis functions based on the knots specified in the model
 and estimates it by least squares.
 }
 \usage{
-\method{estSLSE}{cslseModel}(model, selKnots=NULL, ...)
+\method{estSLSE}{cslseModel}(model, selKnots, ...)
 }
 \arguments{
   \item{model}{A model of class \code{cslseModel} created by the
