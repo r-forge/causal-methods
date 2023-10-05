@@ -759,12 +759,11 @@ model.matrix.cslseModel <- function(object, ...)
     X
 }
 
-.causali <- function(model, beta, vcov, X0, X1,
+.causali <- function(Z, beta, vcov, X0, X1,
                      beta0, beta1, causal, e)
 {
-    Z <- model$data[[model$treated]]
     id <- switch(causal,
-                 ACE=rep(TRUE, nrow(model$data)),
+                 ACE=rep(TRUE, length(Z)),
                  ACT=Z==1,
                  ACN=Z==0)
     n <- sum(id)
@@ -800,6 +799,7 @@ model.matrix.cslseModel <- function(object, ...)
                     causal=c("ACE", "ACT", "ACN", "ALL"))
 {
     causal <- match.arg(causal)
+    Z <- model$data[[model$treated]]
     p0 <- ncol(X0)
     p1 <- ncol(X1)
     beta <- coef(fit)
@@ -813,7 +813,7 @@ model.matrix.cslseModel <- function(object, ...)
     if (length(notNA1))  X1 <- X1[, notNA1, drop=FALSE]
     if (causal == "ALL") causal <- c("ACE","ACT","ACN")                
     ans <- lapply(causal, function(ci)
-        .causali(model, beta, vcov, X0, X1, beta0, beta1, ci, residuals(fit)))
+        .causali(Z, beta, vcov, X0, X1, beta0, beta1, ci, residuals(fit)))
     names(ans) <- causal
     ans
 }
@@ -859,6 +859,7 @@ cslseSE <- function(object, vcov.=vcovHC, ...)
 {
     if(!inherits(object, "cslse"))
         stop("object must be of class cslse")
+    Z <- object$model$data[,object$model$treate]
     causal <- c("ACE","ACT","ACN")
     causal <- causal[which(causal %in% names(object))]
     if (length(causal)>1)
@@ -880,7 +881,7 @@ cslseSE <- function(object, vcov.=vcovHC, ...)
         causal <- c("ACE","ACT","ACN")
     vcov <- vcov.(object$lm.out, ...)
     se <- sapply(causal, function(ci)
-        .causali(object$model, beta, vcov, X0, X1,
+        .causali(Z, beta, vcov, X0, X1,
                  beta0, beta1, ci, residuals(object$lm.out))["se"])
     names(se) <- causal   
     se
