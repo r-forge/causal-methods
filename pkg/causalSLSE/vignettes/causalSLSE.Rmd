@@ -122,61 +122,12 @@ the sample size in group $k$, instead of inside the support of $X_l$.
 
 # The `causalSLSE` package
 
-## Setting up the Model
+## The starting knots
 
-The first step in using the package is to define the causal model. The
-model contains the information about the outcome ($Y$), the treatment
-indicator ($Z$), the confounders ($X$) and their knots
-($\kappa_{l,k}$). This is the starting point before applying any basis
-selection method. To illustrate how to use the package, we are using
-the dataset from Lalonde (1986). The dataset, called `nsw`, contains
-some continuous and categorical variables, so we can illustrate how
-knots are selected initially. The dataset is included in the
-`causalSLSE` package.
-
-```{r}
-library(causalSLSE)
-data(nsw)
-```
-
-The outcome is the real income in 1978 (`re78`) and the purpose is to
-estimate the causal effect of a training program (`treat`) on
-`re78`. The dataset includes the continuous covariates age (`age`),
-education (`ed`), the 1975 real income (`re75`), and binary variables
-(`black`, `hisp`, `married` and `nodeg`). We start by considering the
-variables `age`, `re75`, `ed`, and `married`. To setup the model, we
-simply run the following command:
-
-```{r}
-model1 <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
-```
-
-The left of | is designated for the formula linking the outcome (re78)
-and the treatment indicator (treat). The confounders are entered after
-$|$ as a formula without a dependent variable. This formula works
-similarly to formulas in the `lm` function. For example, we can add
-interactions, transformations of the variables, etc. The following is
-an example:
-
-```{r}
-model0 <-  cslseModel(re78 ~ treat | ~ age + I(age^2) + re75 + ed * married,
-                   data = nsw)
-```
-
-This will create the vector of covariates {age, age$^2$, re75, ed,
-married, ed$\times$married}. Note that adding `age`$^2$ is not
-recommended since we already model nonlinearities via basis
-functions. This is presented to give an example of what can be added
-to the formula. 
-
-The following subsections explain the arguments of `cslseModel`.
-
-### The starting knots
-
-By default, the function automatically generates knots for each
-variable based on the following procedure applied separately for the
-treated and nontreated. The term `sample size` refers either to the
-number of observations in the treated or nontreated group.
+By default, the knots for each variable are based on the following
+procedure applied separately for the treated and nontreated. The term
+`sample size` refers either to the number of observations in the
+treated or nontreated group.
 
 1. The starting number of knots is a function of the sample size and
    is determined by the argument `nbasis`, a function of one argument,
@@ -212,32 +163,65 @@ may be smaller than the ones defined by `nbasis`. For example, when
 the number of levels for a nominal variable is 3, the number of knots
 cannot exceed 1.
 
+To illustrate how to use the package, we are using the dataset from
+@lalonde86. The dataset, called `nsw`, contains some continuous
+and categorical variables, so we can illustrate how knots are selected
+initially. The dataset is included in the `causalSLSE` package.
+
+```{r}
+library(causalSLSE)
+data(nsw)
+```
+
+The outcome is the real income in 1978 (`re78`) and the purpose is to
+estimate the causal effect of a training program (`treat`) on
+`re78`. The dataset includes the continuous covariates age (`age`),
+education (`ed`), the 1975 real income (`re75`), and binary variables
+(`black`, `hisp`, `married` and `nodeg`). 
+
 The process of selecting knots is the same for the treated and
 nontreated. In fact, the knots are created by calling the `slseKnots`
 function for each group. This function is not restricted to causal
-models. We could use it to generate knots for any regression model
-estimated by SLSE. But, estimating such models is not yet implemented
-in the package. If we want to create a set of knots for a specific
-group, we can restrict the sample using the `subset` function. For
-example, we can create the initial knots of `model1` for the treated
+models. We could use it to generate knots for any SLSE regression
+model. But, estimating such models is not yet implemented in the
+package. The arguments of the function are:
+
+- **form**: A formula with the right-hand side being the list of
+  confounders. If a left-hand side is provided, the `slseKnots`
+  function will ignore it.
+  
+- **data**: A `data.frame` containing all variables included in the
+  formula.
+  
+- **X**: Instead of providing the function with a formula, we can
+  input directly the matrix of confounders. 
+  
+- **nbasis**: A function that determines the number of basis functions
+  as explained above.
+
+- **knots**: This argument is used to set the knots manually. We will
+  explain how to use this argument in the next section.
+
+We start by considering the confounders `age`, `re75`, `ed`, and
+`married`. To create a set of knots for a specific group using
+`slseKnots`, we can restrict the sample using the `subset`
+function. For example, we can create the initial knots for the treated
 and nontreated as follows:
 
 ```{r}
-k1.mod1 <- slseKnots(form = ~ age + re75 + ed + married,
-                  data = subset(nsw, treat==1))
-k0.mod1 <- slseKnots(form = ~ age + re75 + ed + married,
-                  data = subset(nsw, treat==0))
+k1 <- slseKnots(form = ~ age + re75 + ed + married,
+                data = subset(nsw, treat==1))
+k0 <- slseKnots(form = ~ age + re75 + ed + married,
+                data = subset(nsw, treat==0))
 ```
 
-Since we only need a list of confounders to create the knots, the
-argument `form` is a regular formula and only the right-hand side is
-used by the function. The function returns an object of class
-`slseKnots` and its `print` method produces a nice display separating
-confounders with and without knots. For example, the following are the
-starting knots for the treated:
+The function returns an object of class `slseKnots` and its `print`
+method produces a nice display separating confounders with and without
+knots. For example, the following are the starting knots for the
+treated:
 
 ```{r}
-k1.mod1
+k1
 ```
 
 Note that each object in the package is S3-class, so the elements can
@@ -245,26 +229,30 @@ be accessed using the operator $. For example, we can extract the
 knots for `age` as follows:
 
 ```{r}
-k1.mod1$age
+k1$age
 ```
 
 Note that the confounders are listed in the "no knots" section when
 their values are set to `NULL`. In the above example, it is the case
-of `married` because it is a binary variable:
+of `married` because it is a binary variable. As we can see its list
+of knots it set to `NULL`:
 
 ```{r}
-k1.mod1$married
+k1$married
 ```
 
 Alternatively, we can create a list of `slseKnots` objects, one for
 the treated and one for the nontreated, using the `cslseKnots`
-function. For this function, we need the same type of formula used
-above to create a model. For example, the above two sets of knots can
-be created as follows:
+function. The function has the same arguments as `slseKnots`, but
+`form` must include a formula linking the outcome and the treatment
+indication and a formula listing the confounders, separated by the
+operator `|`. In the following example, we see the formula linking the
+outcome `re78` and the treatment indicator `treat`, and the list of
+confounders, which are the same as in the previous example::
 
 ```{r}
-k.mod1 <- cslseKnots(form = re78 ~ treat | ~ age + re75 + ed + married,
-                     data = nsw)
+k <- cslseKnots(form = re78 ~ treat | ~ age + re75 + ed + married,
+                data = nsw)
 ```
 
 The function returns an object of class `cslseKnots`. We can use its
@@ -272,7 +260,7 @@ The function returns an object of class `cslseKnots`. We can use its
 printed for both groups:
 
 ```{r}
-k.mod1
+k
 ```
 
 The sample size for the treated is `r sum(nsw$treat==1)`.
@@ -467,7 +455,54 @@ knots for `ed:black`.
 model <- cslseModel(re78 ~ treat | ~ age + ed * black, data = nsw)         
 model$knots$nontreated[["ed:black"]]
 ```
+## Setting up the Model
 
+The first step in using the package is to define the causal model. The
+model contains the information about the outcome ($Y$), the treatment
+indicator ($Z$), the confounders ($X$) and their knots
+($\kappa_{l,k}$). This is the starting point before applying any basis
+selection method. To illustrate how to use the package, we are using
+the dataset from Lalonde (1986). The dataset, called `nsw`, contains
+some continuous and categorical variables, so we can illustrate how
+knots are selected initially. The dataset is included in the
+`causalSLSE` package.
+
+```{r}
+library(causalSLSE)
+data(nsw)
+```
+
+The outcome is the real income in 1978 (`re78`) and the purpose is to
+estimate the causal effect of a training program (`treat`) on
+`re78`. The dataset includes the continuous covariates age (`age`),
+education (`ed`), the 1975 real income (`re75`), and binary variables
+(`black`, `hisp`, `married` and `nodeg`). We start by considering the
+variables `age`, `re75`, `ed`, and `married`. To setup the model, we
+simply run the following command:
+
+```{r}
+model1 <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
+```
+
+The left of | is designated for the formula linking the outcome (re78)
+and the treatment indicator (treat). The confounders are entered after
+$|$ as a formula without a dependent variable. This formula works
+similarly to formulas in the `lm` function. For example, we can add
+interactions, transformations of the variables, etc. The following is
+an example:
+
+```{r}
+model0 <-  cslseModel(re78 ~ treat | ~ age + I(age^2) + re75 + ed * married,
+                   data = nsw)
+```
+
+This will create the vector of covariates {age, age$^2$, re75, ed,
+married, ed$\times$married}. Note that adding `age`$^2$ is not
+recommended since we already model nonlinearities via basis
+functions. This is presented to give an example of what can be added
+to the formula. 
+
+The following subsections explain the arguments of `cslseModel`.
 
 ## Estimating the model
 
@@ -812,12 +847,12 @@ in `X4` for each group.
 ## Optimal selection of the knots
 
 We have implemented two methods for selecting the knots: the backward
-SLSE (BSLSE) and the forward SLSE (FSLSE) methods. For each method, we
+SLSE (BLSE) and the forward SLSE (FLSE) methods. For each method, we
 have 3 criteria: the p-value threshold (PVT), the Akaike Information
 criterion (AIC), and the Bayesian Information criterion (BIC). The two
 selection methods can be summarized as follows:
 
-> **BSLSE**: 
+> **BLSE**: 
 >
 > 1. We estimate the model with all knots included in the model.
 >
@@ -836,7 +871,7 @@ selection methods can be summarized as follows:
 >      keep the model with the smallest information citerion.
 
 
-> **FSLSE**: 
+> **FLSE**: 
 >
 > 1. We estimate the model by including a subset of the knots, one
 >    variable at the time. When we test a knot for one covariate, the
@@ -875,7 +910,7 @@ The knot selection is done using the `selSLSE` method. The arguments are:
 - **model**: An object of class `cslseModel`.
 
 - **selType**: This is the selection method. We have the choice between
-  "FSLSE" and "BSLSE" (the default).
+  "FLSE" and "BLSE" (the default).
 
 - **selCrit**: This is the criterion used by the selection method. We
   have the choice between "AIC" (the default), "BIC" or "PVT".
@@ -905,7 +940,7 @@ model2 <- selSLSE(model1)
 print(model2,  which = "selKnots")
 ```
 
-For example, the BSLSE-AIC method has removed all knots from `re75`
+For example, the BLSE-AIC method has removed all knots from `re75`
 for the treated and kept two knots for the nontreated. The print
 method indicates which method was used to select the knots. It is
 possible to recover the p-values of all original knots by setting the
@@ -915,11 +950,11 @@ argument `which` to `Pvalue`.
 print(model2, which="Pvalues")
 ```
 
-In the following example, we see BSLSE as selection method and BIC as
+In the following example, we see BLSE as selection method and BIC as
 criterion. Note that the BIC selects 0 knots for all covariates.
 
 ```{r}
-model3 <- selSLSE(model1, selType = "BSLSE", selCrit = "BIC")
+model3 <- selSLSE(model1, selType = "BLSE", selCrit = "BIC")
 model3
 ```
 
@@ -927,7 +962,7 @@ Since the `selSLSE` method returns a new model, we can apply the
 `estSLSE` to it:
 
 ```{r}
-estSLSE(selSLSE(model1, selType = "FSLSE", selCrit = "BIC"))
+estSLSE(selSLSE(model1, selType = "FLSE", selCrit = "BIC"))
 ```
 
 ## The `causalSLSE` method for `slseFit` objects
@@ -1015,22 +1050,22 @@ different methods in a single table.
 ```{r, eval=FALSE}
 library(texreg)
 c1 <- causalSLSE(fit1)
-fit2 <- estSLSE(selSLSE(model1, selType="BSLSE"))
-fit3 <- estSLSE(selSLSE(model1, selType="FSLSE"))
+fit2 <- estSLSE(selSLSE(model1, selType="BLSE"))
+fit3 <- estSLSE(selSLSE(model1, selType="FLSE"))
 c2 <- causalSLSE(fit2)
 c3 <- causalSLSE(fit3)
-texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=4)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
 library(texreg)
 c1 <- causalSLSE(fit1)
-fit2 <- estSLSE(selSLSE(model1, selType="BSLSE"))
-fit3 <- estSLSE(selSLSE(model1, selType="FSLSE"))
+fit2 <- estSLSE(selSLSE(model1, selType="BLSE"))
+fit3 <- estSLSE(selSLSE(model1, selType="FLSE"))
 c2 <- causalSLSE(fit2)
 c3 <- causalSLSE(fit3)
-texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=4)
 ```
 \end{center}
 
@@ -1058,13 +1093,13 @@ printed and can be modified through the `texreg` function, are:
 Here is one example on how to change some arguments:
 
 ```{r, eval=FALSE}
-texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE,
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE,
        which="ACE-ACT", include.adjrsquared=FALSE)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
-texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE,
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE,
        which="ACE-ACT", include.adjrsquared=FALSE)
 ```
 \end{center}
@@ -1083,11 +1118,11 @@ Optimal selection of knots.
 - **object**: An object of class `cslseModel`.
 
 - **selType**: This is the selection method. We have the choice
-  between "SLSE" (the default), "FSLSE" and "BSLSE". The SLSE method
+  between "SLSE" (the default), "FLSE" and "BLSE". The SLSE method
   performs no selection, so all knots from the model are kept. 
 
 - **selCrit**: This is the criterion used by the selection method when
-  `selType` is set to "FSLSE" or "BSLSE". The default is "AIC".
+  `selType` is set to "FLSE" or "BLSE". The default is "AIC".
   
 - **pvalT**: This is a function that returns the p-value threshold. We
   explained this argument when we presented the `selSLSE` method.
@@ -1096,17 +1131,17 @@ For example, we can generate the previous table as follows.
 
 ```{r, eval=FALSE}
 c1 <- causalSLSE(model1, selType="SLSE")
-c2 <- causalSLSE(model1, selType="BSLSE")
-c3 <- causalSLSE(model1, selType="FSLSE")
-texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
+c2 <- causalSLSE(model1, selType="BLSE")
+c3 <- causalSLSE(model1, selType="FLSE")
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=4)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(model1, selType="SLSE")
-c2 <- causalSLSE(model1, selType="BSLSE")
-c3 <- causalSLSE(model1, selType="FSLSE")
-texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
+c2 <- causalSLSE(model1, selType="BLSE")
+c3 <- causalSLSE(model1, selType="FLSE")
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=4)
 ```
 \end{center}
 
@@ -1123,18 +1158,18 @@ in one step. For example, we can create the previous table as follows:
 c1 <- causalSLSE(re78 ~ treat | ~ age + re75 + ed + married, data=nsw,
                  selType="SLSE")
 c2 <- causalSLSE(re78 ~ treat | ~ age + re75 + ed + married, data=nsw,
-                 selType="BSLSE")
+                 selType="BLSE")
 c3 <- causalSLSE(re78 ~ treat | ~ age + re75 + ed + married, data=nsw,
-                 selType="FSLSE")
-texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table=FALSE, digits=4)
+                 selType="FLSE")
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=4)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(model1, selType = "SLSE")
-c2 <- causalSLSE(model1, selType = "BSLSE")
-c3 <- causalSLSE(model1, selType = "FSLSE")
-texreg(list(SLSE=c1, BSLSE=c2, FSLSE=c3), table = FALSE, digits = 4)
+c2 <- causalSLSE(model1, selType = "BLSE")
+c3 <- causalSLSE(model1, selType = "FLSE")
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table = FALSE, digits = 4)
 ```
 \end{center}
 
@@ -1174,23 +1209,23 @@ Then we can compare three different methods:
 
 ```{r, eval=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
-c2 <- causalSLSE(mod, selType = "BSLSE", selCrit = "BIC")
-c3 <- causalSLSE(mod, selType = "FSLSE", selCrit = "BIC")
-texreg(list(SLSE = c1, BSLSE = c2, FSLSE = c3), table = FALSE, digits = 4)
+c2 <- causalSLSE(mod, selType = "BLSE", selCrit = "BIC")
+c3 <- causalSLSE(mod, selType = "FLSE", selCrit = "BIC")
+texreg(list(SLSE = c1, BLSE = c2, FLSE = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
-c2 <- causalSLSE(mod, selType = "BSLSE", selCrit = "BIC")
-c3 <- causalSLSE(mod, selType = "FSLSE", selCrit = "BIC")
-texreg(list(SLSE = c1, BSLSE = c2, FSLSE = c3), table = FALSE, digits = 4)
+c2 <- causalSLSE(mod, selType = "BLSE", selCrit = "BIC")
+c3 <- causalSLSE(mod, selType = "FLSE", selCrit = "BIC")
+texreg(list(SLSE = c1, BLSE = c2, FLSE = c3), table = FALSE, digits = 4)
 ```
 \end{center}
 
 We see that both selection methods choose to assign 0 knots for the
 treated group, which is not surprising since the true $f_1(x)$ is
-linear. We can compare the different fits (we ignore the FSLSE because
+linear. We can compare the different fits (we ignore the FLSE because
 the selected knots are the same). 
 
 ```{r, out.width='50%', fig.show='hold'}
@@ -1230,7 +1265,7 @@ where $I(A)$ is the indicator function equal to 1 if $A$ is true, and
 $X$, $\epsilon(0)$ and $\epsilon(1)$ are independent standard
 normal. The causal effects ACE, ACT and ACN are approximately equal to
 3.763, 3.858 and 3.545 (estimated with a sample size of $10^7$). We
-can compare the SLSE, BSLSE-AIC and BSLSE-BIC.
+can compare the SLSE, BLSE-AIC and BLSE-BIC.
 
 ```{r}
 data(simDat2)
@@ -1239,21 +1274,21 @@ mod <- cslseModel(Y~Z | ~X, data=simDat2)
 
 ```{r, eval=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
-c2 <- causalSLSE(mod, selType = "BSLSE", selCrit = "BIC")
-c3 <- causalSLSE(mod, selType = "BSLSE", selCrit = "AIC")
-texreg(list(SLSE = c1, BSLSE.BIC = c2, BSLSE.AIC = c3), table = FALSE, digits = 4)
+c2 <- causalSLSE(mod, selType = "BLSE", selCrit = "BIC")
+c3 <- causalSLSE(mod, selType = "BLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, BLSE.BIC = c2, BLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
-c2 <- causalSLSE(mod, selType = "BSLSE", selCrit = "BIC")
-c3 <- causalSLSE(mod, selType = "BSLSE", selCrit = "AIC")
-texreg(list(SLSE = c1, BSLSE.BIC = c2, BSLSE.AIC = c3), table = FALSE, digits = 4)
+c2 <- causalSLSE(mod, selType = "BLSE", selCrit = "BIC")
+c3 <- causalSLSE(mod, selType = "BLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, BLSE.BIC = c2, BLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 \end{center}
 
-The following shows the fit of BSLSE-AIC with the true $f_1(x)$ and
+The following shows the fit of BLSE-AIC with the true $f_1(x)$ and
 $f_0(x)$, and the observations.
 
 ```{r, out.width='50%', fig.show='hold'}
@@ -1284,7 +1319,7 @@ Y &=& Y(1)Z + Y(0) (1-Z)\,,
 where $X_1$, $X_2$, $\epsilon(0)$ and $\epsilon(1)$ are independent
 standard normal. The causal effects ACE, ACT and ACN are approximately
 equal to 2.762, 2.204 and 3.922 (estimated with a sample size of
-$10^7$). We can compare the SLSE, FSLSE with AIC and FSLSE with BIC.
+$10^7$). We can compare the SLSE, FLSE with AIC and FLSE with BIC.
 
 ```{r}
 data(simDat3)
@@ -1293,17 +1328,17 @@ mod <- cslseModel(Y ~ Z | ~ X1 + X2, data = simDat3)
 
 ```{r, eval=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
-c2 <- causalSLSE(mod, selType = "FSLSE", selCrit = "BIC")
-c3 <- causalSLSE(mod, selType = "FSLSE", selCrit = "AIC")
-texreg(list(SLSE = c1, FSLSE.BIC = c2, FSLSE.AIC = c3), table = FALSE, digits = 4)
+c2 <- causalSLSE(mod, selType = "FLSE", selCrit = "BIC")
+c3 <- causalSLSE(mod, selType = "FLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, FLSE.BIC = c2, FLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
-c2 <- causalSLSE(mod, selType = "FSLSE", selCrit = "BIC")
-c3 <- causalSLSE(mod, selType = "FSLSE", selCrit = "AIC")
-texreg(list(SLSE = c1, FSLSE.BIC = c2, FSLSE.AIC = c3), table = FALSE, digits = 4)
+c2 <- causalSLSE(mod, selType = "FLSE", selCrit = "BIC")
+c3 <- causalSLSE(mod, selType = "FLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, FLSE.BIC = c2, FLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 \end{center}
 
@@ -1313,7 +1348,7 @@ default is to fix it to its sample mean. For the true curve, we fix it
 to its population mean, which is 0. We first look at the outcome
 against $X_1$. By fixing $X_2$ to 0, the true curve is $X_1+X_1^2$ for
 the untreated and $2-2X_1$ for the treated. The following graphs show how
-the FSLSE-BIC method fits the curves.
+the FLSE-BIC method fits the curves.
 
 ```{r, out.width='50%', fig.show='hold'}
 plot(c2, "X1", legendPos = "right", cex = .8)
@@ -1327,7 +1362,7 @@ plot(c2, "X1", addPoints = TRUE, legendPos = "topleft", cex = .8)
 If we fix $X_1$ to 0, the true curve is $1+[(1+X_2)I(X_2\leq-1) +
 (-1-X_2)I(X_2>-1)]$ for the nontreated and $1+[(1-2X_2)I(X_2\leq 0) +
 (1+2X_2)I(X_2>0)]$ for the treated. The following graphs illustrates
-how these curves are approximated by FSLSE-AIC.
+how these curves are approximated by FLSE-AIC.
 
 ```{r, out.width='50%', fig.show='hold'}
 plot(c2, "X2", legendPos = "right", cex = .8)
@@ -1358,7 +1393,7 @@ Y &=& Y(1)Z + Y(0) (1-Z)\,,
 where$X_1$, $X_2$, $e$ and $u$ are independent standard normal. The
 causal effects ACE, ACT and ACN are approximately equal to 1.763,
 0.998 and 3.194 (estimated with a sample size of $10^7$). We can
-compare the SLSE, FSLSE-AIC and FSLSE-BIC.
+compare the SLSE, FLSE-AIC and FLSE-BIC.
 
 ```{r, echo=FALSE}
 sim_model <- function(n)
@@ -1385,17 +1420,17 @@ mod <- cslseModel(Y ~ Z | ~ X1 * X2, data = simDat5)
 
 ```{r, eval=FALSE}
 c1 <- causalSLSE(mod, selType = "SLSE")
-c2 <- causalSLSE(mod, selType = "FSLSE", selCrit = "BIC")
-c3 <- causalSLSE(mod, selType = "FSLSE", selCrit = "AIC")
-texreg(list(SLSE = c1, FSLSE.BIC = c2, FSLSE.AIC = c3), table = FALSE, digits = 4)
+c2 <- causalSLSE(mod, selType = "FLSE", selCrit = "BIC")
+c3 <- causalSLSE(mod, selType = "FLSE", selCrit = "AIC")
+texreg(list(SLSE = c1, FLSE.BIC = c2, FLSE.AIC = c3), table = FALSE, digits = 4)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
 c1 <- causalSLSE(mod, selType="SLSE")
-c2 <- causalSLSE(mod, selType="FSLSE", selCrit="BIC")
-c3 <- causalSLSE(mod, selType="FSLSE", selCrit="AIC")
-texreg(list(SLSE=c1, FSLSE.BIC=c2, FSLSE.AIC=c3), table=FALSE, digits=4)
+c2 <- causalSLSE(mod, selType="FLSE", selCrit="BIC")
+c3 <- causalSLSE(mod, selType="FLSE", selCrit="AIC")
+texreg(list(SLSE=c1, FLSE.BIC=c2, FLSE.AIC=c3), table=FALSE, digits=4)
 ```
 \end{center}
 

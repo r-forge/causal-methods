@@ -9,7 +9,7 @@ This is the main function to select the knots in \code{cslseModel}
 objects. It returns a model with non significant knots removed. 
 }
 \usage{
-\method{selSLSE}{cslseModel}(model, selType=c("BSLSE", "FSLSE"),
+\method{selSLSE}{cslseModel}(model, selType=c("BLSE", "FLSE"),
         selCrit = c("AIC", "BIC", "PVT"), 
         pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
 }
@@ -30,7 +30,7 @@ objects. It returns a model with non significant knots removed.
 \examples{
 data(simDat3)
 mod1 <- cslseModel(Y~Z|~X1*X2, data=simDat3)
-selSLSE(mod1, "FSLSE")
+selSLSE(mod1, "FLSE")
 }
 
 \keyword{causal effects}

@@ -19,7 +19,7 @@ The method builds the coefficient matrices.
 \examples{
 data(simDat3)
 mod1 <- cslseModel(Y~Z|~X1*X2, data=simDat3)
-CE <- causalSLSE(mod1, selType="BSLSE")
+CE <- causalSLSE(mod1, selType="BLSE")
 summary(CE)
 fit <- estSLSE(mod1)
 summary(fit)

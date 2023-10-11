@@ -391,7 +391,6 @@ setKnots <- function(x, sel=1:length(x), nbasis=function(n) n^0.3,
     .chkKnots(x, knots)
 }
 
-
 cslseModel <- function (form, data, nbasis = function(n) n^0.3, 
                         knots)
 {
@@ -543,7 +542,7 @@ multiSplines <- function (model, group="treated", selObs=c("group", "all"))
 selSLSE <- function(model, ...)
     UseMethod("selSLSE")
        
-selSLSE.cslseModel <- function(model, selType=c("BSLSE", "FSLSE"),
+selSLSE.cslseModel <- function(model, selType=c("BLSE", "FLSE"),
                                selCrit = c("AIC", "BIC", "PVT"), 
                                pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
 {
@@ -600,7 +599,7 @@ pvalSLSE <- function(model, ...)
     UseMethod("pvalSLSE")
 }
 
-pvalSLSE.cslseModel <- function(model, method=c("BSLSE", "FSLSE", "SLSE"),
+pvalSLSE.cslseModel <- function(model, method=c("BLSE", "FLSE", "SLSE"),
                                 vcov.=vcovHC, ...)
 {
     method <- match.arg(method)
@@ -609,7 +608,7 @@ pvalSLSE.cslseModel <- function(model, method=c("BSLSE", "FSLSE", "SLSE"),
         pv <- list(pval0=lapply(length(model$knots$nontreated), function(i) NULL),
                    pval1=lapply(length(model$knots$treated), function(i) NULL))
     } else {
-        pv <- if (method=="BSLSE")  .getPvalB(model, vcov., ...)
+        pv <- if (method=="BLSE")  .getPvalB(model, vcov., ...)
               else .getPvalF(model, vcov., ...)
     }
     ans <- list(treated=list(pval=pv$pval1, knots=model$knots$treated),
@@ -763,10 +762,15 @@ model.matrix.cslseModel <- function(object, ...)
                      beta0, beta1, causal, e)
 {
     id <- switch(causal,
-                 ACE=rep(TRUE, length(Z)),
-                 ACT=Z==1,
-                 ACN=Z==0)
-    n <- sum(id)
+                 ACE = rep(TRUE, length(Z)),
+                 ACT = Z==1,
+                 ACN = Z==0)
+    n <- sum(id)    
+    p <- switch(causal,
+                ACE = ncol(X0)+ncol(X1)+2,
+                ACT = ncol(X1)+1,
+                ACN = ncol(X0)+1)
+    dfadj <- n/(n-p)
     X <- cbind(1-Z, Z, X0*(1-Z), X1*Z)
     SigmaX <- crossprod(X)
     X0 <- X0[id,, drop = FALSE]
@@ -788,8 +792,8 @@ model.matrix.cslseModel <- function(object, ...)
            sum(beta0*c(crossprod(vcovXf0, beta0)))/n +
            sum(beta1*c(crossprod(vcovXf1, beta1)))/n -
            2 * c(beta0 %*% vcovXf01 %*% beta1)/n +
-           2*mean(X1*tmp2) -
-           2*mean(X0*tmp2))^0.5
+           2*mean(X1*tmp2)*dfadj -
+           2*mean(X0*tmp2)*dfadj)^0.5
     ans <- c(est, se)
     names(ans) <- c("est","se")
     ans
@@ -824,7 +828,7 @@ causalSLSE <- function(object, ...)
 }
 
 causalSLSE.cslseModel <- function(object,
-                                  selType=c("SLSE","BSLSE","FSLSE"),
+                                  selType=c("SLSE","BLSE","FLSE"),
                                   selCrit = c("AIC", "BIC", "PVT"),
                                   causal = c("ALL","ACT","ACE","ACN"),
                                   pvalT = function(p) 1/log(p),
@@ -951,7 +955,7 @@ print.cslse <- function (x, digits = max(3L, getOption("digits") - 3L), ...)
 
 causalSLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
                                knots, 
-                               selType=c("SLSE","BSLSE","FSLSE"),
+                               selType=c("SLSE","BLSE","FLSE"),
                                selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
                                pvalT = function(p) 1/log(p),

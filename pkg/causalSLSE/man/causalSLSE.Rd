@@ -14,7 +14,7 @@ least squares method. It returns an object of class
 }
 \usage{
 \method{causalSLSE}{cslseModel}(object,
-                               selType=c("SLSE","BSLSE","FSLSE"),
+                               selType=c("SLSE","BLSE","FLSE"),
                                selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
                                pvalT = function(p) 1/log(p),
@@ -23,7 +23,7 @@ least squares method. It returns an object of class
                              vcov.=vcovHC, ...)
 \method{causalSLSE}{formula}(object, data, nbasis=function(n) n^0.3,
                              knots, 
-                             selType=c("SLSE","BSLSE","FSLSE"),
+                             selType=c("SLSE","BLSE","FLSE"),
                              selCrit = c("AIC", "BIC", "PVT"),
                              causal = c("ALL","ACT","ACE","ACN"),
                              pvalT = function(p) 1/log(p),
@@ -59,8 +59,8 @@ least squares method. It returns an object of class
 \examples{
 data(simDat3)
 mod1 <- cslseModel(Y~Z|~X1*X2, data=simDat3)
-fit1 <- causalSLSE(mod1, selType="BSLSE", type="HC1")
-causalSLSE(Y~Z|~X1*X2, data=simDat3, selType="BSLSE", type="HC1")
+fit1 <- causalSLSE(mod1, selType="BLSE", type="HC1")
+causalSLSE(Y~Z|~X1*X2, data=simDat3, selType="BLSE", type="HC1")
 }
 
 \keyword{causal effects}
