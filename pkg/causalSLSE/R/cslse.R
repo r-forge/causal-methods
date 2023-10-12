@@ -452,7 +452,7 @@ print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
         cat("Selection method: ", attr(x$knots,"curSel")$select, "\n", sep="")
         if (attr(x$knots,"curSel")$crit != "")
             cat("Criterion: ",  attr(x$knots,"curSel")$crit, "\n\n", sep = "")
-        cat("Covariates approximated by SLSE:\n")
+        cat("Confounders approximated by SLSE:\n")
         for (gi in names(x$knots))
         {
             w <- sapply(x$knots[[gi]], is.null)
@@ -460,7 +460,7 @@ print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
             isApp <- if (length(selPW)) paste(selPW, collapse=", ", sep="") else "None"
             cat("\t", gi, ": ", isApp, "\n", sep="")
         }
-        cat("Covariates not approximated by SLSE:\n")   
+        cat("Confounders not approximated by SLSE:\n")   
         for (gi in names(x$knots))
         {
             w <- sapply(x$knots[[gi]], is.null)
@@ -556,7 +556,7 @@ selSLSE.cslseModel <- function(model, selType=c("BLSE", "FLSE"),
     if (all(sapply(model$knots$treated, function(i) is.null(i))) &
         all(sapply(model$knots$nontreated, function(i) is.null(i))))
     {
-        warning("No selection needed: the number of knots is 0 for all covariates")
+        warning("No selection needed: the number of knots is 0 for all confounders")
     } else {
         pval <- pvalSLSE(model, selType, vcov., ...)
         model <- critFct(model, pval, pvalT, selCrit)
@@ -1135,7 +1135,7 @@ print.summary.cslse <- function (x, digits = max(3L, getOption("digits") - 3L),
             na.print = "NA", ...)
     }
     if (knots) {
-        cat("\nNumber of selected knots per covariate\n")
+        cat("\nNumber of selected knots per confounder\n")
         cat("****************************************\n")
         cat("Treated:\n")
         print.default(format(sapply(x$knots$treated, length)), print.gap = 2L, 
@@ -1178,7 +1178,7 @@ extract.cslse <- function (model, include.nobs = TRUE,
     if (isTRUE(include.numcov)) {
         rs3 <- length(model$model$nameX)
         gof <- c(gof, rs3)
-        gof.names <- c(gof.names, "Num. covariates")
+        gof.names <- c(gof.names, "Num. confounders")
         gof.decimal <- c(gof.decimal, FALSE)
     }
     if (isTRUE(include.nobs)) {
