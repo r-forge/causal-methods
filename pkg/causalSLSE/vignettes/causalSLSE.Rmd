@@ -22,7 +22,14 @@ header-includes:
 - \newcommand{\reals}{\mathbb{R}}
 ---
 
+
 # Introduction \label{sec:intro}
+
+This document presents the `causalSLSE` package describing the
+functions implemented in the package. It is intended for users
+interested in the details about the methods presented in @tlse23 and
+how they are implemented. We first present the theory and will present
+the package in the following sections.
 
 ```{r, include=FALSE}
 def.chunk.hook  <- knitr::knit_hooks$get("chunk")
@@ -32,11 +39,6 @@ knitr::knit_hooks$set(chunk = function(x, options) {
 })
 knitr::opts_chunk$set(comment="")
 ```
-
-This document presents the `causalSLSE` package describing the
-functions implemented in the package. It is intended for users
-interested in the details about the methods presented in @tlse23
-and how they are implemented.
 
 The general semiparametric additive regression model is 
 
@@ -71,17 +73,82 @@ method for selecting the vectors of basis functions $u_0(X)$ and
 $u_1(X)$. Note that we allow the number of basis functions ($p_{l,k}$)
 to differ across confounders and groups.
 
+Let the following be the regression model estimated by least squares:
+
+\[ 
+Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \tp{\psi_0}U_{i,0}(1-Z_i) + 
+\tp{\psi_1}U_{i,1}Z_i + \zeta_i\mbox{ for } i=1,...,n\,,
+\] 
+
+and $\hat\beta_0$, $\hat\beta_1$, $\hat\psi_0$ and $\hat\psi_1$ be the
+least squares estimates of the regression parameters. Then, the
+semiparametric least squares estimators (SLSE) of the average causal
+effect (ACE), causal effect on the treated (ACT) and causal effect on
+the non-treated (ACN) are defined respectively as follows:
+
+\begin{eqnarray*}
+\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_1 -
+\tp{\hat{\psi}_0}\bar{U}_0 \\
+\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_{1,1} -
+\tp{\hat{\psi}_0}\bar{U}_{0,1} \\
+\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_{1,0} -
+\tp{\hat{\psi}_0}\bar{U}_{0,0} \,,
+\end{eqnarray*}
+
+where $\bar{U}_k = \frac{1}{n}\sum_{i=1}^n U_{i,k}$, $\bar{U}_{k, 1} =
+\frac{1}{n_1}\sum_{i=1}^n U_{i, k}Z_i$, $\bar{U}_{k, 0} =
+\frac{1}{n_0}\sum_{i=1}^n U_{i, k}(1-Z_i)$, for $k=0,1$, and $n_0$ and
+$n_1$ are the sample sizes of the nontreated and treated groups
+respectively. As shown by @tlse23, under some regularity conditions
+these estimators are consistent and asymptotically normal.
+
+To derive the variance of these causal effect estimators, note that
+they can be expressed as a linear combination of the vector of least
+squares estimates. Let $\hat{\theta}=\tp{\{\hat\beta_0, \hat\beta_1,
+\tp{\hat\psi_0}, \tp{\hat\psi_1}\}}$. Then, the causal effect
+estimates can be written as $\tp{\hat{D}_{\mathrm{c}}}\hat{\theta}$
+for c=ACE, ACT or ACN, with $\hat{D}_{\mathrm{ACE}}=\tp{\{-1, 1,
+\tp{-\bar{U}_0}, \tp{\bar{U}_1}\}}$, $\hat{D}_{\mathrm{ACT}}=\tp{\{-1,
+1, \tp{-\bar{U}_{0,1}}, \tp{\bar{U}_{1,1}}\}}$ and
+$\hat{D}_{\mathrm{ACN}}=\tp{\{-1, 1, \tp{-\bar{U}_{0,0}},
+\tp{\bar{U}_{1,0}}\}}$. Since $\hat{D}_\mathrm{c}$ is random, we need
+a first order Taylor expansion to derive the variance of the
+estimators. Assuming that the data set is iid and using the asymptotic
+properties of least squares, we can show that the variance of
+ACE=$\tp{\hat{D}_{\mathrm{ACE}}}\hat{\theta}$ can be consistently
+estimated as follows (we can derive a similar expression for the ACT
+and ACN):
+
+\[
+\hat{V}_\mathrm{ACE} = \begin{pmatrix} -\hat\beta_0 & \hat\beta_1 & 
+\tp{\hat{D}_\mathrm{ACE}} \end{pmatrix}
+\begin{pmatrix}
+\hat\Sigma_0 & \hat\Sigma_{0,1} & \hat\Sigma_{0,\hat\theta} \\
+\hat\Sigma_{1,0} & \hat\Sigma_1 & \hat\Sigma_{1,\hat\theta} \\
+\hat\Sigma_{\hat\theta,0} & \hat\Sigma_{\hat\theta,1} & \hat\Sigma_{\hat\theta} 
+\end{pmatrix}
+\begin{pmatrix} -\hat\beta_0 \\ \hat\beta_1 \\ \hat{D}_\mathrm{ACE} \end{pmatrix}\,,
+\]
+
+where $\hat\Sigma_k=\widehat{\var(\bar{U}_k)}$,
+$\hat\Sigma_{k,l}=\widehat{\cov(\bar{U}_k, \bar{U}_l)}$,
+$\hat\Sigma_{k, \hat\theta}=\tp{\hat\Sigma_{\hat\theta,
+k}}=\widehat{\cov(\bar{U}_k, \hat\theta)}$, for $k,l=0,1$, and
+$\hat\Sigma_{\hat\theta}$ is a consistent estimator of variance of
+$\hat\theta$. We will discuss the choice of the covariance matrix
+estimator $\hat\Sigma_{\hat\theta}$ in the next section.
+
 To understand the package, it is important to know how the
 $u_{l,k}(X_l)$'s are defined. For clarity, let's write
 $U_{l,k}=u_{l,k}(X_l)$ as $U=u(X) = (u_j(X)~:~ 1 \leq j \leq
 p)\in\reals^{p}$. We just need to keep in mind that it is different
 for the treated and nontreated groups and also for different
 confounders. We describe here how to construct the local linear
-splines for a given confounder $X$. To this end, let $\{\kappa_{1},
-\ldots, \kappa_{p-1}\}$ be a set of $p-1$ knots strictly inside the
-support of $X$ satisfying $\kappa_{1}<\kappa_2<\ldots <
-\kappa_{p-1}$. In the case of local linear splines described in the
-paper, we have:
+splines for a given confounder $X$ in a given group. To this end,
+let $\{\kappa_{1}, \ldots, \kappa_{p-1}\}$ be a set of $p-1$ knots
+strictly inside the support of $X$ satisfying
+$\kappa_{1}<\kappa_2<\ldots < \kappa_{p-1}$. In the case of local
+linear splines described in the paper, we have:
 
 \begin{eqnarray*}
 u_1(x) &=& xI(x\leq \kappa_{1}) + \kappa_{1}I(x> \kappa_{1}) \\
@@ -95,8 +162,8 @@ local linear splines. Since the knots must be strictly inside the
 support of $X$, for any categorical variable with two levels, the
 number of knots must be equal to zero. In this case, $u(x)=x$. For
 general ordinal variables, the number of knots cannot exceed the
-number of levels minus two. The following illustrates the local
-splines when the number of knots is equal to 3:
+number of levels minus two. The following illustrates local
+spline functions when the number of knots is equal to 3:
 
 ```{r, echo=FALSE, fig.align='center', out.width='50%', fig.width=10, fig.height=6}
 knots <- c(2,5,7.5)
@@ -105,14 +172,18 @@ minX <- -2
 plot(NULL, xlim=c(minX,maxX+1), ylim=c(minX,knots[2]), axes=FALSE, ylab="u(x)", xlab="x")
 axis(1, c("min(X)", expression(k[1]), expression(k[2]), expression(k[3]),
           "max(X)"), at=c(minX, knots, maxX))
+axis(2, c("min(X)", 0), at=c(minX, 0))
 curve(x*(x<=knots[1])+knots[1]*(x>knots[1]), minX, maxX, add=TRUE,lwd=2)
-curve((x-knots[3])*(x>knots[3]), knots[3], maxX, add=TRUE, col=4, lty=4,lwd=2)
+curve((x-knots[3])*(x>knots[3]), minX, maxX, add=TRUE, col=4, lty=4,lwd=2)
 curve((x-knots[1])*(knots[1]<=x)*(x<=knots[2])+
-      (knots[2]-knots[1])*(x>knots[2]), knots[1], maxX, add=TRUE, col=2, lty=2,lwd=2)
+      (knots[2]-knots[1])*(x>knots[2]), minX,
+      maxX, add=TRUE, col=2, lty=2,lwd=2)
 curve((x-knots[2])*(knots[2]<=x)*(x<=knots[3])+
-      (knots[3]-knots[2])*(x>knots[3]), knots[2], maxX, add=TRUE, col=3, lty=3,lwd=2)
-legend("topleft", c(expression(u[1](x)), expression(u[2](x)), expression(u[3](x)),
-                    expression(u[4](x))), col=1:4, lty=1:4, bty='n')
+      (knots[3]-knots[2])*(x>knots[3]), minX,
+      maxX, add=TRUE, col=3, lty=3,lwd=2)
+legend("topleft", c(expression(u[1](x)), expression(u[2](x)),
+                    expression(u[3](x)), expression(u[4](x))),
+       col=1:4, lty=1:4, bty='n', lwd=2)
 box()
 ```
 
@@ -935,35 +1006,6 @@ estSLSE(selSLSE(model1, selType = "FLSE", selCrit = "BIC"))
 
 ## The `causalSLSE` method for `slseFit` objects \label{ssec:causalForFit}
 
-The regression model estimated by `estSLSE`, as described in the
-introduction, can be written as
-
-\[ 
-Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \tp{\psi_0}U_{i,0}(1-Z_i) + 
-\tp{\psi_1}U_{i,1}Z_i + \zeta_i\mbox{ for } i=1,...,n\,.
-\] 
-
-Let $\hat\beta_0$, $\hat\beta_1$, $\hat\psi_0$ and $\hat\psi_1$ be the
-least squares estimates of the regression parameters. Then, the SLSE
-average causal effect (ACE), causal effect on the treated (ACT) and
-causal effect on the non-treated (ACN) are defined respectively as
-follows:
-
-\begin{eqnarray*}
-\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_1 -
-\tp{\hat{\psi}_0}\bar{U}_0 \\
-\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_{1,1} -
-\tp{\hat{\psi}_0}\bar{U}_{0,1} \\
-\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_{1,0} -
-\tp{\hat{\psi}_0}\bar{U}_{0,0} \,,
-\end{eqnarray*}
-
-where $\bar{U}_k = \frac{1}{n}\sum_{i=1}^n U_{i,k}$, $\bar{U}_{k, 1} =
-\frac{1}{n_1}\sum_{i=1}^n U_{i, k}Z_i$ and $\bar{U}_{k, 0} =
-\frac{1}{n_0}\sum_{i=1}^n U_{i, k}(1-Z_i)$, for $k=0,1$, where $n_0$
-and $n_1$ are the sample size in the nontreated and treated groups and
-$n=n_1+n_0$. 
-
 The method `causalSLSE` estimates the causal effects from `slseFit`
 objects using the knots included in the estimated model. The arguments
 of the method are:
@@ -974,47 +1016,13 @@ of the method are:
   have the choice between "ALL" (the default), "ACE", "ACT" or "ACN".
    
 - **vcov.**: An alternative function used to compute the covariance
-  matrix of the least squares estimates. By default, `vcovHC` is used
-  with `type="HC3"`. 
+  matrix of the least squares estimates. This is the
+  $\hat\Sigma_{\hat\theta}$ defined in the Introduction section. By default,
+  `vcovHC` is used with `type="HC3"`. Simulations show that using
+  `vcovHC` with `type="HC3"` produces the most accurate estimate of
+  the variance of ACE, ACT and ACN in small and large samples.
   
 - **...**: This is used to pass arguments to the `vcov.` function.
-
-To see where the function `vcov.` is used, note that the causal
-effects can be expressed as a linear combination of the vector of
-least squares estimates. Let $\hat{\theta}=\tp{\{\hat\beta_0,
-\hat\beta_1, \tp{\hat\psi_0}, \tp{\hat\psi_1}\}}$. Then, the causal
-effect estimates can be written as
-$\tp{\hat{D}_{\mathrm{c}}}\hat{\theta}$ for c=ACE, ACT or ACN, with
-$\hat{D}_{\mathrm{ACE}}=\tp{\{-1, 1, \tp{-\bar{U}_0},
-\tp{\bar{U}_1}\}}$, $\hat{D}_{\mathrm{ACT}}=\tp{\{-1, 1,
-\tp{-\bar{U}_{0,1}}, \tp{\bar{U}_{1,1}}\}}$ and
-$\hat{D}_{\mathrm{ACN}}=\tp{\{-1, 1, \tp{-\bar{U}_{0,0}},
-\tp{\bar{U}_{1,0}}\}}$. Since $\hat{D}_\mathrm{c}$ is random, we need
-a first order Taylor expansion to derive the variance of the causal
-estimates. For example, we can show that the variance of
-ACE=$\tp{\hat{D}_{\mathrm{ACE}}}\hat{\theta}$ can be consistently
-estimated as follows (we can derive a similar expression for the ACT
-and ACN):
-
-\[
-\hat{V}_\mathrm{ACE} = \begin{pmatrix} -\hat\beta_0 & \hat\beta_1 & 
-\tp{\hat{D}_\mathrm{ACE}} \end{pmatrix}
-\begin{pmatrix}
-\hat\Sigma_0 & \hat\Sigma_{0,1} & \hat\Sigma_{0,\hat\theta} \\
-\hat\Sigma_{1,0} & \hat\Sigma_1 & \hat\Sigma_{1,\hat\theta} \\
-\hat\Sigma_{\hat\theta,0} & \hat\Sigma_{\hat\theta,1} & \hat\Sigma_{\hat\theta} 
-\end{pmatrix}
-\begin{pmatrix} -\hat\beta_0 \\ \hat\beta_1 \\ \hat{D}_\mathrm{ACE} \end{pmatrix}\,,
-\]
-
-where $\hat\Sigma_k=\widehat{\var(\bar{U}_k)}$,
-$\hat\Sigma_{k,l}=\widehat{\cov(\bar{U}_k, \bar{U}_l)}$, $\hat\Sigma_{k,
-\hat\theta}=\tp{\hat\Sigma_{\hat\theta, k}}=\widehat{\cov(\bar{U}_k,
-\hat\theta)}$, for $k,l=0,1$, and $\hat\Sigma_{\hat\theta}$ is the
-estimated variance of $\hat\theta$ computed by `vcov.`. Simulations
-show that using `vcovHC` with `type="HC3"` produces the most accurate
-estimate of the variance of ACE, ACT and ACN in small and large
-samples, which justifies using this specification as default.
 
 In the following example, we estimate the causal effect with the
 initial knots (without selection).
@@ -1525,6 +1533,51 @@ legend("top", c("True-treated", "True-nontreated"),
 \newpage 
 
 # Summary of methods and objects \label{sec:summary}
+
+The following is a list of all objects from the package. For each
+object, we explain how it is constructed and give a list of the
+registered methods. For mode details about the arguments of the
+different methods, see the help files. Note, however, that no help
+files exist for non-exported methods and the latter must be called
+using `causalSLSE:::` before the method names.
+
+- **slseKnots**: The object is created by the function `slseKnots` and
+  the only exported registered method is `print`. The method `update`,
+  which is used by `estSLSE` to select knots before estimating the
+  model is not exported. 
+
+- **cslseKnots**: The object is created by the function `cslseKnots`
+  and it is a list of `slseKnots` objects. As for `slseKnots` object,
+  the only exported registered method is `print` and there is an
+  non-exported method `update`. 
+  
+- **cslseModel**: The object is created by the function `cslseModel`
+  and the exported registered methods are `print`, `estSLSE` (estimate
+  the regression model), `selSLSE` (optimal selection of knots) and
+  `causalSLSE` (to compute the causal effects). There are two
+  non-exported methods: `pvalSLSE` (used to compute the p-values) and
+  `model.matrix` (to extract the matrix of confounders). 
+  
+- **slseFit**: The object is created by the method `estSLSE` and the
+  exported registered methods are `print`, `causalSLSE` (to compute
+  the causal effects), `predict` (to predict the outcome), `plot` (to
+  plot the outcome as a function of one confounder) and `summary` (to
+  give more details about the least squares estimation)
+  
+- **summary.slseFit**: The object is created by the `summary` method
+  for `slseFit` objects. The only exported registered method is
+  `print`.
+
+- **cslse**: The object is created by any `causalSLSE` method. It
+  inherits from `slseFit` object. The methods that are common through
+  this inheritance are `plot` and `predict`. The exported registered
+  methods specific to `cslse` objects are `print`, `summary` (to give
+  more details about the causal effect estimation) and `extract` (a
+  method needed for `texreg`)
+
+Note that the method `causalSLSE` is also registered for objects of
+class `formula`. 
+
 
 
 # References
