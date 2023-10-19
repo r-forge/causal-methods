@@ -9,7 +9,7 @@
   include.nknots = TRUE,
   include.numcov = TRUE,
   include.rsquared = TRUE,
-  include.adjrsquared=TRUE,
+  include.adjrs=TRUE,
   which = c("ALL","ACE","ACT","ACN","ACE-ACT","ACE-ACN","ACT-ACN"),
   ...)
 }
@@ -26,7 +26,7 @@
 \item{include.rsquared}{Report the R-squared of the final regression
   estimtion}
 
-\item{include.adjrsquared}{Report the adjusted R-squared of the final
+\item{include.adjrs}{Report the adjusted R-squared of the final
   regression estimtion}
 
 \item{which}{Which causal effect measures should be printed?}

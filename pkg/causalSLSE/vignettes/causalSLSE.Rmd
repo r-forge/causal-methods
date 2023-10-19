@@ -692,27 +692,16 @@ arguments of the `plot` method are:
 	necessary to set a value for `fixedCov1` if we want the same
 	confounders to be fixed to the same values in both groups.
   
-- **legendPos**: The position of the legend. The default is
-  "topright".
-  
 - **vcov.**: An optional function to compute the estimated matrix of
   covariance of the least squares estimators. This argument only
   affects the confidence intervals. The default is `vcovHC` with
   `type="HC3"`. 
 
-- **col0, col1, lty0, lty1**: The line colors and shapes for the
-  nontreated and treated. The defaults are `col0=1` (black), `col1=2`
-  (red), `lty0=1` (solid) and `lty1=2` (dashed).
-  
-- **add.**: Should the curves be added to an existing plot? The
+- **add**: Should the curves be added to an existing plot? The
   default is `FALSE`.
 
 - **addToLegend**: An optional character string to add to the legend
   next to "treated" and "nontreated".
-
-- **cex**: The font size for the legend. The default is 1. 
-
-- **ylim, xlim**: optional ranges for the y-axis and x-axis.
 
 - **addPoints**: Should we include the scatterplot of the outcome and
   confounder to the graph? The default is `FALSE`.
@@ -721,16 +710,50 @@ arguments of the `plot` method are:
   fixed. The default is `mean`. Note that the function is applied to
   each group separately.
 
-- **main**: An optional title to replace the default one.
-
 - **plot**: By default, the method produces a graph. Alternatively, we
   can set this argument to `FALSE` and it returns one `data.frame` per
   group with the variable selected by `which` and the prediction.
+
+- **graphPar**: A list of graphical parameters if not satisfied with
+  the default ones.
 
 - **...**: Other arguments are passed to the `vcov.` function. For
   example, it is possible to change the type of `vcovHC` from the
   default HC3 to any available methods included in the `sandwich`
   package (@sandwich). 
+
+
+The default set of graphical parameters can be obtained by running the
+function `causalSLSE:::.initPar()`. The function returns a list of
+four elements: `treated`, `nontreated`, `common`, `legend`. The first
+two are lists of two elements: `points` for the list of parameters of
+the scatterplot produced when `addPoints=TRUE` and `lines` for the
+line parameters. For example, we can see that the type of points for
+the treated is initially set to `pch=21` and their colour to `2`:
+
+```{r}
+causalSLSE:::.initPar()$treated$points
+```
+
+The element `common` are for parameters not specific to a group like
+the main title or the axis labels and `legend` are the parameters that
+control the legend. Note, however, that the colour and line shapes for
+the legend are automatically determined by the lines and points
+parameters of the `treated` and `nontreated` elements.
+
+The default parameters can be modified by the argument
+`graphPar`. This argument must follow the structure of
+`causalSLSE:::.initPar()`. For example, if we want a new title, new
+x-axis label, new type of lines for the treated, new type of points
+for the nontreated and a different position for the legend, we create
+the following `graphPar`:
+
+```{r}
+graphPar <- list(treated = list(lines = list(lty=5, col=4)),
+                 nontreated = list(points = list(pch=25, col=3)),
+                 common = list(xlab = "MyNewLab", main="My New Title"),
+                 legend = list(x = "top"))
+```
 
 In the following, we illustrate some examples. 
 
@@ -755,8 +778,10 @@ default) of type HC1 in the second plot.
 
 ```{r, fig.show='hold', out.width='50%'}
 library(sandwich)
-plot(fit1, "ed", col0 = "darkgreen", col1 = "darkred", lty0 = 2, lty1 = 4,
-     legendPos = "topleft", vcov. = vcov)
+arg1 <- list(treated = list(lines = list(col = "darkred", lty = 4)),
+             nontreated = list(lines = list(col = "darkgreen", lty = 2)),
+             legend = list(x = "topleft"))
+plot(fit1, "ed", vcov. = vcov, graphPar=arg1)
 plot(fit1, "age", interval = 'confidence', level = 0.9, type = "HC1")
 ```
 
@@ -788,10 +813,11 @@ corresponding to the variables you want to fix. You can also add a
 description to the legend with the argument `addToLegend`.
 
 ```{r, fig.show='hold', out.width='50%'}
+arg2 <- list(legend = list(cex = 0.8))
 plot(fit1, "age", fixedCov0 = list(married = 1, re75 = 10000),
-     addToLegend = "married", cex = 0.8)
+     addToLegend = "married", graphPar = arg2)
 plot(fit1, "age", fixedCov0 = list(married = 0, re75 = 10000),
-     addToLegend = "non-married", cex = 0.8)
+     addToLegend = "non-married", graphPar = arg2)
 ```
 
 **Example 4:**
@@ -804,12 +830,15 @@ shapes to different values and change the position of the legend for
 the second set of lines.
 
 ```{r, fig.align='center', out.width='70%'}
+arg3 <- list(legend = list(cex = 0.8),
+             common = list(ylim = c(3000, 10000)))
 plot(fit1, "age", fixedCov0 = list(married = 1, re75 = 10000),
-     addToLegend = "married", cex = 0.8, ylim. = c(3000,10000))
+     addToLegend = "married", graphPar = arg3)
+arg4 <- list(treated = list(lines = list(col = "darkred", lty = 5)),
+             nontreated = list(lines = list(col = "darkgreen", lty = 4)),
+             legend = list(x = "topleft", cex = 0.8))
 plot(fit1, "age", fixedCov0 = list(married = 0, re75 = 10000),
-     addToLegend = "non-married", cex = 0.8, legendPos = 'topleft',
-     col0 = "darkgreen", col1 = "darkred", lty0 = 4, lty1 = 5,
-     add. = TRUE)
+     addToLegend = "non-married", add = TRUE, graphPar = arg4)
 ```
 
 **Example 5:**
@@ -818,8 +847,10 @@ Finally, it is also possible to add the observed points to the graph.
 
 
 ```{r, fig.show='hold', out.width='50%'}
-plot(fit1, "ed", col0 = "darkgreen", col1 = "darkred", lty0 = 2, lty1 = 4,
-     legendPos = "topleft", addPoints = TRUE)
+arg5 <- list(treated = list(lines = list(col = "darkred", lty = 4)),
+             nontreated = list(lines = list(col = "darkgreen", lty = 2)),
+             legend = list(x = "topleft"))
+plot(fit1, "ed", addPoints = TRUE, graphPar = arg5)
 plot(fit1, "re75", addPoints = TRUE)
 ```
 
@@ -1105,7 +1136,7 @@ can be modified through the `texreg` function, are:
 
 - **include.rsquared**: Include the $R^2$.  The default is `TRUE`.
   
-- **include.adjrsquared**: Include the adjusted $R^2$.  The default is
+- **include.adjrs**: Include the adjusted $R^2$.  The default is
   `TRUE`.
 
 - **which**: Which causal effects should be printed? The options are
@@ -1116,13 +1147,13 @@ Here is one example on how to change some arguments:
 
 ```{r, eval=FALSE}
 texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE,
-       which="ACE-ACT", include.adjrsquared=FALSE)
+       which="ACE-ACT", include.adjrs=FALSE)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
 texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE,
-       which="ACE-ACT", include.adjrsquared=FALSE)
+       which="ACE-ACT", include.adjrs=FALSE)
 ```
 \end{center}
 
@@ -1252,17 +1283,18 @@ treated group, which is not surprising since the true $f_1(x)$ is
 linear. We can compare the different fits. 
 
 ```{r, out.width='50%', fig.show='hold', fig.height=4}
+list(common = list(main = "Y vs X using BLSE-BIC"))
 plot(c1, "X")
 curve(1 - 2 * x, -3, 3, col = "darkgreen", lty = 4, lwd = 3, add = TRUE)
 curve(1 + x + x^2, -3, 3, col = "darkorange", lty = 4, lwd = 3, add = TRUE)
 legend("bottomleft", c("True-treated", "True-nontreated"),
        col=c("darkgreen", "darkorange"), lty = 4, lwd = 3, bty = 'n')
-plot(c2, "X", main="Y vs X using BLSE-BIC")
+plot(c2, "X", graphPar = list(common = list(main = "Y vs X using BLSE-BIC")))
 curve(1 - 2 * x, -3, 3, col="darkgreen", lty = 4, lwd = 3, add = TRUE)
 curve(1 + x + x^2, -3, 3, col = "darkorange", lty = 4, lwd = 3, add = TRUE)
 legend("bottomleft", c("True-treated", "True-nontreated"),
        col = c("darkgreen", "darkorange"), lty = 4, lwd = 3, bty = 'n')
-plot(c3, "X", main="Y vs X using FLSE-BIC")
+plot(c3, "X", graphPar = list(common = list(main = "Y vs X using FLSE-BIC")))
 curve(1 - 2 * x, -3, 3, col="darkgreen", lty = 4, lwd = 3, add = TRUE)
 curve(1 + x + x^2, -3, 3, col = "darkorange", lty = 4, lwd = 3, add = TRUE)
 legend("bottomleft", c("True-treated", "True-nontreated"),
@@ -1321,15 +1353,17 @@ The following shows the fit of BLSE-AIC with the true $f_1(x)$ and
 $f_0(x)$, and the observations.
 
 ```{r, out.width='50%', fig.show='hold'}
-plot(c2, "X", legendPos = "right", cex = .8, main="Y vs X using BLSE-AIC")
+arg <-  list(common = list(main = "Y vs X using BLSE-AIC"),
+             legend = list(x = "right", cex = 0.8))
+plot(c2, "X", graphPar = arg)
 curve((1 -2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
       col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve((1 + x) * (x <= -1) + (-1 - x) * (x > -1),
       -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
 legend("left", c("True-treated", "True-nontreated"),
        col = c("darkgreen", "darkorange"), lty = 3, lwd = 3, bty = 'n', cex = .8)
-plot(c2, "X", addPoints = TRUE, legendPos = "topleft", cex = .8,
-     main="Y vs X using BLSE-AIC")
+arg$legend$x <- "topleft"
+plot(c2, "X", addPoints = TRUE, graphPar = arg)
 ```
 
 ## A simulated data set from Model 3 \label{ssec:causalEx3}
@@ -1381,13 +1415,15 @@ the untreated and $2-2X_1$ for the treated. The following graphs show how
 the FLSE-BIC method fits the curves.
 
 ```{r, out.width='50%', fig.show='hold'}
-plot(c2, "X1", legendPos = "right", cex = .8, main="Y vs X1 using FLSE-AIC")
+arg <-  list(common = list(main = "Y vs X1 using FLSE-AIC"),
+             legend = list(x = "right", cex = 0.8))
+plot(c2, "X1", graphPar = arg)
 curve(x + x^2, -3, 3, col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve(2 - 2 * x, -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
 legend("topleft", c("True-treated", "True-nontreated"),
        col = c("darkgreen", "darkorange"), lty = 3, lwd = 3, bty = 'n', cex = .8)
-plot(c2, "X1", addPoints = TRUE, legendPos = "topleft", cex = .8,
-     main="Y vs X1 using FLSE-AIC")
+arg$legend$x <- "topleft"
+plot(c2, "X1", addPoints = TRUE, graphPar = arg)
 ```
 
 If we fix $X_1$ to 0, the true curve is $1+[(1+X_2)I(X_2\leq-1) +
@@ -1396,15 +1432,17 @@ If we fix $X_1$ to 0, the true curve is $1+[(1+X_2)I(X_2\leq-1) +
 how these curves are approximated by FLSE-AIC.
 
 ```{r, out.width='50%', fig.show='hold'}
-plot(c2, "X2", legendPos = "right", cex = .8, main="Y vs X2 using FLSE-AIC")
+arg <-  list(common = list(main = "Y vs X2 using FLSE-AIC"),
+             legend = list(x = "right", cex = 0.8))
+plot(c2, "X2", graphPar = arg)
 curve(1 + (1 - 2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
       col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve(1 + (1 + x) * (x <= -1) + (-1 - x) * (x > -1),
       -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
 legend("left", c("True-treated", "True-nontreated"),
        col = c("darkgreen", "darkorange"), lty = 3, lwd = 3, bty = 'n', cex = .8)
-plot(c2, "X2", addPoints = TRUE, legendPos = "topleft", cex = .8,
-     main="Y vs X2 using FLSE-AIC")
+arg$legend$x <- "topleft"
+plot(c2, "X2", addPoints = TRUE, graphPar = arg)
 ```
 
 ## A simulated data set with interactions \label{ssec:causalEx4}
@@ -1482,16 +1520,18 @@ and $(5-4x)$ for the nontreated.
 ```{r, out.width='50%', fig.show='hold'}
 x20 <- mean(subset(simDat5, Z == 0)$X2)
 x21 <- mean(subset(simDat5, Z == 1)$X2)
+arg <-  list(common = list(main = "Y vs X1 (X2 = sample mean for each group)"),
+             legend = list(x = "right", cex = 0.8))
 plot(c2, "X1", fixedCov0 = list(X2 = x20), fixedCov1 = list(X2 = x21),
-     legendPos = "right", cex = .8,
-     main="Y vs X1 (X2 = sample mean for each group)")
+     graphPar = arg)
 curve(1.3698 + 0.6302 * x + 1.1368 * x^2, -3, 3,
       col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve(3.3964 - 2.3964 * x, -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
 legend("top", c("True-treated", "True-nontreated"),
        col=c("darkorange", "darkgreen"), lty = 3, lwd = 3, bty = 'n', cex = .8)
-plot(c2, "X1", fixedVoc0 = list(X2 = 1), legendPos = "right", cex = .8,
-     main="Y vS X1 (X2 = 1 for each group)")
+arg <-  list(common = list(main = "Y vS X1 (X2 = 1 for each group)"),
+             legend = list(x = "right", cex = 0.8))
+plot(c2, "X1", fixedVoc0 = list(X2 = 1), graphPar = arg)
 curve(2 * x + 2 * x^2, -3, 3, col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve(5 - 4 * x, -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
 legend("top", c("True-treated", "True-nontreated"),
@@ -1511,17 +1551,18 @@ $[(4+x+x^2)+(1+x)(x\leq-1)+(-1-x)(x>-1)]$ for the nontreated.
 ```{r, out.width='50%', fig.show='hold'}
 x10 <- mean(subset(simDat5, Z == 0)$X1)
 x11 <- mean(subset(simDat5, Z == 1)$X1)
+arg <-  list(common = list(main = "Y vs X2 (X1 = sample mean for each group)"),
+             legend = list(x = "right", cex = 0.8))
 plot(c2, "X2", fixedCov0 = list(X1 = x10), fixedCov1 = list(X1 = x11),
-     legendPos = "right", cex = .8,
-     main = "Y vs X2 (X1 = sample mean for each group)")
+     graphPar = arg)
 curve(1.603900 - .3964 * x + (1 - 2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
       col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve(1.767 - 0.3698 * x + 0.1368 * x^2 + (1 + x) * (x <= -1) + (-1 - x) * (x > -1),
       -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
 legend("top", c("True-treated", "True-nontreated"),
        col = c("darkorange", "darkgreen"), lty = 3, lwd = 3, bty = 'n', cex = .8)
-plot(c2, "X2", fixedCov0 = list(X1 = 1), legendPos = "right", cex = .8,
-     main="Y vS X2 (X1 = 1 for each group)")
+arg$common$main <- "Y vS X2 (X1 = 1 for each group)"
+plot(c2, "X2", fixedCov0 = list(X1 = 1), graphPar = arg)
 curve(-2 * x + (1 - 2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
       col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve(4 + (1 + x) * (x <= -1) + (-1 - x) * (x > -1) + x + x^2,

@@ -563,7 +563,7 @@ selSLSE.cslseModel <- function(model, selType=c("BLSE", "FLSE"),
         attr(model$knots$treated, "pval") <- pval$treated
         attr(model$knots$nontreated, "pval") <- pval$nontreated
         attr(model$knots$treated, "curSel") <- attr(model$knots$nontreated, "curSel") <-
-            list(select=selType, crit=selCrit)
+            attr(model$knots, "curSel") <-  list(select=selType, crit=selCrit)
     }
     model
 }
@@ -1081,9 +1081,9 @@ summary.cslse <- function (object, ...)
     est <- t(est)
     dimnames(est) <- list(c("ACE","ACT","ACN")[w],
                           c("Estimate", "Std. Error", "t value", "Pr(>|t|)"))
-    t <- object$beta/object$se.beta
+    t <- na.omit(object$beta)/object$se.beta
     pv <- 2 * pnorm(-abs(t))
-    beta <- cbind(object$beta, object$se.beta, t, pv)
+    beta <- cbind(na.omit(object$beta), object$se.beta, t, pv)
     colnames(beta) <- c("Estimate", "Std. Error", "t value", 
         "Pr(>|t|)")
     ans <- list(causal = est, beta = beta, 
@@ -1150,7 +1150,7 @@ print.summary.cslse <- function (x, digits = max(3L, getOption("digits") - 3L),
 extract.cslse <- function (model, include.nobs = TRUE,
                                 include.nknots = TRUE,
                                 include.numcov = TRUE, include.rsquared = TRUE,
-                                include.adjrsquared=TRUE, 
+                                include.adjrs = TRUE, 
                                 which=c("ALL","ACE","ACT","ACN","ACE-ACT",
                                         "ACE-ACN","ACT-ACN"), ...) 
 {
@@ -1198,14 +1198,14 @@ extract.cslse <- function (model, include.nobs = TRUE,
         gof.names <- c(gof.names, "R$^2$")
         gof.decimal <- c(gof.decimal, TRUE)
     }
-    if (isTRUE(include.adjrsquared)) {
+    if (isTRUE(include.adjrs)) {
         f <- fitted(model$lm.out)
         ess <- sum((f-mean(f))^2)
         rss <- sum(residuals(model$lm.out)^2)       
         R2 <- ess/(ess+rss)
         R2adj <- 1-(1-R2)*(nobs(model$lm.out)-1)/model$lm.out$df.residual        
         gof <- c(gof, R2adj)
-        gof.names <- c(gof.names, "R$^2_{adj}$")
+        gof.names <- c(gof.names, "Adj. R$^2$")
         gof.decimal <- c(gof.decimal, TRUE)
     }   
     tr <- createTexreg(coef.names = names(co), coef = co, se = se, 
@@ -1328,12 +1328,56 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
     list(data=data, formX=formX, xlevels=xlevels)
 }
 
+.findrep <- function(lst1, lst2 = NULL)
+{
+    if (length(lst2) == 0)
+        return(lst1)
+    if (!is.list(lst2))
+        stop("Additional graphical parameters must be provided in a list")
+    if (is.null(names(lst2)))
+        stop("You must name your list of graphical parameters")
+    if (any(duplicated(names(lst2))))
+        stop("Some graphical parameters are duplicated")
+    if (any(names(lst2) %in% names(lst1)))
+    {
+        w <- which(names(lst2) %in% names(lst1))
+        lst1[names(lst2)[w]] <- lst2[w]
+        lst2 <- lst2[-w]
+    }
+    if (length(lst2))
+        lst1 <- c(lst1, lst2)
+    lst1
+}
+
+.initPar <- function()
+{
+    treated <- list(points=list(pch = 21, col = 2),
+                    lines=list(col = 2, lty = c(2, 3, 3), lwd = 2, type='l'))
+    nontreated <- list(points=list(pch = 22, col = 1),
+                       lines=list(col = 1, lty = c(1, 3, 3), lwd = 2, type='l'))    
+    common <- list()
+    legend <- list(x="topright", bty='n')
+    list(treated=treated, nontreated=nontreated,
+         common=common, legend=legend)
+}
+
+.cslsePar <- function(addPar, startPar=.initPar())
+{
+    startPar$treated$points <- .findrep(startPar$treated$points, addPar$treated$points)
+    startPar$treated$lines <- .findrep(startPar$treated$lines, addPar$treated$lines) 
+    startPar$nontreated$points <- .findrep(startPar$nontreated$points,
+                                           addPar$nontreated$points)
+    startPar$nontreated$lines <- .findrep(startPar$nontreated$lines,
+                                          addPar$nontreated$lines)
+    startPar$common <- .findrep(startPar$common, addPar$common)
+    startPar$legend <- .findrep(startPar$legend, addPar$legend)
+    startPar
+}
+
 plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
                    counterfactual = FALSE, level = 0.95, fixedCov0 = NULL,
-                   fixedCov1 = fixedCov0, legendPos = "topright", 
-                   vcov. = vcovHC, col0 = 1, col1 = 2, lty0 = 1, lty1 = 2, add. = FALSE, 
-                   addToLegend = NULL, cex = 1, ylim. = NULL, xlim. = NULL, 
-                   addPoints = FALSE, FUN = mean, main = NULL, plot=TRUE, ...) 
+                   fixedCov1 = fixedCov0,  vcov. = vcovHC, add = FALSE, addToLegend = NULL, 
+                   addPoints = FALSE, FUN = mean, plot=TRUE, graphPar=list(), ...) 
 {
     interval <- match.arg(interval)
     vnames <- all.vars(x$model$formX)
@@ -1371,45 +1415,57 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
             names(pr0)[2] <- names(pr1)[2] <- "fit"
         return(list(treated=pr1, nontreated=pr0))
     }
-    if (interval == "confidence") {
-        lty0 = c(lty0, 3, 3)
-        lty1 = c(lty1, 3, 3)
-        lwd = c(2, 1, 1)
-    }
-    else {
-        lwd = 2
-    }
-    outcome <- x$model$nameY
-    if (is.null(main)) 
-        main <- paste(outcome, " vs ", which, " using SLSE", sep = "")
+    ylim <- if(addPoints)
+            {
+                range(Yp)
+            } else {
+                range(c(pr0, pr1))
+            }
+    common <- list(xlab=which, ylab=x$model$nameY,
+                   ylim=ylim, xlim=range(x$model$data[, which]),
+                   main=paste(x$model$nameY, " vs ", which, " using SLSE", sep = ""))
+    allPar <- .cslsePar(list(common=common))
+    allPar <- .cslsePar(graphPar, allPar)
+    lpch <- if(addPoints)
+            {
+                c(allPar$treated$points$pch, allPar$nontreated$points$pch)
+            } else {
+                c(NA,NA)
+            }
+    leg <- list(legend=c("Treated", "Nontreated"),
+                pch = lpch,
+                col = c(allPar$treated$lines$col, allPar$nontreated$lines$col),
+                lty = c(allPar$treated$lines$lty[1], allPar$nontreated$lines$lty[1]))
+    allPar <- .cslsePar(list(legend=leg), allPar)
     if (addPoints) {
-        add. = TRUE
-        pcol <- rep(col1, length(Zp))
-        pcol[Zp == 0] <- col0
-        pch. <- 21 * (Zp == 1) + 22 * (Zp == 0)
-        plot(Xp, Yp, pch = pch., col = pcol, main = main, ylab = x$model$nameY, 
-            xlab = which)
+        add <- TRUE
+        pcol <- rep(allPar$treated$points$col, length(Zp))
+        pcol[Zp == 0] <- allPar$nontreated$points$col
+        pch. <- numeric(length(Zp))
+        pch.[Zp == 1] <- allPar$treated$points$pch
+        pch.[Zp == 0] <- allPar$nontreated$points$pch
+        pargs <- allPar$common
+        pargs$pch <- pch.
+        pargs$col <- pcol
+        pargs$x <- Xp
+        pargs$y <- Yp
+        do.call("plot", pargs)
     }
-    if (is.null(ylim.)) 
-        ylim. <- range(c(pr0, pr1))
-    if (is.null(xlim.)) 
-        xlim. <- range(x$model$data[, which])
-    matplot(x$model$data[Z == 1, which], pr1, col = col1, ylim = ylim., 
-        type = "l", lty = lty1, lwd = lwd, main = main, ylab = x$model$nameY, 
-        xlab = which, add = add., xlim = xlim.)
-    matplot(x$model$data[Z == 0, which], pr0, col = col0, type = "l", 
-        lty = lty0, lwd = lwd, add = TRUE)
+    pargs1 <- c(allPar$treated$lines, allPar$common, list(add=add))
+    pargs1$x <- x$model$data[Z == 1, which]
+    pargs1$y <- pr1
+    do.call("matplot", pargs1)
+    pargs0 <- c(allPar$nontreated$lines, list(add=TRUE))
+    pargs0$x <- x$model$data[Z == 0, which]
+    pargs0$y <- pr0
+    do.call("matplot", pargs0)
     grid()
-    Leg = c("Treated", "Nontreated")
     if (counterfactual) 
-        Leg <- paste(Leg, "-counterfactual", sep = "")
+        allPar$legend$legend <- paste(allPar$legend$legend, "-counterfactual", sep = "")
     if (!is.null(addToLegend)) 
-        Leg = paste(Leg, " (", addToLegend[1], ")", sep = "")
-    if (addPoints) 
-        pch. <- c(21, 22)
-    else pch. = c(NA, NA)
-    legend(legendPos, Leg, col = c(col1, col0), pch = pch., lty = c(lty1[1], 
-        lty0[1]), lwd = 2, bty = "n", cex = cex)
+        allPar$legend$legend = paste(allPar$legend$legend,
+                                     " (", addToLegend[1], ")", sep = "")
+    do.call("legend", allPar$legend)
     invisible()
 }
 
@@ -1423,6 +1479,8 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     names(w) <- names(model$knots[[group]])
     update(model$knots[[group]], w)
 }
+
+
 
 .selICF <- function (model, pvalRes, pvalT = NULL, crit) 
 {
@@ -1481,9 +1539,37 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     modelAIC <- model
     modelBIC <- model
     modelAIC$knots$nontreated <-.reshapeKnots(model, sp$w0AIC, mnk0, "nontreated")
-    modelAIC$knots$nontreated <-.reshapeKnots(model, sp$w1AIC, mnk1, "nontreated") 
-    modelBIC$knots$treated <-.reshapeKnots(model, sp$w0BIC, mnk0, "treated")
+    modelAIC$knots$treated <-.reshapeKnots(model, sp$w1AIC, mnk1, "treated") 
+    modelBIC$knots$nontreated <-.reshapeKnots(model, sp$w0BIC, mnk0, "nontreated")
     modelBIC$knots$treated <-.reshapeKnots(model, sp$w1BIC, mnk1, "treated") 
     list(AIC=modelAIC, BIC=modelBIC)
 }
 
+
+selSLSE.F <- function(model, selType=c("BLSE", "FLSE"),
+                      selCrit = c("AIC", "BIC", "PVT"), 
+                      pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
+{
+    selCrit <- match.arg(selCrit)
+    selType <- match.arg(selType)
+    critFct <- if (selCrit == "PVT") {
+                   .selPVT
+               } else {
+                   .selICF
+               }
+    if (all(sapply(model$knots$treated, function(i) is.null(i))) &
+        all(sapply(model$knots$nontreated, function(i) is.null(i))))
+    {
+        warning("No selection needed: the number of knots is 0 for all confounders")
+    } else {
+        pval <- pvalSLSE(model, selType, vcov., ...)
+        model <- critFct(model, pval, pvalT, selCrit)
+        if (selCrit != "PVT")
+            model <- model[[selCrit]]            
+        attr(model$knots$treated, "pval") <- pval$treated
+        attr(model$knots$nontreated, "pval") <- pval$nontreated
+        attr(model$knots$treated, "curSel") <- attr(model$knots$nontreated, "curSel") <-
+            attr(model$knots, "curSel") <- list(select=selType, crit=selCrit)        
+    }
+    model
+}
