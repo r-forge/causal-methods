@@ -6,9 +6,9 @@ Some plot utilities for object of class \code{slseFit}.
 }
 \usage{
 \method{plot}{slseFit}(x, y, which = y, interval = c("none", "confidence"), 
-                   counterfactual = FALSE, level = 0.95, fixedCov0 = NULL,
-                   fixedCov1 = fixedCov0,  vcov. = vcovHC,  add = FALSE, 
-                   addToLegend = NULL, addPoints = FALSE, FUN = mean,
+                   counterfactual = FALSE, level = 0.95, fixedCov = list(),
+                   vcov. = vcovHC,  add = FALSE, addToLegend = NULL,
+                   addPoints = FALSE, FUN = mean,
                    plot=TRUE, graphPar=list(), ...)
 }
 \arguments{
@@ -20,11 +20,10 @@ Some plot utilities for object of class \code{slseFit}.
     \code{none}.}
   \item{counterfactual}{Should we plot the counterfactual prediction?}
   \item{level}{The confidence interval level if included.}
-  \item{fixedCov0, fixedCov1}{Named lists of covariates to fix to
+  \item{fixedCov}{List of covariates to fix to
     specific values for the nontreated and treated groups. By default,
     covariates not selected by \code{which} are set to their group
-    specific sample  means. If only \code{fixedCov0} is set,
-    \code{fixedCov1} is set to the same list.}
+    specific sample  means.}
   \item{vcov.}{An alternative function to compute the covariance
     matrix of the least squares estimates. The default is the
     \code{vcovHC} method for \code{lm} objects.}
@@ -34,7 +33,7 @@ Some plot utilities for object of class \code{slseFit}.
   \item{addPoints}{Should we add the scatterplot of the outcome and
     covariate on the graph?}
   \item{FUN}{The function to determine the fixed value for the
-    covariates not fixed by \code{fixedCov0} and \code{fixedCov1}. The
+    covariates not fixed by \code{fixedCov}. The
     default is \code{mean}.} 
   \item{plot}{If set to \code{FALSE}, a \code{data.frame} is returned
     for each group with the covariate selected by \code{which} and the
@@ -58,6 +57,13 @@ lines. The argument \code{graphPar} can be use to modify existing
 parameters or to add new ones. It must respect the structure of the
 initial list. See the example below.
 
+To fix covariates to the same values for both groups, \code{fixedCov} is
+just a named list with values for the covariates associated with the
+names. To fix the covariates to different values for the treated and
+nontreated, \code{fixedCov} is a named list of at least 1 element with
+names being either treated, nontreated or both. If only one group is
+specified, the covariates for the other groups are determined by
+\code{FUN}.
 
 }
 

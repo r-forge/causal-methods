@@ -1375,8 +1375,8 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
 }
 
 plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
-                   counterfactual = FALSE, level = 0.95, fixedCov0 = NULL,
-                   fixedCov1 = fixedCov0,  vcov. = vcovHC, add = FALSE, addToLegend = NULL, 
+                   counterfactual = FALSE, level = 0.95, fixedCov = list(),
+                   vcov. = vcovHC, add = FALSE, addToLegend = NULL, 
                    addPoints = FALSE, FUN = mean, plot=TRUE, graphPar=list(), ...) 
 {
     interval <- match.arg(interval)
@@ -1396,8 +1396,17 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     ind <- order(x$model$data[, which])
     x$model$data <- x$model$data[ind, ]
     Z <-  x$model$data[, treat]
-    obj1 <- .prDatak(x, which, fixedCov1, Z==1, FUN)
-    obj0 <- .prDatak(x, which, fixedCov0, Z==0, FUN)    
+    if (length(fixedCov) == 0)
+    {
+        fixedCov <- list(treated=NULL, nontreated=NULL)
+    } else  if ( any(names(fixedCov) %in% c("treated", "nontreated")) ) {
+        if (!all(names(fixedCov) %in% c("treated", "nontreated")))
+            stop("When fixedCov is group specific, treated and nontreated are the only allowed names")
+    } else {
+        fixedCov <- list(treated=fixedCov, nontreated=fixedCov)        
+    }
+    obj1 <- .prDatak(x, which, fixedCov$treated, Z==1, FUN)
+    obj0 <- .prDatak(x, which, fixedCov$nontreated, Z==0, FUN)    
     x$model$data <- rbind(obj1$data, obj0$data)
     Z <-  x$model$data[, treat]
     x$model$xlevels <- obj1$xlevels

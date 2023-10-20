@@ -685,12 +685,15 @@ arguments of the `plot` method are:
 - **level**: The confidence level when `interval="confidence"`. The
   default is 0.95.
   
-- **fixedCov0 and fixedCov1**: Optional named lists of fixed values
-	for some or all other confounders in each group. The values of the
-	confounders not specified are determined by the argument `FUN`. By
-	default, `fixedCov1` is equal to `fixedCov0`, so it is not
-	necessary to set a value for `fixedCov1` if we want the same
-	confounders to be fixed to the same values in both groups.
+- **fixedCov**: Optional named lists of fixed values for some or all
+	other confounders in each group. The values of the confounders not
+	specified are determined by the argument `FUN`. To fix some
+	covariates for both groups, `fixedCov` is just a named list with
+	the names being the variable names. To fix them to different
+	values for the treated and nontreated, `fixedCov` is a named list
+	of 1 or 2 elements (for the treated, nontreated or both), each
+	element being a named list of values for the covariates.  See the
+	examples below.
   
 - **vcov.**: An optional function to compute the estimated matrix of
   covariance of the least squares estimators. This argument only
@@ -805,18 +808,16 @@ plot(fit1, "age", FUN = function(x) quantile(x, 0.20))
 **Example 3:**
 
 It is also possible to set some of the other confounders to a specific
-value by changing the argument `fixedCov0` and `fixedCov1`. By
-default, `fixedCov1` is equal to `fixedCov0`, so if we want to fixed
-the same confounders to the same values in both groups, we only need to
-set `fixedCov0`. The argument must be a named list with the names
-corresponding to the variables you want to fix. You can also add a
-description to the legend with the argument `addToLegend`.
+value by changing the argument `fixedCov`. To fix some variables to
+the same values for both groups, `fixedCov` must be a named list with
+the names corresponding to the variables you want to fix. You can also
+add a description to the legend with the argument `addToLegend`.
 
 ```{r, fig.show='hold', out.width='50%'}
 arg2 <- list(legend = list(cex = 0.8))
-plot(fit1, "age", fixedCov0 = list(married = 1, re75 = 10000),
+plot(fit1, "age", fixedCov = list(married = 1, re75 = 10000),
      addToLegend = "married", graphPar = arg2)
-plot(fit1, "age", fixedCov0 = list(married = 0, re75 = 10000),
+plot(fit1, "age", fixedCov = list(married = 0, re75 = 10000),
      addToLegend = "non-married", graphPar = arg2)
 ```
 
@@ -832,12 +833,12 @@ the second set of lines.
 ```{r, fig.align='center', out.width='70%'}
 arg3 <- list(legend = list(cex = 0.8),
              common = list(ylim = c(3000, 10000)))
-plot(fit1, "age", fixedCov0 = list(married = 1, re75 = 10000),
+plot(fit1, "age", fixedCov = list(married = 1, re75 = 10000),
      addToLegend = "married", graphPar = arg3)
 arg4 <- list(treated = list(lines = list(col = "darkred", lty = 5)),
              nontreated = list(lines = list(col = "darkgreen", lty = 4)),
              legend = list(x = "topleft", cex = 0.8))
-plot(fit1, "age", fixedCov0 = list(married = 0, re75 = 10000),
+plot(fit1, "age", fixedCov = list(married = 0, re75 = 10000),
      addToLegend = "non-married", add = TRUE, graphPar = arg4)
 ```
 
@@ -898,12 +899,12 @@ applied to the function (e.g. the average `log(X)` or the average
 `I(X1*X4)`).
 
 To fix a factor to a specific level, we just set its value in the
-`fixedCov0` and `fixedCov1` arguments. In the following example, we
-fix `X2` to "first", so `X2second` and `X2third` are set to 0.
+`fixedCov`. In the following example, we fix `X2` to "first", so
+`X2second` and `X2third` are set to 0.
 
 ```{r, eval=FALSE}
 fit <- estSLSE(mod)
-plot(fit, "X1", fixedCov0 = list(X2 = "first"))
+plot(fit, "X1", fixedCov = list(X2 = "first"))
 ```
 
 Note that if a function of confounders (or an interaction) involves the
@@ -1522,7 +1523,7 @@ x20 <- mean(subset(simDat5, Z == 0)$X2)
 x21 <- mean(subset(simDat5, Z == 1)$X2)
 arg <-  list(common = list(main = "Y vs X1 (X2 = sample mean for each group)"),
              legend = list(x = "right", cex = 0.8))
-plot(c2, "X1", fixedCov0 = list(X2 = x20), fixedCov1 = list(X2 = x21),
+plot(c2, "X1", fixedCov = list(nontreated = list(X2 = x20), treated = list(X2 = x21)),
      graphPar = arg)
 curve(1.3698 + 0.6302 * x + 1.1368 * x^2, -3, 3,
       col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
@@ -1531,7 +1532,7 @@ legend("top", c("True-treated", "True-nontreated"),
        col=c("darkorange", "darkgreen"), lty = 3, lwd = 3, bty = 'n', cex = .8)
 arg <-  list(common = list(main = "Y vS X1 (X2 = 1 for each group)"),
              legend = list(x = "right", cex = 0.8))
-plot(c2, "X1", fixedVoc0 = list(X2 = 1), graphPar = arg)
+plot(c2, "X1", fixedCov = list(X2 = 1), graphPar = arg)
 curve(2 * x + 2 * x^2, -3, 3, col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve(5 - 4 * x, -3, 3, col = "darkorange", lty = 3, lwd = 3, add = TRUE)
 legend("top", c("True-treated", "True-nontreated"),
@@ -1553,7 +1554,7 @@ x10 <- mean(subset(simDat5, Z == 0)$X1)
 x11 <- mean(subset(simDat5, Z == 1)$X1)
 arg <-  list(common = list(main = "Y vs X2 (X1 = sample mean for each group)"),
              legend = list(x = "right", cex = 0.8))
-plot(c2, "X2", fixedCov0 = list(X1 = x10), fixedCov1 = list(X1 = x11),
+plot(c2, "X2", fixedCov = list(nontreated = list(X1 = x10), treated = list(X1 = x11)),
      graphPar = arg)
 curve(1.603900 - .3964 * x + (1 - 2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
       col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
@@ -1562,7 +1563,7 @@ curve(1.767 - 0.3698 * x + 0.1368 * x^2 + (1 + x) * (x <= -1) + (-1 - x) * (x > 
 legend("top", c("True-treated", "True-nontreated"),
        col = c("darkorange", "darkgreen"), lty = 3, lwd = 3, bty = 'n', cex = .8)
 arg$common$main <- "Y vS X2 (X1 = 1 for each group)"
-plot(c2, "X2", fixedCov0 = list(X1 = 1), graphPar = arg)
+plot(c2, "X2", fixedCov = list(X1 = 1), graphPar = arg)
 curve(-2 * x + (1 - 2 * x) * (x <= 0) + (1 + 2 * x) * (x > 0), -3, 3,
       col = "darkgreen", lty = 3, lwd = 3, add = TRUE)
 curve(4 + (1 + x) * (x <= -1) + (-1 - x) * (x > -1) + x + x^2,
