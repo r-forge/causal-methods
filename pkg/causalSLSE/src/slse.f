@@ -1,7 +1,115 @@
-      subroutine splinei(x, n, k, nk, sx)
+      subroutine mypnorm(x, n, mu, sig, p)
+
+      integer i, n
+      double precision x(n), mu, sig, p(n)
+
+      do i=1,n
+         call fpnorm(p(i), x(i), mu, sig, 0, 0)
+      end do
+
+      end
+
+      subroutine myhat(x, n, k, qraux, tol, hat)
+      
+      integer n, k, info, i, j
+      double precision x(n,k), qraux(k), hat(n), sigma(n)
+      double precision dummy, tol
+      
+      do i = 1,n
+        hat(i) = 0.0d0
+      end do
+      
+      do j = 1,k
+         do i = 1,n
+            sigma(i) = 0.0d0
+         end do
+         sigma(j) = 1.0d0
+         call dqrsl(x, n, n, k, qraux, sigma, sigma, dummy,
+     c        dummy, dummy, dummy, 10000, info)
+         do i = 1, n
+            hat(i) = hat(i)+sigma(i)*sigma(i)
+         end do
+      end do
+      do i = 1, n
+        if(hat(i) .ge. 1.0d0 - tol) hat(i) = 1.0d0
+      end do
+      end  
+
+      subroutine myvcov(x, xqr, qraux, e, tol, n, k, rk, type, v)
+
+      integer n, k, rk, i, j, type, info
+      double precision x(n, k), xqr(n,k), v(rk, rk)
+      double precision sig, e(n), qraux(k), tol, e2(n), bread(rk, rk)
+      double precision xxi(rk*(rk+1)/2), hat(n), meat(rk, rk)
+
+      do i=1,rk
+         do j=i,rk
+            xxi(i+(j-1)*j/2) = xqr(i,j)
+         end do
+      end do         
+      call dpptri('u', rk, xxi, info)
+      if (type .gt. 1) then
+         call myhat(xqr, n, k, qraux, tol, hat)      
+      end if
+      sig = 1.0d0
+      
+      if (type .eq. -1) then
+         sig = sum(e*e)/real(n-rk)
+      end if
+
+      do i=1,rk
+         do j=i,rk
+            bread(i,j) = xxi(i+(j-1)*j/2)*sig
+            bread(j,i) = bread(i,j)
+         end do
+      end do
+
+      if (type .eq. -1) then
+         v = bread
+      else
+         e2 = abs(e)
+         if (type .eq. 2) then
+            e2 = e2/sqrt((1-hat))
+         end if
+         if (type .eq. 3) then
+            e2 = e2/(1-hat)
+         end if
+         do i=1,k
+            x(:,i) = x(:,i)*e2
+         end do
+         do i=1,rk
+            do j=i,rk
+               meat(i,j) = sum(x(:,j)*x(:,i))
+               meat(j,i) = meat(i,j)
+            end do
+         end do
+         v = matmul(bread, meat)
+         v = matmul(v, bread)
+         if (type .eq. 1) then
+            v = v*n/(n-k)
+         end if
+      end if
+      end
+
+      subroutine myls(y, x, n, k, tol, type, rk, pv, e, b, vcov)
+      integer n, k, rk, pv(k), info, i, j, type
+      double precision y(n), x(n,k), b(k,1), qraux(k), sig
+      double precision tol,  work(2*k), e(n,1), qty(n,1), xxi(k*(k+1)/2)
+      double precision hat(n), b2(n, k), sigma(n, k) 
+      double precision vcov(k,k), xqr(n,k), dd
+
+      se = 0.0d0
+      xqr = x
+      
+      call dqrls(xqr,n,k,y,1,tol,b,e,qty,rk,pv,qraux,work)
+      call myvcov(x, xqr, qraux, e, tol, n, k, rk, type, vcov)
+
+      end   
+
+      subroutine splinei(x, n, k, nk, mnk, sx)
 
       integer n, nk, i
-      double precision x(n), k(nk), sx(n, nk+1)
+      double precision x(n), k(mnk), sx(n, nk+1)
       sx = 0.0d0
       if (nk .gt. 0) then
          sx = 0.0d0
@@ -39,7 +147,7 @@
       do i=1,p
          ind1 = ind2+1
          ind2 = ind1+nk(i)
-         call splinei(x(:,i), n, k(1:nk(i),i), nk(i), sx(:,ind1:ind2))
+         call splinei(x(:,i), n, k(:,i), nk(i), mnk, sx(:,ind1:ind2))
       end do      
       end
 
@@ -231,3 +339,4 @@
       bic = ll+log(real(n1+n0))*real(rk0+rk1+1)     
       end
  
+
