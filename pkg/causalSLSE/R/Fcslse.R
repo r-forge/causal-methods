@@ -1,4 +1,3 @@
-
 .reshapeKnots <- function(model, w, mnk, group)
 {
     w <- matrix(w, nrow=mnk)
@@ -10,125 +9,128 @@
     update(model$knots[[group]], w)
 }
 
-
-
-.selICF <- function (model, pvalRes, pvalT = NULL, crit) 
+.reshapePval <- function(model, pval, group)
 {
-    x <- model.matrix(model)
-    y <- model$data[,model$nameY]
-    z <- model$data[,model$treated]
+    knots <- model$knots[[group]]
+    nk <- sapply(knots, length)
+    p <- length(nk)
+    mnk <- max(nk)
+    pval <- matrix(pval, mnk, p)
+    pval[pval>1]  <- NA
+    pval <- lapply(1:p, function(i) {
+        if (nk[i] == 0)
+            return(NA)
+        k <- numeric(nk[i])
+        names(k) <- names(knots[[i]])
+        k[] <- pval[1:nk[i],i]
+        k})
+    names(pval) <- names(knots)
+    list(pval = pval, knots = knots)
+}
+
+.modelPrepF <- function(model, w0, w1, pvalT=function(p) 1/log(p))
+{
+    z <- model$data[, model$treat]
+    y <- model$data[, model$nameY]
+    x <- model.matrix.cslseModel(model)[,,drop=FALSE]
+    n <- length(z)
+    id1 <- z==1
+    n1 <- sum(id1)
+    n0 <- n-n1
+    p <- ncol(x)
     nk0 <- sapply(model$knots$nontreated, length)
     nk1 <- sapply(model$knots$treated, length)
     mnk0 <- max(nk0)
     tnk0 <- sum(nk0)
-    pval <- c(do.call("c", pvalRes$nontreated$pval),
-              do.call("c", pvalRes$treated$pval))
-    spval <- sort(pval)
-    npval <- length(spval)
-    pval0 <-  sapply(pvalRes$nontreated$pval, function(pvi) {
-        pv <- numeric(mnk0)
-        if (!is.na(pvi[1]))
-            pv[1:length(pvi)] <- pvi
-        pv}) 
-    knots0 <- sapply(model$knots$nontreated, function(ki) {
+    mnk1 <- max(nk1)
+    tnk1 <- sum(nk1)
+    pvt0 <- min(pvalT((tnk0+p)/p), 1)
+    pvt1 <- min(pvalT((tnk1+p)/p), 1)    
+    k0 <- sapply(model$knots$nontreated, function(ki) {
         k <- numeric(mnk0)
         if (length(ki))
             k[1:length(ki)] <- ki
         k})
-    mnk1 <- max(nk1)
-    tnk1 <- sum(nk1)
-    pval1 <-  sapply(pvalRes$treated$pval, function(pvi) {
-        pv <- numeric(mnk1)
-        if (!is.na(pvi[1]))
-            pv[1:length(pvi)] <- pvi
-        pv})    
-    knots1 <- sapply(model$knots$treated, function(ki) {
+    k1 <- sapply(model$knots$treated, function(ki) {
         k <- numeric(mnk1)
         if (length(ki))
             k[1:length(ki)] <- ki
         k})
-    p <- ncol(x)
-    nb0 <- tnk0+p+1
-    nb1 <- tnk1+p+1
-    n <- nrow(x)
-    id0 <- z==0
-    n0 <- sum(id0)
-    sp <- .Fortran(F_selic, as.numeric(y[id0]), as.numeric(y[!id0]),
-                   as.numeric(x[id0,]), as.numeric(x[!id0,]),
-                   as.integer(n0), as.integer(n-n0),
-                   as.integer(p), as.numeric(1e-7),
-                   as.numeric(knots0), as.integer(nk0), as.integer(mnk0),
-                   as.integer(tnk0),  
-                   as.numeric(knots1), as.integer(nk1), as.integer(mnk1),                   
-                   as.integer(tnk1),
-                   as.numeric(pval0), as.numeric(pval1), as.numeric(spval),
-                   as.integer(npval),
-                   bic=numeric(npval+1), aic=numeric(npval+1),
-                   w0BIC=integer(mnk0*p), w1BIC=integer(mnk1*p),
-                   w0AIC=integer(mnk0*p), w1AIC=integer(mnk1*p))
-    modelAIC <- model
-    modelBIC <- model
-    modelAIC$knots$nontreated <-.reshapeKnots(model, sp$w0AIC, mnk0, "nontreated")
-    modelAIC$knots$treated <-.reshapeKnots(model, sp$w1AIC, mnk1, "treated") 
-    modelBIC$knots$nontreated <-.reshapeKnots(model, sp$w0BIC, mnk0, "nontreated")
-    modelBIC$knots$treated <-.reshapeKnots(model, sp$w1BIC, mnk1, "treated") 
-    list(AIC=modelAIC, BIC=modelBIC)
+    if (missing(w0))
+    {
+        w0 <- sapply(1:p, function(i) c(mnk0+1, rep(0, mnk0-1)))
+    } else if (is.null(w0)) {
+        w0 <- matrix(0, mnk0, p)
+    } else {
+        w0 <- sapply(w0, function(wi) {
+            w <- numeric(mnk0)
+            if (!is.null(wi))
+                    w[1:length(wi)] <- wi
+            w})
+    }
+    if (missing(w1))
+    {
+        w1 <- sapply(1:p, function(i) c(mnk1+1, rep(0, mnk1-1)))
+    } else if (is.null(w1)) {
+        w1 <- matrix(0, mnk1, p)
+    } else {
+        w1 <- sapply(w1, function(wi) {
+            w <- numeric(mnk1)
+            if (!is.null(wi))
+                    w[1:length(wi)] <- wi
+            w})
+    }    
+    list(y0=y[!id1], y1=y[id1], x0=x[!id1,,drop=FALSE], x1=x[id1,,drop=FALSE],
+         p=p, n1=n1, n0=n0, k0=k0, nk0=nk0, k1=k1, nk1=nk1, mnk1=mnk1, mnk0=mnk0,
+         tnk0=tnk0, tnk1=tnk1, w0=w0, w1=w1, pvt0=pvt0, pvt1=pvt1)    
 }
 
-
-selSLSE.F <- function(model, selType=c("BLSE", "FLSE"),
-                      selCrit = c("AIC", "BIC", "PVT"), 
-                      pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
+selMod_F <- function(model, selType=c("BLSE","FLSE"),
+                     pvalT=function(p) 1/log(p),
+                     vT=c("HC3", "vcov", "HC0", "HC1", "HC2"))
 {
-    selCrit <- match.arg(selCrit)
     selType <- match.arg(selType)
-    critFct <- if (selCrit == "PVT") {
-                   .selPVT
-               } else {
-                   .selICF
-               }
-    if (all(sapply(model$knots$treated, function(i) is.null(i))) &
-        all(sapply(model$knots$nontreated, function(i) is.null(i))))
-    {
-        warning("No selection needed: the number of knots is 0 for all confounders")
-    } else {
-        pval <- pvalSLSE(model, selType, vcov., ...)
-        model <- critFct(model, pval, pvalT, selCrit)
-        if (selCrit != "PVT")
-            model <- model[[selCrit]]            
+    met <- ifelse(selType=="BLSE", 1, 2)
+    vT <- match.arg(vT)
+    vT <- switch(vT,
+                 vcov = -1,
+                 HC0 = 0,
+                 HC1 = 1,
+                 HC2 = 2,
+                 HC3 = 3)
+    spec <- .modelPrepF(model, pvalT=pvalT)
+    res <- .Fortran(F_selmodel, as.double(spec$y0), as.double(spec$y1), as.double(spec$x0),
+                    as.double(spec$x1), as.integer(spec$n0), as.integer(spec$n1),
+                    as.integer(spec$p), as.double(1e-7), as.double(spec$pvt0),
+                    as.double(spec$pvt1), as.integer(met), as.integer(vT), as.integer(2),
+                    as.double(spec$k0), as.integer(spec$nk0), as.integer(spec$mnk0),
+                    as.integer(spec$tnk0),
+                    as.double(spec$k1), as.integer(spec$nk1), as.integer(spec$mnk1),
+                    as.integer(spec$tnk1),
+                    pval0=double(spec$mnk0*spec$p), pval1=double(spec$mnk1*spec$p),
+                    bic=double(spec$tnk0+spec$tnk1+1), aic=double(spec$tnk0+spec$tnk1+1),
+                    w0bic=integer(spec$mnk0*spec$p), w0aic=integer(spec$mnk0*spec$p),
+                    w0pvt=integer(spec$mnk0*spec$p),
+                    w1bic=integer(spec$mnk1*spec$p), w1aic=integer(spec$mnk1*spec$p),
+                    w1pvt=integer(spec$mnk1*spec$p), npval=integer(1))
+    pval <- list(treated=.reshapePval(model, res$pval1, "treated"),
+                 nontreated=.reshapePval(model, res$pval0, "nontreated"))
+    class(pval) <- "slsePval"
+    selModels <- lapply(c("aic", "bic", "pvt"), function(meti) {
+        model$knots$nontreated <-
+            .reshapeKnots(model, res[[paste("w0",meti,sep="")]],
+                          spec$mnk0, "nontreated")
+        model$knots$treated <-
+            .reshapeKnots(model, res[[paste("w1",meti,sep="")]],
+                          spec$mnk1, "treated")
         attr(model$knots$treated, "pval") <- pval$treated
         attr(model$knots$nontreated, "pval") <- pval$nontreated
         attr(model$knots$treated, "curSel") <- attr(model$knots$nontreated, "curSel") <-
-            attr(model$knots, "curSel") <- list(select=selType, crit=selCrit)        
-    }
-    model
+            attr(model$knots, "curSel") <-  list(select=selType, crit=toupper(meti))
+        if (meti != "pvt")
+            model[[toupper(meti)]] <- res[[meti]][1:(res$npval+1)]
+        model
+    })
+    names(selModels) <- paste(selType, c("AIC", "BIC", "PVT"), sep=".")
+    selModels
 }
-
-mylm <- function(Y, X, type=c("vcov", "HC0", "HC1", "HC2", "HC3"))
-{
-    type <- match.arg(type)
-    type <- switch(type,
-                   vcov = -1,
-                   HC0 = 0,
-                   HC1 = 1,
-                   HC2 = 2,
-                   HC3 = 3)
-    res <- .Fortran(F_myls, as.double(Y), x = as.double(X),
-                    as.integer(length(Y)), as.integer(ncol(X)),
-                    as.double(1e-7), as.integer(type), rank=integer(1),
-                    pvot = as.integer(1:ncol(X)), e = double(length(Y)),
-                    b = double(ncol(X)), vcov = double(ncol(X)^2))
-    v <- matrix(res$vcov, ncol(X), ncol(X))
-    list(x=X, rank=res$rank, pv=res$pvot, b=res$b,
-         vcov=v)
-}
-
-mypnorm <- function(x, mu=0, sig=1)
-{
-    res <- .Fortran(F_mypnorm, as.double(x), as.integer(length(x)),
-                    as.double(mu), as.double(sig),
-                    p = double(length(x)))
-    res$p
-}
-
-
