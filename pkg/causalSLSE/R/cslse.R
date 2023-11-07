@@ -732,7 +732,6 @@ pvalSLSE.cslseModel <- function(model, method=c("BLSE", "FLSE", "SLSE"),
             ic_seq0 <- ic_seq1
             res0 <- res1
         }
-        cat(i, ": ", icV[i], "\n")
     }
     model <- res0$model
     class(model$knots$treated) <- class(model$knots$nontreated) <- "slseKnots"
