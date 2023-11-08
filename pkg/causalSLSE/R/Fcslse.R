@@ -1,4 +1,4 @@
-.reshapeKnots <- function(model, w, mnk, group)
+.reshapeSelKnots <- function(model, w, mnk, group)
 {
     w <- matrix(w, nrow=mnk)
     w <- lapply(1:ncol(w) ,function(i) {
@@ -6,7 +6,7 @@
             return(NULL)
         sort(w[w[,i]!=0,i])})
     names(w) <- names(model$knots[[group]])
-    update(model$knots[[group]], w)
+    w
 }
 
 .reshapePval <- function(model, pval, group)
@@ -85,12 +85,31 @@
          tnk0=tnk0, tnk1=tnk1, w0=w0, w1=w1, pvt0=pvt0, pvt1=pvt1)    
 }
 
+## The default HCCM is HC0 because we only want to sort the
+## p-values. It avoids having to compute the hat values, which slows
+## down the procedure, especially for FLSE. Being consistent is good
+## enough for that.
+
 selMod_F <- function(model, selType=c("BLSE","FLSE"),
+                     selCrit = c("AIC", "BIC", "PVT"),
                      pvalT=function(p) 1/log(p),
-                     vT=c("HC3", "vcov", "HC0", "HC1", "HC2"))
+                     vT=c("HC0", "vcov", "HC1", "HC2", "HC3"))
 {
     selType <- match.arg(selType)
     met <- ifelse(selType=="BLSE", 1, 2)
+    if (is.null(model$selections))
+    {
+        model$selections <- list()
+        model$selections$knots <- model$knots
+    } else {
+        model$knots <- model$selections$knots
+    }
+    if (!is.null(model$selection[[selType]]))
+    {
+        warning(paste("Selection by ", selType, " has already been computed.",
+                      " The selection will be replaced by the new one.", sep=""))
+    }
+    model$selections[[selType]] <- list()
     vT <- match.arg(vT)
     vT <- switch(vT,
                  vcov = -1,
@@ -116,21 +135,28 @@ selMod_F <- function(model, selType=c("BLSE","FLSE"),
     pval <- list(treated=.reshapePval(model, res$pval1, "treated"),
                  nontreated=.reshapePval(model, res$pval0, "nontreated"))
     class(pval) <- "slsePval"
-    selModels <- lapply(c("aic", "bic", "pvt"), function(meti) {
-        model$knots$nontreated <-
-            .reshapeKnots(model, res[[paste("w0",meti,sep="")]],
-                          spec$mnk0, "nontreated")
-        model$knots$treated <-
-            .reshapeKnots(model, res[[paste("w1",meti,sep="")]],
-                          spec$mnk1, "treated")
-        attr(model$knots$treated, "pval") <- pval$treated
-        attr(model$knots$nontreated, "pval") <- pval$nontreated
+    model$selections[[selType]]$pval <- pval
+    model$selections[[selType]]$PVT <-
+        list(treated=.reshapeSelKnots(model, res$w1pvt, spec$mnk1, "treated"),
+             nontreated=.reshapeSelKnots(model, res$w0pvt, spec$mnk0, "nontreated"))
+    model$selections[[selType]]$Threshold <- c(treated=spec$pvt1, nontreated=spec$pvt0)
+    if (selType !="PVT")
+    {
+        model$selections[[selType]]$AIC <-
+            list(treated=.reshapeSelKnots(model, res$w1aic, spec$mnk1, "treated"),
+                 nontreated=.reshapeSelKnots(model, res$w0aic, spec$mnk0, "nontreated"))
+        model$selections[[selType]]$BIC <-
+            list(treated=.reshapeSelKnots(model, res$w1bic, spec$mnk1, "treated"),
+                 nontreated=.reshapeSelKnots(model, res$w0bic, spec$mnk0, "nontreated"))
+        model$selections[[selType]]$IC <- cbind(AIC=res$aic[1:(res$npval+1)],
+                                                BIC=res$bic[1:(res$npval+1)])
+    }
+    model$knots <- update(model$knots, model$selections[[selType]][[selCrit]])
+    attr(model$knots$treated, "pval") <- pval$treated
+    attr(model$knots$nontreated, "pval") <- pval$nontreated
         attr(model$knots$treated, "curSel") <- attr(model$knots$nontreated, "curSel") <-
-            attr(model$knots, "curSel") <-  list(select=selType, crit=toupper(meti))
-        if (meti != "pvt")
-            model[[toupper(meti)]] <- res[[meti]][1:(res$npval+1)]
-        model
-    })
-    names(selModels) <- paste(selType, c("AIC", "BIC", "PVT"), sep=".")
-    selModels
+            attr(model$knots, "curSel") <-  list(select=selType, crit=selCrit)
+    model
 }
+
+

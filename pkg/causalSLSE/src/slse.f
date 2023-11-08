@@ -52,6 +52,17 @@ c     If tv .eq. -10, no v is computed
       end if
       end   
 
+c     The function computes the LSE covariance matrix using HCCM
+c     It requires the residuals e, the matrix of covariates x
+c     and the following output from dqrls:
+c     - xqr: the QR decomposition
+c     - piv: the pivot indicator of 1:k
+c     - rk: the rank of the regression.
+c     - qraux: info from the QR decomposition
+c     v(1:rk, 1:rk) is the covariance matrix of the feasible estimates b(piv(1:rk))
+c     the bread (X'X)^{-1} is computed by inverting the upper triangular matrix R
+c     using the Lapack subroutine dpptri.
+      
       subroutine vcovhc(x, xqr, qraux, e, tol, n, k, rk, tv, piv, v)
       integer n, k, rk, i, j, tv, info, piv(k)
       double precision x(n, k), xqr(n,k), v(rk, rk)
@@ -106,6 +117,9 @@ c     If tv .eq. -10, no v is computed
          end if
       end if
       end
+
+c     This function generate the spline functions for one x
+c     It is called by the spline subroutine.
       
       subroutine splinei(x, n, k, nk, mnk, sx)
 
@@ -139,8 +153,10 @@ c     If tv .eq. -10, no v is computed
       end if
       end
 
-c     This function generate the basis function from the knots
+c     This function generate the basis functions from the knots
 c     It is called separately for the treated and nontreated
+c     On return, sx is the n x (tnk+p) matrix of basis function,
+c     where tnk is the total number of knots and p is the number of covariates
       
       subroutine spline(x, n, p, k, nk, mnk, tnk, sx)
 
@@ -176,7 +192,6 @@ c     It is called separately for the treated and nontreated
       call lse(y, sx, n, tnk+p+1, tol, vt, rk, piv, rsd, b, v)
 
       end
-
      
 c     This subroutine updates the list of knots using a selection
 c     The selection index is w, which is mnk x p
@@ -251,7 +266,10 @@ c     If vt .eq. -10, no v is computed and it isa set to 0.
       end
 
 c     Return the pvalues of the test H0: 'slopes adjacent to a knot is the same'
-c     for all knots of a given covariate (pi)
+c     for all knots of a given covariate (pi=1,...,p)
+c     All p-values are set to 0 when the number of knots is equal to 0, and it is set to
+c     2 when it cannot be computed (for example when b is missing). This number means that
+c     the p-value if missing.
       
       subroutine testknoti(b, v, n, nk, mnk, tnk, p, rk, piv, pi, pval)
 
@@ -260,11 +278,7 @@ c     for all knots of a given covariate (pi)
       double precision pval(mnk), b1, b2, vi, test, sortb(tnk+p+1)
       double precision numna, sortv(tnk+p+1, tnk+p+1), pvali
 
-      pval = 0.0d0
-c     we consider b(i) greater than numna (numeric NA) to be NA
-c     sortb and sortv reorder b and v as in the original regression
-c     A pvalue of 2 (greater than 1) means NA.
-      
+      pval = 0.0d0     
       numna = maxval(b)+1
       sortb = numna+1
       sortb(piv(1:rk)) = b(1:rk)
@@ -414,7 +428,8 @@ c     This is the PVT selection method. Once the p-values are computed, it is ju
 c     selection based on a threshold. No additional estimation is needed
 c     The threshold is t. Knots with p-values less than t are kept. Since a p-value greater
 c     than 1 is a missing value, knots with such p-values are removed.
-c     Note that there is no need to have one function for both groups.
+c     Note that there is no need to have one function for both groups. We can apply it to each group
+c     separately. The selected model is returned through the knot selection matrix w.
       
       subroutine selpvt(p, nk, mnk, t, pval, w)
 
@@ -434,7 +449,11 @@ c     Note that there is no need to have one function for both groups.
          end if
       end do
       end
-    
+
+c     The function select the best model based on BIC and AIC.
+c     The selected model is returned  through the knot selection matrices
+c     w0aic and w1aic for the AIC criterion and w0bic and w1bic for the BIC.
+      
       subroutine selic(y0, y1, x0, x1, n0, n1, p, tol, 
      *     k0, nk0, mnk0, tnk0, k1, nk1, mnk1, tnk1, pval0,
      *     pval1, bic, aic, w0bic, w1bic, w0aic, w1aic, npval)
@@ -503,6 +522,7 @@ c     Note that there is no need to have one function for both groups.
       end
 
 c     This function vectorizes the pvalues and return the sorted ones
+c     The output npval indicates how many p-values are valid (not NA's)
       
       subroutine vecpval(pval0, nk0, mnk0, tnk0, 
      *     pval1, nk1, mnk1, tnk1, p, spval, npval)

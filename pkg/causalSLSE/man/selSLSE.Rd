@@ -11,7 +11,8 @@ objects. It returns a model with non significant knots removed.
 \usage{
 \method{selSLSE}{cslseModel}(model, selType=c("BLSE", "FLSE"),
         selCrit = c("AIC", "BIC", "PVT"), 
-        pvalT = function(p) 1/log(p), vcov.=vcovHC, fortran=FALSE, ...)
+        pvalT = function(p) 1/log(p), vcov.=vcovHC, fortran=FALSE,
+        reSelect=FALSE, ...)
 }
 \arguments{
   \item{model}{A model of class \code{cslseModel} created by
@@ -28,6 +29,9 @@ objects. It returns a model with non significant knots removed.
     Fortran subroutines? If yes, the function returns a list of 3
     models, one for each \code{selCrit}. This alternative is faster for
     larger models and largewr sample sizes.}
+  \item{reSelect}{The previous selections are stored in the model
+    object. By default, it is the previous selections that is used. If
+    \code{reSelect} is set to \code{TRUE}, the selection is re-computed.}
   \item{...}{Additional arguments to pass to \code{vcov.}}
 }
 
