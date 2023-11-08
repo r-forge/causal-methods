@@ -21,11 +21,9 @@ Print methods for different objects from the package.
 \method{print}{summary.slseFit}(x, digits = max(3L, getOption("digits") - 3L),
                                 signif.stars = getOption("show.signif.stars"),
     ...)
-\method{print}{slseKnots}(x, which=c("selKnots", "Pvalues"),
-                          header=c("None", "All", "Select"),
+\method{print}{slseKnots}(x, header=c("None", "All", "Select"),
                           digits = max(3L, getOption("digits") - 3L), ...)
-\method{print}{cslseKnots}(x, which=c("selKnots", "Pvalues"),
-                           header = c("None", "All", "Select"),
+\method{print}{cslseKnots}(x, header = c("None", "All", "Select"),
                            digits = max(3L, getOption("digits") - 3L), ...)
 }
 \arguments{
@@ -55,10 +53,6 @@ print(s)
 fit <- estSLSE(mod1)
 print(fit)
 summary(fit)
-## the following is a cslseKnots object
-print(mod1$knots, "selKnots")
-## the following is as slseKnots object
-print(mod1$knots$treated, "selKnots")
 }
 
 

@@ -32,46 +32,26 @@ slseKnots <- function(form, data, X, nbasis = function(n) n^0.3,
     knots
 }
 
-print.slseKnots <- function(x, which=c("selKnots", "Pvalues"),
-                            header=c("None", "All", "Select"),
+print.slseKnots <- function(x, header=c("None", "All", "Select"),
                             digits = max(3L, getOption("digits") - 3L), ...)
 {
-    which <- match.arg(which)
     header <- match.arg(header)
-    if (which == "Pvalues" & is.null(attr(x,"pval")))
-    {
-        cat("No P-values: A selection method must first be applied to the model\n\n")
-        return(invisible())
-    }
     if (header == "All")
     {
-        if (which == "selKnots")
-        {
-            cat("Semiparametric LSE Model: Selected knots\n")
-            cat("****************************************\n")
-        } else {
-            cat("Semiparametric LSE Model: Initial knots and p-values\n")
-            cat("****************************************************\n")
-        }
+        cat("Semiparametric LSE Model: Selected knots\n")
+        cat("****************************************\n")
     }
     if (header %in% c("All", "Select"))
     {
-        if (which == "Pvalues")
-        {
-            cat("Initial Selection method: ", attr(x, "initSel")$select, "\n", sep="")
-            if (attr(x, "initSel")$crit != "")            
-                cat("Criterion: ", attr(x, "initSel")$crit, "\n", sep = "")
-        } else {
-            cat("Selection method: ", attr(x, "curSel")$select, "\n", sep="")
-            if (attr(x, "curSel")$crit != "")
-                cat("Criterion: ", attr(x, "curSel")$crit, "\n", sep = "")
-        }
-        cat("\n")
+        cat("Selection method: ", attr(x, "curSel")$select, "\n", sep="")
+        if (attr(x, "curSel")$crit != "")
+            cat("Criterion: ", attr(x, "curSel")$crit, "\n", sep = "")
     }
-    knots <- if(which == "selKnots") x else attr(x, "pval")$knots
-    w <- sapply(knots, is.null)
-    selPW <- names(knots)[!w]
-    nonselPW <- names(knots)[w]
+    cat("\n")
+    
+    w <- sapply(x, is.null)
+    selPW <- names(x)[!w]
+    nonselPW <- names(x)[w]
     isApp <- if (length(selPW)) paste(selPW, collapse=", ", sep="") else "None"
     notApp <- if (length(nonselPW)) paste(nonselPW, collapse=", ", sep="") else "None"
     cat("Covariates with no knots:\n")
@@ -84,12 +64,7 @@ print.slseKnots <- function(x, which=c("selKnots", "Pvalues"),
         for (ki in selPW)
         {
             cat(ki,":\n")
-            pknots <- if (which == "selKnots")
-                      {
-                          rbind(knots[[ki]])
-                      } else {
-                          rbind(knots[[ki]], attr(x,"pval")$pval[[ki]])
-                      }
+            pknots <- rbind(x[[ki]])
             rownames(pknots) <- c("Knots", "P-Value")[1:nrow(pknots)]
             print.default(pknots, quote=FALSE, digits=digits, ...)
             cat("\n")
@@ -278,7 +253,8 @@ update.cslseKnots <- function(object, selKnots, ...)
 
 
 update.cslseModel <- function(object, selKnots, selType, selCrit,
-                              pvalT = function(p) 1/log(p), ...)
+                              pvalT = function(p) 1/log(p), vcov.=vcovHC,
+                              fortran=FALSE, ...)
 {
     knots <- if(!is.null(object$selections)) object$selections$knots else object$knots
     if (!missing(selKnots))
@@ -292,22 +268,21 @@ update.cslseModel <- function(object, selKnots, selType, selCrit,
         if (!is.null(object$selections[[selType]][[selCrit]]))
         {
             object$knots <- update(knots, object$selections[[selType]][[selCrit]])
-            attr(object$knots$treated, "curSel") <- attr(object$knots$nontreated, "curSel") <-
+            attr(object$knots$treated, "curSel") <-
+                attr(object$knots$nontreated, "curSel") <-
                 attr(object$knots, "curSel") <-  list(select=selType, crit=selCrit)
         } else {
-            object <- selSLSE(object, selType, selCrit, pvalT, vcovHC, TRUE)
+            object <- selSLSE(object, selType, selCrit, pvalT, vcov., fortran, ...)
         }
     }
     object
 }
 
 
-print.cslseKnots <- function(x, which=c("selKnots", "Pvalues"),
-                             header = c("None", "All", "Select"),
+print.cslseKnots <- function(x, header = c("None", "All", "Select"),
                              digits = max(3L, getOption("digits") - 3L), ...)
 {
     header <- match.arg(header)
-    which <- match.arg(which)
     header2 <- "None"
     curSel <- sapply(x, function(gi) c(attr(gi, "curSel")$select,
                                        attr(gi, "curSel")$crit))
@@ -318,36 +293,18 @@ print.cslseKnots <- function(x, which=c("selKnots", "Pvalues"),
     groups <- names(x)
     if (header == "All")
     {
-        if (which == "selKnots")
-        {
-            cat("Causal Semiparametric LSE Model: Selected knots\n")
-            cat("***********************************************\n")
-        } else {            
-            cat("Causal Semiparametric LSE Model: Initial knots and p-values\n")
-            cat("***********************************************************\n")
-        }
+        cat("Causal Semiparametric LSE Model: Selected knots\n")
+        cat("***********************************************\n")
     }
     if (header %in% c("All", "Select"))
     {
-        if (which == "selKnots")
+        if (sameCur)
         {
-            if (sameCur)
-            {
-                cat("Selection method: ", curSel[1,1], "\n", sep="")
-                if ( curSel[2,1] != "")
-                    cat("Criterion: ",  curSel[2,1], "\n", sep = "")
-            } else {
-                header2 <- "Select"
-            }
+            cat("Selection method: ", curSel[1,1], "\n", sep="")
+            if ( curSel[2,1] != "")
+                cat("Criterion: ",  curSel[2,1], "\n", sep = "")
         } else {
-            if (sameInit)
-            {
-                cat("Initial Selection method: ", initSel[1,1], "\n", sep="")
-                if (initSel[2,1] != "")
-                    cat("Initial criterion: ", initSel[2,1], "\n", sep = "")
-            } else {
-                header2 <- "Select"
-            }
+            header2 <- "Select"
         }
         cat("\n")
     }
@@ -355,7 +312,7 @@ print.cslseKnots <- function(x, which=c("selKnots", "Pvalues"),
     {
         cat(gi, "\n")
         cat(paste(rep("*", nchar(gi)), collapse="", sep=""), "\n")
-        print(x[[gi]], which=which, header=header2, digits=digits, ...)
+        print(x[[gi]], header=header2, digits=digits, ...)
     }
     invisible()
 }
@@ -384,7 +341,7 @@ estSLSE <- function(model, ...)
        
 estSLSE.cslseModel <- function(model, selKnots, ...)
 {
-    model$knots <- update(model$knots, selKnots)
+    model <- update(model, selKnots)
     data <- model$data
     data$Xf1 <- multiSplines(model, "treated")
     data$Xf0 <- multiSplines(model, "nontreated")
@@ -495,8 +452,21 @@ print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
             notApp <- if (length(nonselPW)) paste(nonselPW,collapse=", ",sep="") else "None"
             cat("\t", gi, ": ", notApp, "\n", sep="")            
         }
+    } else if (which == "selKnots") {
+        print(x$knots, header="All", digits=digits, ...)
     } else {
-        print(x$knots, which, header="All", digits=digits, ...)
+        if (is.null(x$selections))
+        {
+            cat("No p-values are available. You must apply a selection methods first.\n")
+        } else {
+            selType <- attr(x$knots,"curSel")$select
+            if (is.null(x$selections[[selType]]$pval))
+            {
+                cat("No p-values are available in the model object\n")
+            } else {
+                print(x$selections[[selType]]$pval, digits=digits, ...)
+            }
+        }
     }
     invisible()
 }
@@ -604,8 +574,6 @@ selSLSE.cslseModel <- function(model, selType=c("BLSE", "FLSE"),
             model$selections[[selType]]$IC <- wIC$Crit
         }
         model$knots <- update(model$knots, model$selections[[selType]][[selCrit]])
-        attr(model$knots$treated, "pval") <- pval$treated
-        attr(model$knots$nontreated, "pval") <- pval$nontreated
         attr(model$knots$treated, "curSel") <- attr(model$knots$nontreated, "curSel") <-
             attr(model$knots, "curSel") <-  list(select=selType, crit=selCrit)
     }
@@ -655,10 +623,55 @@ pvalSLSE.cslseModel <- function(model, method=c("BLSE", "FLSE", "SLSE"),
         pv <- if (method=="BLSE")  .getPvalB(model, vcov., ...)
               else .getPvalF(model, vcov., ...)
     }
-    ans <- list(treated=list(pval=pv$pval1, knots=model$knots$treated),
-                nontreated=list(pval=pv$pval0, knots=model$knots$nontreated))
-    class(ans$treated) <-  class(ans$nontreated) <- "slsePval"
+    pv1 <- list(pval=pv$pval1, knots=model$knots$treated)
+    pv0 <- list(pval=pv$pval0, knots=model$knots$nontreated)
+    class(pv1) <- class(pv0) <- "slsePval" 
+    ans <- list(treated=pv1, nontreated=pv0)
+    class(ans) <- "cslsePval"
     ans
+}
+
+print.slsePval <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
+{
+    knots <- x$knots
+    pval <- x$pval
+    w <- sapply(knots, is.null)
+    selPW <- names(knots)[!w]
+    nonselPW <- names(knots)[w]
+    isApp <- if (length(selPW)) 
+                 paste(selPW, collapse = ", ", sep = "")
+             else "None"
+    notApp <- if (length(nonselPW)) 
+                  paste(nonselPW, collapse = ", ", sep = "")
+              else "None"
+    cat("Covariates with no knots:\n")
+    cat("\t", notApp, "\n", sep = "")
+    cat("\nCovariates with knots:\n")
+    if (length(selPW) == 0) {
+        cat("None\n")
+    } else {
+        for (ki in selPW) {
+            cat(ki, ":\n")
+            pknots <- rbind(knots[[ki]], pval[[ki]])
+            rownames(pknots) <- c("Knots", "P-Value")
+            print.default(pknots, quote = FALSE, digits = digits, ...)
+            cat("\n")
+        }
+    }
+    invisible()
+}
+
+print.cslsePval <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
+{
+    groups <- names(x)
+    for (gi in groups)
+    {
+        cat(gi, "\n")
+        cat(paste(rep("*", nchar(gi)), collapse="", sep=""), "\n")
+        print(x[[gi]], digits=digits, ...)
+    }
+    invisible()
+
 }
 
 .getPvalF <- function (model, vcov.=vcovHC, ...) 
@@ -889,13 +902,14 @@ causalSLSE.cslseModel <- function(object,
                                   selCrit = c("AIC", "BIC", "PVT"),
                                   causal = c("ALL","ACT","ACE","ACN"),
                                   pvalT = function(p) 1/log(p),
-                                  vcov.=vcovHC, ...)
+                                  vcov.=vcovHC, fortran=FALSE, reSelect=FALSE, ...)
 {
     selType <- match.arg(selType)
     causal <- match.arg(causal)
     selCrit <- match.arg(selCrit)
     if (selType != "SLSE")
-        object <- selSLSE(object, selType, selCrit, pvalT, vcov., ...)
+        object <- selSLSE(object, selType, selCrit, pvalT, vcov., fortran,
+                          reSelect, ...)
     res <- estSLSE(object)
     beta <- coef(res$lm.out)
     v <- vcov.(res$lm.out, ...)
@@ -915,15 +929,6 @@ causalSLSE.cslseModel <- function(object,
     class(ans) <- c("cslse", "slseFit")
     ans    
 }
-
-causalSLSE.mcslseModel <- function(object,
-                                   causal = c("ALL","ACT","ACE","ACN"),
-                                   vcov.=vcovHC, ...)
-{
-    causal <- match.arg(causal)
-    lapply(object, function(mi) causalSLSE(mi, causal=causal, vcov.=vcov., ...))
-}
-
 
 cslseSE <- function(object, vcov.=vcovHC, ...)    
 {
@@ -1025,7 +1030,8 @@ causalSLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
                                selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
                                pvalT = function(p) 1/log(p),
-                               vcov.=vcovHC, ...)
+                               vcov.=vcovHC, fortran=FALSE,
+                               reSelect=FALSE, ...)
 {
     model <- cslseModel(object, data, nbasis,  knots)
     selType <- match.arg(selType)
@@ -1033,7 +1039,7 @@ causalSLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
     selCrit <- match.arg(selCrit)
     causalSLSE(object=model, selType = selType, selCrit = selCrit,
                causal = causal, pvalT =  pvalT,
-               vcov. = vcov., ...)    
+               vcov. = vcov., fortran, reSelect, ...)    
 }
 
 print.slseFit <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
@@ -1133,7 +1139,6 @@ print.summary.slseFit <- function(x, digits = max(3L, getOption("digits") - 3L),
                                            digits=digits, ...), "\n")
     invisible()
 }
-
 
 summary.cslse <- function (object, ...) 
 {

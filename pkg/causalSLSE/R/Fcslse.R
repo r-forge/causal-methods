@@ -152,8 +152,6 @@ selMod_F <- function(model, selType=c("BLSE","FLSE"),
                                                 BIC=res$bic[1:(res$npval+1)])
     }
     model$knots <- update(model$knots, model$selections[[selType]][[selCrit]])
-    attr(model$knots$treated, "pval") <- pval$treated
-    attr(model$knots$nontreated, "pval") <- pval$nontreated
         attr(model$knots$treated, "curSel") <- attr(model$knots$nontreated, "curSel") <-
             attr(model$knots, "curSel") <-  list(select=selType, crit=selCrit)
     model
