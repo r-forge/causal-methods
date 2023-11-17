@@ -11,7 +11,7 @@ objects. It returns a model with non significant knots removed.
 \usage{
 \method{selSLSE}{cslseModel}(model, selType=c("BLSE", "FLSE"),
         selCrit = c("AIC", "BIC", "PVT"), 
-        pvalT = function(p) 1/log(p), vcov.=vcovHC, fortran=FALSE,
+        pvalT = function(p) 1/log(p), vcov.=vcovHC, 
         reSelect=FALSE, ...)
 }
 \arguments{
@@ -25,10 +25,6 @@ objects. It returns a model with non significant knots removed.
   \item{vcov.}{An alternative function to compute the covariance matrix
     of the least squares estimators. The default is the \code{vcovHC}
     method for \code{lm} objects.}
-  \item{fortran}{Should the selection be done using the experimental
-    Fortran subroutines? If yes, the function returns a list of 3
-    models, one for each \code{selCrit}. This alternative is faster for
-    larger models and largewr sample sizes.}
   \item{reSelect}{The previous selections are stored in the model
     object. By default, it is the previous selections that is used. If
     \code{reSelect} is set to \code{TRUE}, the selection is re-computed.}

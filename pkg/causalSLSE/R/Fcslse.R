@@ -25,7 +25,9 @@
         k[] <- pval[1:nk[i],i]
         k})
     names(pval) <- names(knots)
-    list(pval = pval, knots = knots)
+    pval <- list(pval = pval, knots = knots)
+    class(pval) <- "slsePval"
+    pval
 }
 
 .modelPrepF <- function(model, w0, w1, pvalT=function(p) 1/log(p))
@@ -40,9 +42,9 @@
     p <- ncol(x)
     nk0 <- sapply(model$knots$nontreated, length)
     nk1 <- sapply(model$knots$treated, length)
-    mnk0 <- max(nk0)
+    mnk0 <- max(max(nk0), 1)
     tnk0 <- sum(nk0)
-    mnk1 <- max(nk1)
+    mnk1 <- max(max(nk1), 1)
     tnk1 <- sum(nk1)
     pvt0 <- min(pvalT((tnk0+p)/p), 1)
     pvt1 <- min(pvalT((tnk1+p)/p), 1)    
@@ -56,33 +58,9 @@
         if (length(ki))
             k[1:length(ki)] <- ki
         k})
-    if (missing(w0))
-    {
-        w0 <- sapply(1:p, function(i) c(mnk0+1, rep(0, mnk0-1)))
-    } else if (is.null(w0)) {
-        w0 <- matrix(0, mnk0, p)
-    } else {
-        w0 <- sapply(w0, function(wi) {
-            w <- numeric(mnk0)
-            if (!is.null(wi))
-                    w[1:length(wi)] <- wi
-            w})
-    }
-    if (missing(w1))
-    {
-        w1 <- sapply(1:p, function(i) c(mnk1+1, rep(0, mnk1-1)))
-    } else if (is.null(w1)) {
-        w1 <- matrix(0, mnk1, p)
-    } else {
-        w1 <- sapply(w1, function(wi) {
-            w <- numeric(mnk1)
-            if (!is.null(wi))
-                    w[1:length(wi)] <- wi
-            w})
-    }    
     list(y0=y[!id1], y1=y[id1], x0=x[!id1,,drop=FALSE], x1=x[id1,,drop=FALSE],
          p=p, n1=n1, n0=n0, k0=k0, nk0=nk0, k1=k1, nk1=nk1, mnk1=mnk1, mnk0=mnk0,
-         tnk0=tnk0, tnk1=tnk1, w0=w0, w1=w1, pvt0=pvt0, pvt1=pvt1)    
+         tnk0=tnk0, tnk1=tnk1, pvt0=pvt0, pvt1=pvt1)    
 }
 
 ## The default HCCM is HC0 because we only want to sort the
@@ -90,19 +68,20 @@
 ## down the procedure, especially for FLSE. Being consistent is good
 ## enough for that.
 
-selMod_F <- function(model, selType=c("BLSE","FLSE"),
-                     selCrit = c("AIC", "BIC", "PVT"),
-                     pvalT=function(p) 1/log(p),
-                     vT=c("HC0", "vcov", "HC1", "HC2", "HC3"))
+.selMod <- function(model, selType=c("BLSE","FLSE"),
+                    selCrit = c("AIC", "BIC", "PVT"),
+                    pvalT=function(p) 1/log(p),
+                    vT=c("HC0", "vcov", "HC1", "HC2", "HC3"))
 {
     selType <- match.arg(selType)
+    selCrit <- match.arg(selCrit)
     met <- ifelse(selType=="BLSE", 1, 2)
     if (is.null(model$selections))
     {
         model$selections <- list()
-        model$selections$knots <- model$knots
+        model$selections$originalKnots <- model$knots
     } else {
-        model$knots <- model$selections$knots
+        model$knots <- model$selections$originalKnots
     }
     if (!is.null(model$selection[[selType]]))
     {
@@ -134,7 +113,7 @@ selMod_F <- function(model, selType=c("BLSE","FLSE"),
                     w1pvt=integer(spec$mnk1*spec$p), npval=integer(1))
     pval <- list(treated=.reshapePval(model, res$pval1, "treated"),
                  nontreated=.reshapePval(model, res$pval0, "nontreated"))
-    class(pval) <- "slsePval"
+    class(pval) <- "cslsePval"
     model$selections[[selType]]$pval <- pval
     model$selections[[selType]]$PVT <-
         list(treated=.reshapeSelKnots(model, res$w1pvt, spec$mnk1, "treated"),
@@ -156,5 +135,6 @@ selMod_F <- function(model, selType=c("BLSE","FLSE"),
             attr(model$knots, "curSel") <-  list(select=selType, crit=selCrit)
     model
 }
+
 
 

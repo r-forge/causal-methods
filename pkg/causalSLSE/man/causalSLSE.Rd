@@ -18,8 +18,7 @@ least squares method. It returns an object of class
                                selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
                                pvalT = function(p) 1/log(p),
-                               vcov.=vcovHC, fortran=FALSE,
-                               reSelect=FALSE, ...)
+                               vcov.=vcovHC, reSelect=FALSE, ...)
 \method{causalSLSE}{slseFit}(object, causal = c("ALL","ACT","ACE","ACN"),
                              vcov.=vcovHC, ...)
 \method{causalSLSE}{formula}(object, data, nbasis=function(n) n^0.3,
@@ -28,8 +27,7 @@ least squares method. It returns an object of class
                              selCrit = c("AIC", "BIC", "PVT"),
                              causal = c("ALL","ACT","ACE","ACN"),
                              pvalT = function(p) 1/log(p),
-                             vcov.=vcovHC, fortran=FALSE,
-                             reSelect=FALSE, ...)
+                             vcov.=vcovHC, reSelect=FALSE, ...)
 }
 \arguments{
   \item{object}{An object of class \code{cslseModel} created by the
@@ -55,10 +53,6 @@ least squares method. It returns an object of class
   \item{vcov.}{An alternative function to compute the covariance matrix
     of the least squares estimators. The default is the \code{vcovHC}
     method for \code{lm} objects.}
-  \item{fortran}{Should the selection be done using the experimental
-    Fortran subroutines? If yes, the function returns a list of 3
-    models, one for each \code{selCrit}. This alternative is faster for
-    larger models and largewr sample sizes.}
   \item{reSelect}{The previous selections are stored in the model
     object. By default, it is the previous selections that is used. If
     \code{reSelect} is set to \code{TRUE}, the selection is re-computed.}  

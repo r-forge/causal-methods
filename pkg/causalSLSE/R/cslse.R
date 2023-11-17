@@ -256,11 +256,11 @@ update.cslseModel <- function(object, selKnots, selType, selCrit,
                               pvalT = function(p) 1/log(p), vcov.=vcovHC,
                               fortran=FALSE, ...)
 {
-    knots <- if(!is.null(object$selections)) object$selections$knots else object$knots
+    knots <- if(!is.null(object$selections)) object$selections$originalKnots else object$knots
     if (!missing(selKnots))
     {
         if (is.null(object$selections))
-            object$selections$knots <- object$knots
+            object$selections$originalKnots <- object$knots
         object$knots <- update(knots, selKnots)
     } else if (!missing(selType)) {
         if (missing(selCrit))
@@ -542,41 +542,13 @@ selSLSE <- function(model, ...)
 selSLSE.cslseModel <- function(model, selType=c("BLSE", "FLSE"),
                                selCrit = c("AIC", "BIC", "PVT"), 
                                pvalT = function(p) 1/log(p), vcov.=vcovHC,
-                               fortran=FALSE, reSelect=FALSE, ...)
+                               reSelect=FALSE, ...)
 {
     selCrit <- match.arg(selCrit)
     selType <- match.arg(selType)
     if (!is.null(model$selections[[selType]][[selCrit]]) & !reSelect)
         return(update(model, selType=selType, selCrit=selCrit))
-    if (fortran)
-    {
-        model <- selMod_F(model, selType, selCrit, pvalT)
-    } else {
-        if (!is.null(model$selections))
-        {
-            if (is.null(model$selections$knots))
-                stop("The original knots are missing from the element selections")
-            model$knots <- model$selections$knots
-        } else {
-            model$selections <- list()
-            model$selections$knots <- model$knots
-        }
-        pval <- pvalSLSE(model, selType, vcov., ...)
-        wPVT <- .selPVT(model,  pval, pvalT)
-        model$selections[[selType]]$pval <- pval
-        model$selections[[selType]]$PVT <- wPVT$selK
-        model$selections[[selType]]$Threshold <- wPVT$Crit
-        if (selCrit !="PVT")
-        {
-            wIC <- .selIC(model, pval)
-            model$selections[[selType]]$AIC <- wIC$AIC
-            model$selections[[selType]]$BIC <- wIC$BIC
-            model$selections[[selType]]$IC <- wIC$Crit
-        }
-        model$knots <- update(model$knots, model$selections[[selType]][[selCrit]])
-        attr(model$knots$treated, "curSel") <- attr(model$knots$nontreated, "curSel") <-
-            attr(model$knots, "curSel") <-  list(select=selType, crit=selCrit)
-    }
+    model <- .selMod(model, selType, selCrit, pvalT)
     model
 }
 
@@ -603,32 +575,6 @@ selSLSE.cslseModel <- function(model, selType=c("BLSE", "FLSE"),
         ans <- 1 - pf((b[c1] - b[c2])^2/s2, 1, fit$df)
         names(ans) <- NULL
         ans})
-}
-
-
-pvalSLSE <- function(model, ...)
-{
-    UseMethod("pvalSLSE")
-}
-
-pvalSLSE.cslseModel <- function(model, method=c("BLSE", "FLSE", "SLSE"),
-                                vcov.=vcovHC, ...)
-{
-    method <- match.arg(method)
-    if (method == "SLSE")
-    {
-        pv <- list(pval0=lapply(length(model$knots$nontreated), function(i) NULL),
-                   pval1=lapply(length(model$knots$treated), function(i) NULL))
-    } else {
-        pv <- if (method=="BLSE")  .getPvalB(model, vcov., ...)
-              else .getPvalF(model, vcov., ...)
-    }
-    pv1 <- list(pval=pv$pval1, knots=model$knots$treated)
-    pv0 <- list(pval=pv$pval0, knots=model$knots$nontreated)
-    class(pv1) <- class(pv0) <- "slsePval" 
-    ans <- list(treated=pv1, nontreated=pv0)
-    class(ans) <- "cslsePval"
-    ans
 }
 
 print.slsePval <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
@@ -674,152 +620,6 @@ print.cslsePval <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
 
 }
 
-.getPvalF <- function (model, vcov.=vcovHC, ...) 
-{
-    selK <- list()
-    selK$nontreated <- lapply(model$knots$nontreated, function(i) NULL)
-    selK$treated <- lapply(model$knots$treated, function(i) NULL)
-    selFct <- function(p)
-    {
-        sel <- if (p==1) {
-                   list(1)
-               } else if (p == 2) {
-                   list(1:2)
-               } else {
-                   c(list(1:2), lapply(1:(p-2),
-                                       function(j) (0:2)+j), list(c(p-1,p)))
-               }
-    }
-    pvali <- function(i, group)
-    {
-        p <- length(model$knots[[group]][[i]])
-        if (p==0)
-            return(NA)
-        sel <- selFct(p)
-        pv <- c(sapply(1:length(sel), function(j) {
-            selj <- as.integer(sel[[j]])
-            selK[[group]][[i]] <- selj
-            res <- estSLSE(model, selKnots=selK)
-            v <- vcov.(res$lm.out, ...)
-            if (length(selj) == 1L)
-            {
-                .testKnots(res$lm.out, res$model, 1L, i, group, v)
-            } else if (length(sel)==1 & length(selj)==2) {
-                .testKnots(res$lm.out, res$model, 1L:2L, i, group, v)
-            } else {
-                whichK <- ifelse(length(selj)==2 & selj[1]==1L, 1, 2)
-                .testKnots(res$lm.out, res$model, whichK, i, group, v)
-            }}))
-        names(pv) <- names(model$knots[[group]][[i]])
-        pv
-    }
-    pval0 <- lapply(1:length(model$knots$nontreated), function(i) pvali(i, "nontreated"))
-    pval1 <- lapply(1:length(model$knots$treated), function(i) pvali(i, "treated"))
-    names(pval0) <- names(pval1) <- model$nameX
-    list(pval0=pval0, pval1=pval1)
-}
-
-.getPvalB <- function (model, vcov.=vcovHC, ...) 
-{
-    data2 <- model$data
-    data2$Xf1 <- multiSplines(model, "treated")
-    data2$Xf0 <- multiSplines(model, "nontreated")
-    form <- model$formY
-    environment(form) <- environment()
-    fit <- lm(form, data2)
-    v <- vcov.(fit, ...)
-    pval0 <- lapply(1:length(model$knots$nontreated), function(i) {
-        ki <- length(model$knots$nontreated[[i]])
-        if (ki==0)
-            return(NA)
-        pv <- .testKnots(fit, model, 1:ki, i , "nontreated", v)
-        names(pv) <- names(model$knots$nontreated[[i]])
-        pv
-    })
-    pval1 <- lapply(1:length(model$knots$treated), function(i) {
-        ki <- length(model$knots$treated[[i]])
-        if (ki==0)
-            return(NA)
-        pv <- .testKnots(fit, model, 1:ki, i , "treated", v)
-        names(pv) <- names(model$knots$treated[[i]])
-        pv
-    })
-    names(pval0) <- names(pval1) <- model$nameX
-    list(pval0 = pval0, pval1 = pval1)
-}
-
-.selIC <- function (model, pvalRes)
-{
-    pval <- c(do.call("c", pvalRes$nontreated$pval),
-              do.call("c", pvalRes$treated$pval))
-    pval_sort <- sort(pval)    
-    q <- length(pval_sort)
-    selK0a <- list()
-    selK0a$treated <- lapply(pvalRes$treated$pval, function(i) NULL)  
-    selK0a$nontreated <- lapply(pvalRes$nontreated$pval, function(i) NULL)
-    selK0b <- selK0a
-    res <- estSLSE(model, selK0a)
-    icV <- matrix(NA, q+1, 2)
-    colnames(icV) <- c("AIC", "BIC")
-    icV[1,] <- ic_seq0 <- c(AIC(res$lm.out), BIC(res$lm.out))
-    for (i in 1:q) {
-        selK <- list()
-        selK$nontreated <- lapply(1:length(pvalRes$nontreated$pval), function(j)
-        {
-            w <- which(pvalRes$nontreated$pval[[j]] <= pval_sort[i])
-            if (length(w)==0)
-                w <- NULL
-            w})
-        selK$treated <- lapply(1:length(pvalRes$treated$pval), function(j)
-        {
-            w <- which(pvalRes$treated$pval[[j]] <= pval_sort[i])
-            if (length(w)==0)
-                w <- NULL
-            w})
-        names(selK$nontreated) <- names(pvalRes$nontreated$pval)
-        names(selK$treated) <- names(pvalRes$treated$pval)
-        res <- estSLSE(model, selK)
-        ic_seq1 <- c(AIC(res$lm.out), BIC(res$lm.out))
-        icV[i+1,] <- ic_seq1
-        if (ic_seq1[1] < ic_seq0[1]) {
-            ic_seq0[1] <- ic_seq1[1]
-            selK0a <- selK
-        }
-        if (ic_seq1[2] < ic_seq0[2]) {
-            ic_seq0[2] <- ic_seq1[2]
-            selK0b <- selK
-        }       
-    }
-    list(Crit=icV, AIC=selK0a, BIC=selK0b)
-}
-
-.selPVT <- function (model, pvalRes, pvalT = function(p) 1/log(p))
-{
-    pval <- c(do.call("c", pvalRes$nontreated$pval),
-              do.call("c", pvalRes$treated$pval))
-    n <- nrow(model$data)
-    q <- length(pval)
-    p0 <-  sapply(model$knots$nontreated, function(ki) length(ki) + 1)
-    p1 <-  sapply(model$knots$treated, function(ki) length(ki) + 1)
-    crit0 <- min(pvalT(mean(p0)),1)
-    crit1 <- min(pvalT(mean(p1)),1)        
-    w0 <- lapply(1:length(model$knots$nontreated), function(i)
-    {
-        w <- which(pvalRes$nontreated$pval[[i]]<crit0)
-        if (length(w) == 0)
-            w <- NULL
-        w})
-    w1 <- lapply(1:length(model$knots$treated), function(i)
-    {
-        w <- which(pvalRes$treated$pval[[i]]<crit1)
-        if (length(w) == 0)
-            w <- NULL
-        w})
-    names(w0) <- names(pvalRes$nontreated$pval)
-    names(w1) <- names(pvalRes$treated$pval)
-    list(selK=list(treated=w1, nontreated=w0), Crit=c(treated=crit1, nontreated=crit0))
-}
-
 model.matrix.cslseModel <- function(object, ...)
 {
     X <- model.matrix(object$formX, object$data, xlev=object$xlevels)    
@@ -840,7 +640,8 @@ model.matrix.cslseModel <- function(object, ...)
                 ACE = ncol(X0)+ncol(X1)+2,
                 ACT = ncol(X1)+1,
                 ACN = ncol(X0)+1)
-    dfadj <- n/(n-p)
+    ## dfadj <- n/(n-p)
+    dfadj <- 1
     X <- cbind(1-Z, Z, X0*(1-Z), X1*Z)
     SigmaX <- crossprod(X)
     X0 <- X0[id,, drop = FALSE]
@@ -902,14 +703,13 @@ causalSLSE.cslseModel <- function(object,
                                   selCrit = c("AIC", "BIC", "PVT"),
                                   causal = c("ALL","ACT","ACE","ACN"),
                                   pvalT = function(p) 1/log(p),
-                                  vcov.=vcovHC, fortran=FALSE, reSelect=FALSE, ...)
+                                  vcov.=vcovHC, reSelect=FALSE, ...)
 {
     selType <- match.arg(selType)
     causal <- match.arg(causal)
     selCrit <- match.arg(selCrit)
     if (selType != "SLSE")
-        object <- selSLSE(object, selType, selCrit, pvalT, vcov., fortran,
-                          reSelect, ...)
+        object <- selSLSE(object, selType, selCrit, pvalT, vcov., reSelect, ...)
     res <- estSLSE(object)
     beta <- coef(res$lm.out)
     v <- vcov.(res$lm.out, ...)
@@ -1030,8 +830,7 @@ causalSLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
                                selCrit = c("AIC", "BIC", "PVT"),
                                causal = c("ALL","ACT","ACE","ACN"),
                                pvalT = function(p) 1/log(p),
-                               vcov.=vcovHC, fortran=FALSE,
-                               reSelect=FALSE, ...)
+                               vcov.=vcovHC, reSelect=FALSE, ...)
 {
     model <- cslseModel(object, data, nbasis,  knots)
     selType <- match.arg(selType)
@@ -1039,7 +838,7 @@ causalSLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
     selCrit <- match.arg(selCrit)
     causalSLSE(object=model, selType = selType, selCrit = selCrit,
                causal = causal, pvalT =  pvalT,
-               vcov. = vcov., fortran, reSelect, ...)    
+               vcov. = vcov., reSelect, ...)    
 }
 
 print.slseFit <- function(x, digits = max(3L, getOption("digits") - 3L), ...)

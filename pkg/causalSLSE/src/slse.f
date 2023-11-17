@@ -392,6 +392,8 @@ c     different selection method, it is possible to have more than one selection
 c     - pvm is the p-value method: 1 for Backward and 2 for Forward.
 c     - selm is the selection method. 1 = PVT only and 2 = PVT, AIC and BIC
 c     - t1 and t0 are the PV threshold.
+c     mnk0 and mnk1 cannot be 0. 
+      
 
       subroutine selmodel(y0,y1,x0,x1,n0,n1,p,tol,t0,t1,pvm,vt,selm, 
      *     k0, nk0, mnk0, tnk0, k1, nk1, mnk1, tnk1, pval0, 
