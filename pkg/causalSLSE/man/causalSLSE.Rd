@@ -1,7 +1,7 @@
 \name{causalSLSE}
 \alias{causalSLSE}
 \alias{causalSLSE.cslseModel}
-\alias{causalSLSE.slseFit}
+\alias{causalSLSE.cslseFit}
 \alias{causalSLSE.formula}
 \title{
 Causal Effect based on semiparametric Least Squares models
@@ -10,7 +10,7 @@ Causal Effect based on semiparametric Least Squares models
 This is the main method to estimate the causal effects using the semiparametric
 least squares method. It returns an object of class
 \code{cslse} and is registered for objects of class
-\code{cslseModel} and \code{slseFit}.
+\code{cslseModel} and \code{cslseFit}.
 }
 \usage{
 \method{causalSLSE}{cslseModel}(object,
@@ -19,7 +19,7 @@ least squares method. It returns an object of class
                                causal = c("ALL","ACT","ACE","ACN"),
                                pvalT = function(p) 1/log(p),
                                vcov.=vcovHC, reSelect=FALSE, ...)
-\method{causalSLSE}{slseFit}(object, causal = c("ALL","ACT","ACE","ACN"),
+\method{causalSLSE}{cslseFit}(object, causal = c("ALL","ACT","ACE","ACN"),
                              vcov.=vcovHC, ...)
 \method{causalSLSE}{formula}(object, data, nbasis=function(n) n^0.3,
                              knots, 
@@ -31,7 +31,7 @@ least squares method. It returns an object of class
 }
 \arguments{
   \item{object}{An object of class \code{cslseModel} created by the
-    \code{cslseModel} function, \code{slseFit} created by \code{estSLSE}
+    \code{cslseModel} function, \code{cslseFit} created by \code{estSLSE}
     or \code{formula}.}
   \item{data}{A \code{data.frame} with all variables included in \code{form}.}
   \item{nbasis}{A function to determined the number of bases. It has to

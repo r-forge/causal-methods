@@ -1,22 +1,29 @@
 \name{selSLSE}
 \alias{selSLSE}
 \alias{selSLSE.cslseModel}
+\alias{selSLSE.slseModel}
 \title{
 Knot selection method
 }
 \description{
-This is the main function to select the knots in \code{cslseModel}
-objects. It returns a model with non significant knots removed. 
+This is the main function to select the knots in \code{cslseModel} or
+\code{slseModel} objects. It returns a model with non significant knots
+removed.  
 }
 \usage{
 \method{selSLSE}{cslseModel}(model, selType=c("BLSE", "FLSE"),
         selCrit = c("AIC", "BIC", "PVT"), 
         pvalT = function(p) 1/log(p), vcov.=vcovHC, 
         reSelect=FALSE, ...)
+\method{selSLSE}{slseModel}(model, selType=c("BLSE", "FLSE"),
+        selCrit = c("AIC", "BIC", "PVT"), 
+        pvalT = function(p) 1/log(p), vcov.=vcovHC, 
+        reSelect=FALSE, ...)
 }
 \arguments{
   \item{model}{A model of class \code{cslseModel} created by
-    the \code{cslseModel} function.}
+    the \code{cslseModel} function or \code{slseModel} created by
+    the \code{slseModel} function.}
   \item{selType}{The selection method: backward for forward.}
   \item{selCrit}{The criterion to select the piecewise polynomial knots.}
   \item{pvalT}{A function to determine the p-value threshold for the

@@ -1,42 +1,60 @@
 useDynLib(causalSLSE, .registration = TRUE, .fixes="F_")
 importFrom(stats, quantile, lm, predict, coef, vcov, printCoefmat, cov, pnorm,
            as.formula, model.frame, model.matrix, delete.response, formula, 
-           na.omit, pf, qnorm, residuals, terms, var, fitted, nobs, .getXlevels, update, AIC, BIC)
+           na.omit, pf, qnorm, residuals, terms, var, fitted, nobs, .getXlevels, update,
+           AIC, BIC)
 importFrom(graphics, grid, legend, matplot)
 importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)
 importFrom(methods, setMethod)
+importFrom(utils, capture.output)
 
 export(cslseModel, print.cslseModel, causalSLSE, print.cslse,
        summary.cslse, selSLSE, selSLSE.cslseModel, 
-       print.summary.cslse, plot.slseFit,
-       extract, predict.slseFit, estSLSE, estSLSE.cslseModel,
-       print.slseFit, 
-       summary.slseFit, print.summary.slseFit, causalSLSE, causalSLSE.cslseModel,
-       causalSLSE.slseFit, causalSLSE.formula,
-       slseKnots, cslseKnots, print.slseKnots, print.cslseKnots)
- 
+       print.summary.cslse, plot.cslseFit, plot.slseFit,
+       extract, predict.cslseFit, estSLSE, estSLSE.cslseModel,
+       print.cslseFit, print.slseFit, slseModel,
+       summary.cslseFit, print.summary.cslseFit, causalSLSE, causalSLSE.cslseModel,
+       causalSLSE.cslseFit, causalSLSE.formula, predict.slseFit,
+       summary.slseFit, print.summary.slseFit,
+       slseKnots, print.slseKnots, as.model, 
+       llSplines, llSplines.slseModel, llSplines.cslseModel)
+
 S3method(summary, cslse)
+S3method(summary, cslseFit)
 S3method(summary, slseFit)
-S3method(causalSLSE, slseFit)
+S3method(causalSLSE, cslseFit)
 S3method(causalSLSE, cslseModel)
 S3method(causalSLSE, formula)
 S3method(selSLSE, cslseModel)
+S3method(selSLSE, slseModel)
 S3method(estSLSE, cslseModel)
-S3method(update, cslseKnots)
+S3method(estSLSE, slseModel)
 S3method(update, cslseModel)
+S3method(update, slseModel)
 S3method(update, slseKnots)
 S3method(print, cslseModel)
-S3method(print, cslseKnots)
+S3method(print, slseModel)
 S3method(print, slseKnots)
 S3method(print, cslsePval)
 S3method(print, slsePval)
 S3method(print, cslse)
 S3method(print, summary.cslse)
+S3method(print, summary.cslseFit)
 S3method(print, summary.slseFit)
-S3method(plot, slseFit)
+S3method(print, cslseFit)
 S3method(print, slseFit)
+S3method(plot, cslseFit)
+S3method(plot, slseFit)
+S3method(predict, cslseFit)
+S3method(as.list, cslseFit)
 S3method(predict, slseFit)
-S3method(model.matrix, cslseModel)
+S3method(model.matrix, slseModel)
+S3method(llSplines, slseModel)
+S3method(llSplines, cslseModel)
+S3method(as.model, slseFit)
+S3method(as.model, cslseFit)
+S3method(as.model, cslse)
+
 
 

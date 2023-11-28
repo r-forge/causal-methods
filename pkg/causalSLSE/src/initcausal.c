@@ -8,7 +8,7 @@ extern void F77_NAME(pvalb)(void *, void *, void *, void *, void *,
 extern void F77_NAME(pvalf)(void *, void *, void *, void *, void *,
 			    void *, void *, void *, void *, void *, void *);
 
-extern void F77_NAME(selmodel)(void *, void *, void *, void *, void *,
+extern void F77_NAME(selcmodel)(void *, void *, void *, void *, void *,
 			       void *, void *, void *, void *, void *,
 			       void *, void *, void *, void *, void *,
 			       void *, void *, void *, void *, void *,
@@ -16,10 +16,16 @@ extern void F77_NAME(selmodel)(void *, void *, void *, void *, void *,
 			       void *, void *, void *, void *, void *,
 			       void *, void *);
 
+extern void F77_NAME(selmodel)(void *, void *, void *, void *, void *,
+			       void *, void *, void *, void *, void *,
+			       void *, void *, void *, void *, void *,
+			       void *, void *, void *, void *, void *);
+
 static const R_FortranMethodDef fortranMethods[] = {
   {"pvalb", (DL_FUNC) &F77_NAME(pvalb), 11},
   {"pvalf", (DL_FUNC) &F77_NAME(pvalf), 11},
-  {"selmodel", (DL_FUNC) &F77_NAME(selmodel), 32},  
+  {"selcmodel", (DL_FUNC) &F77_NAME(selcmodel), 32},
+  {"selmodel", (DL_FUNC) &F77_NAME(selmodel), 20},    
   {NULL, NULL, 0}
 };
 

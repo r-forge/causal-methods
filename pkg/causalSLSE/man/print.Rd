@@ -1,10 +1,12 @@
 \name{print}
 \alias{print.cslseModel}
+\alias{print.slseModel}
 \alias{print.cslse}
+\alias{print.cslseFit}
 \alias{print.slseFit}
 \alias{print.slseKnots}
-\alias{print.cslseKnots}
 \alias{print.summary.cslse}
+\alias{print.summary.cslseFit}
 \alias{print.summary.slseFit}
 \title{Print methods}
 \description{
@@ -13,18 +15,22 @@ Print methods for different objects from the package.
 \usage{
 \method{print}{cslseModel}(x, which=c("Model", "selKnots", "Pvalues"),
                            digits = max(3L, getOption("digits") - 3L), ...)
+\method{print}{slseModel}(x, which=c("Model", "selKnots", "Pvalues"),
+                           digits = max(3L, getOption("digits") - 3L), ...)
 \method{print}{cslse}(x, digits = max(3L, getOption("digits") - 3L), ...)
+\method{print}{cslseFit}(x, digits = max(3L, getOption("digits") - 3L), ...)
 \method{print}{slseFit}(x, digits = max(3L, getOption("digits") - 3L), ...)
 \method{print}{summary.cslse}(x, digits = max(3L, getOption("digits") - 3L),
                               signif.stars = getOption("show.signif.stars"),
                               beta=FALSE, knots = FALSE,...)
+\method{print}{summary.cslseFit}(x, groups, digits = max(3L, getOption("digits") - 3L),
+                                signif.stars = getOption("show.signif.stars"),
+                                ...)
 \method{print}{summary.slseFit}(x, digits = max(3L, getOption("digits") - 3L),
                                 signif.stars = getOption("show.signif.stars"),
-    ...)
+                                ...)
 \method{print}{slseKnots}(x, header=c("None", "All", "Select"),
                           digits = max(3L, getOption("digits") - 3L), ...)
-\method{print}{cslseKnots}(x, header = c("None", "All", "Select"),
-                           digits = max(3L, getOption("digits") - 3L), ...)
 }
 \arguments{
   \item{x}{Model of fit objects.}
@@ -39,6 +45,8 @@ Print methods for different objects from the package.
     set to \code{Pvalues}. For the latter, it is only available when a
     knots selection method has been applied to the object.}
   \item{header}{What description of the object should be printed.}
+  \item{groups}{The names of the group to be printed. By default,
+    they are all printed.}
 \item{...}{Argument for other type of objects}
 }
 

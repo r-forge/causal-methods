@@ -1,4 +1,5 @@
 \name{predict}
+\alias{predict.cslseFit}
 \alias{predict.slseFit}
 \title{Plot method}
 \description{
@@ -7,12 +8,15 @@ errors and confidence intervals.
 }
 \usage{
 
+\method{predict}{cslseFit}(object, interval=c("none","confidence"),
+                       se.fit=FALSE, newdata=NULL, level=0.95,
+                       vcov.=vcovHC, ...)
 \method{predict}{slseFit}(object, interval=c("none","confidence"),
                        se.fit=FALSE, newdata=NULL, level=0.95,
                        vcov.=vcovHC, ...)
 }
 \arguments{
-  \item{object}{Object of class \code{slseFit}.}
+  \item{object}{Object of class \code{cslseFit} or  \code{slseFit}.}
   \item{interval}{If set to \code{interval}, it returns the predicted 
     values along with the lower and upper bounds of
     the confidence interval.}

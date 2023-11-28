@@ -387,7 +387,8 @@ c     than 1 is considered as an NA.
       end do
       end
 
-c     This is the selection method function. To avoid having to recompute the p-values for
+c     This is the selection method function for causalSLSE models.
+c     To avoid having to recompute the p-values for
 c     different selection method, it is possible to have more than one selection methods
 c     - pvm is the p-value method: 1 for Backward and 2 for Forward.
 c     - selm is the selection method. 1 = PVT only and 2 = PVT, AIC and BIC
@@ -395,7 +396,7 @@ c     - t1 and t0 are the PV threshold.
 c     mnk0 and mnk1 cannot be 0. 
       
 
-      subroutine selmodel(y0,y1,x0,x1,n0,n1,p,tol,t0,t1,pvm,vt,selm, 
+      subroutine selcmodel(y0,y1,x0,x1,n0,n1,p,tol,t0,t1,pvm,vt,selm, 
      *     k0, nk0, mnk0, tnk0, k1, nk1, mnk1, tnk1, pval0, 
      *     pval1, bic, aic, w0bic, w0aic, w0pvt, w1bic, w1aic, w1pvt,
      *     npval)
@@ -420,17 +421,52 @@ c     mnk0 and mnk1 cannot be 0.
       call selpvt(p, nk1, mnk1, t1, pval1, w1pvt)
 
       if (selm .eq. 2) then
-         call selic(y0, y1, x0, x1, n0, n1, p, tol, 
+         call selicc(y0, y1, x0, x1, n0, n1, p, tol, 
      *        k0, nk0, mnk0, tnk0, k1, nk1, mnk1, tnk1, pval0,
      *        pval1, bic, aic, w0bic, w1bic, w0aic, w1aic, npval)
       end if
       end
 
+
+c     This is the selection method function for slse models.
+c     To avoid having to recompute the p-values for
+c     different selection method, it is possible to have more than one selection methods
+c     - pvm is the p-value method: 1 for Backward and 2 for Forward.
+c     - selm is the selection method. 1 = PVT only and 2 = PVT, AIC and BIC
+c     - t1 and t0 are the PV threshold.
+c     Note that mnk and tnk cannot be 0. If they are 0, we set them to 1.
+      
+
+      subroutine selmodel(y, x, n, p, tol, t, pvm, vt, selm, k, nk, mnk,
+     *     tnk, pval, bic, aic, wbic, waic, wpvt, npval)
+
+      integer n, p, mnk, tnk, nk(p), pvm, vt, selm, wpvt(mnk, p),  npval
+      integer wbic(mnk, p), waic(mnk, p)
+      double precision x(n,p), y(n), tol, t, k(mnk, p), pval(mnk, p)
+      double precision aic(tnk+1), bic(tnk+1), spval(tnk)
+
+      if (pvm .eq. 1) then
+         call pvalb(y, x, k, tol, n, p, nk, mnk, tnk, vt, pval)
+      else 
+         call pvalf(y, x, k, tol, n, p, nk, mnk, tnk, vt, pval)
+      end if
+            
+      call selpvt(p, nk, mnk, t, pval, wpvt)
+
+      if (selm .eq. 2) then
+         call vecpval(pval, nk, mnk, tnk, p, spval, npval)         
+         call selic(y, x, n, p, tol, k, nk, mnk, tnk,
+     *        pval, bic, aic, wbic, waic, spval(1:npval), npval)
+      end if
+      end
+
+      
 c     This is the PVT selection method. Once the p-values are computed, it is just a knot
 c     selection based on a threshold. No additional estimation is needed
 c     The threshold is t. Knots with p-values less than t are kept. Since a p-value greater
 c     than 1 is a missing value, knots with such p-values are removed.
-c     Note that there is no need to have one function for both groups. We can apply it to each group
+c     Note that there is no need to have one function for both groups.
+c     We can apply it to each group
 c     separately. The selected model is returned through the knot selection matrix w.
       
       subroutine selpvt(p, nk, mnk, t, pval, w)
@@ -454,9 +490,58 @@ c     separately. The selected model is returned through the knot selection matr
 
 c     The function select the best model based on BIC and AIC.
 c     The selected model is returned  through the knot selection matrices
+c     waic for the AIC criterion and wbic for the BIC.
+      
+      subroutine selic(y, x, n, p, tol, k, nk, mnk, tnk,
+     *     pval, bic, aic, wbic, waic, spval, npval)
+      
+      integer n, p, mnk, tnk, nk(p), npval, j, i, l, s
+      integer w(mnk, p), wbic(mnk, p), waic(mnk, p)
+      double precision x(n,p), y(n), tol, minpv, k(mnk, p), spval(npval)
+      double precision pval(mnk, p), aic(tnk+1), bic(tnk+1)
+      double precision aicsel, bicsel
+     
+      w(:,:) = 0
+
+      call modfitsel(y, x, p, n, tol, k, nk, mnk, tnk,
+     *     w, bic(1), aic(1))
+
+      bicsel = bic(1)
+      aicsel = aic(1)
+      wbic = w
+      waic = w
+
+      do i=1,npval
+         minpv = spval(i)
+         do j=1,p
+            if (nk(j) .gt. 0) then
+               l = 1
+               do s=1,nk(j)
+                  if (pval(s,j) .le. minpv) then
+                     w(l,j) = s
+                     l = l+1
+                  end if
+               end do
+            end if
+         end do
+         call modfitsel(y, x, p, n, tol, k, nk, mnk, tnk,
+     *        w, bic(i+1), aic(i+1))        
+         if (aic(i+1) .lt. aicsel) then
+            aicsel = aic(i+1)
+            waic = w
+         end if
+         if (bic(i+1) .lt. bicsel) then
+            bicsel = bic(i+1)
+            wbic = w
+         end if         
+      end do
+      end
+      
+c     The function select the best causal model based on BIC and AIC.
+c     The selected model is returned  through the knot selection matrices
 c     w0aic and w1aic for the AIC criterion and w0bic and w1bic for the BIC.
       
-      subroutine selic(y0, y1, x0, x1, n0, n1, p, tol, 
+      subroutine selicc(y0, y1, x0, x1, n0, n1, p, tol, 
      *     k0, nk0, mnk0, tnk0, k1, nk1, mnk1, tnk1, pval0,
      *     pval1, bic, aic, w0bic, w1bic, w0aic, w1aic, npval)
       
@@ -470,13 +555,13 @@ c     w0aic and w1aic for the AIC criterion and w0bic and w1bic for the BIC.
       double precision k1(mnk1, p), aic(tnk0+tnk1+1), bic(tnk0+tnk1+1)
       double precision aicsel, bicsel
      
-      call vecpval(pval0, nk0, mnk0, tnk0, pval1, nk1, mnk1, tnk1, p,
+      call vecpvalc(pval0, nk0, mnk0, tnk0, pval1, nk1, mnk1, tnk1, p,
      *     spval, npval)
 
       w0(:,:) = 0
       w1(:,:) = 0
       
-      call modfitsel(y0, y1, x0, x1, p, n0, n1, tol,
+      call cmodfitsel(y0, y1, x0, x1, p, n0, n1, tol,
      *     k0, nk0, mnk0, tnk0,  k1, nk1, mnk1, tnk1,
      *     w0, w1, bic(1), aic(1)) 
       bicsel = bic(1)
@@ -507,7 +592,7 @@ c     w0aic and w1aic for the AIC criterion and w0bic and w1bic for the BIC.
                end do
             end if            
          end do
-         call modfitsel(y0, y1, x0, x1, p, n0, n1, tol,
+         call cmodfitsel(y0, y1, x0, x1, p, n0, n1, tol,
      *        k0, nk0, mnk0, tnk0,  k1, nk1, mnk1, tnk1,
      *        w0, w1, bic(i+1), aic(i+1)) 
          if (aic(i+1) .lt. aicsel) then
@@ -523,33 +608,42 @@ c     w0aic and w1aic for the AIC criterion and w0bic and w1bic for the BIC.
       end do
       end
 
-c     This function vectorizes the pvalues and return the sorted ones
+c     This function vectorizes the pvalues of causal models and return the sorted ones
 c     The output npval indicates how many p-values are valid (not NA's)
       
-      subroutine vecpval(pval0, nk0, mnk0, tnk0, 
+      subroutine vecpvalc(pval0, nk0, mnk0, tnk0, 
      *     pval1, nk1, mnk1, tnk1, p, spval, npval)
 
       integer p, nk0(p), nk1(p), mnk0, mnk1, tnk0, tnk1
-      integer npval, nna, i, j, l
-      double precision pval0(mnk0,p), pval1(mnk1,p), spval(tnk1+tnk0)
+      integer npval0, npval1, npval, nna, i, j, l
+      double precision pval0(mnk0,p), pval1(mnk1,p)
+      double precision spval0(tnk0), spval1(tnk1), spval(tnk1+tnk0)
+      
+      call vecpval(pval0, nk0, mnk0, tnk0, p, spval0, npval0)
+      call vecpval(pval1, nk1, mnk1, tnk1, p, spval1, npval1)
+      npval = npval0+npval1
+      spval(1:npval1) = spval1(1:npval1)
+      spval((npval1+1):(npval1+npval0)) = spval0(1:npval0)
+      call qsort3(spval, 1, npval)
+      end
 
-      nna = count(pval0 .gt. 1.0d0) + count(pval1 .gt. 1.0d0)
-      npval = tnk0+tnk1-nna
+c     This function vectorizes the pvalues of models and return the sorted ones
+c     The output npval indicates how many p-values are valid (not NA's)
+      
+      subroutine vecpval(pval, nk, mnk, tnk, p, spval, npval)
+
+      integer p, nk(p), mnk, tnk, npval, nna, i, j, l
+      double precision pval(mnk,p), spval(tnk)
+
+      nna = count(pval .gt. 1.0d0)
+      npval = tnk-nna
 
       l = 1
       do i=1,p
-         if (nk0(i) .gt. 0) then
-            do j=1,nk0(i)
-               if (pval0(j,i) .le. 1.0d0) then
-                  spval(l) = pval0(j,i)
-                  l = l+1
-               end if
-            end do
-         end if
-         if (nk1(i) .gt. 0) then
-            do j=1,nk1(i)
-               if (pval1(j,i) .le. 1.0d0) then
-                  spval(l) = pval1(j,i)
+         if (nk(i) .gt. 0) then
+            do j=1,nk(i)
+               if (pval(j,i) .le. 1.0d0) then
+                  spval(l) = pval(j,i)
                   l = l+1
                end if
             end do
@@ -557,15 +651,15 @@ c     The output npval indicates how many p-values are valid (not NA's)
       end do
       call qsort3(spval, 1, npval)
       end
-           
-c     This is a simplified version of the modelfit function
+      
+c     This is a simplified version of the modelfit function for causal model
 c     It only returns what is needed for the selection:
 c     - new knots: k0s and k1s
 c     - new number of knots: nk0s, nk1s
 c     - AIC and BIC
 c     It does not compute the variance of LSE, so it is faster
       
-      subroutine modfitsel(y0, y1, x0, x1, p, n0, n1, tol, 
+      subroutine cmodfitsel(y0, y1, x0, x1, p, n0, n1, tol, 
      *     k0, nk0, mnk0, tnk0, k1, nk1, mnk1, tnk1,
      *     w0, w1, bic, aic)
       integer p, n0, nk0(p), mnk0, tnk0, n1, nk1(p), mnk1, tnk1
@@ -598,4 +692,35 @@ c     It does not compute the variance of LSE, so it is faster
       bic = ll+log(dble(n1+n0))*dble(rk0+rk1+1)
       end
 
+
+c     This is a simplified version of the modelfit function for all Spline models
+c     It only returns what is needed for the selection:
+c     - new knots: k0s and k1s
+c     - new number of knots: nk0s, nk1s
+c     - AIC and BIC
+c     It does not compute the variance of LSE, so it is faster
+      
+      subroutine modfitsel(y, x, p, n, tol, k, nk, mnk, tnk,
+     *     w, bic, aic)
+      integer p, n, nk(p), mnk, tnk, w(mnk0,p), rk
+      integer nks(p), tnks, piv(tnk+p+1), i 
+      double precision ks(mnk,p), k(mnk,p), y(n), x(n,p)
+      double precision tol, aic, bic, ll, pi
+      double precision e(n), b(tnk+p+1), v(tnk+p+1,tnk+p+1)
+
+      call updatek(k, p, nk, mnk, w, ks, nks)
+      tnks = sum(nks)
+      
+      call splinefit(y, x, n, p, ks, nks, mnk, tnks,
+     *     tol, rk, b(1:(tnks+p+1)), piv(1:(tnks+p+1)), e, -10,
+     *     v(1:(tnks+p+1), 1:(tnks+p+1)))
+      
+      pi = 4.d0*datan(1.d0)
+      ssr = sum(e**2)
+      ll = dble(n)*(log(2.0d0 * pi) + 1 - log(dble(n)) +
+     *     log(ssr))
+      aic = ll+2.0d0*dble(rk+1)
+      bic = ll+log(dble(n))*dble(rk+1)
+      end
+      
 

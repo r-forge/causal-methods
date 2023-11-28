@@ -1,24 +1,29 @@
 \name{plot}
+\alias{plot.cslseFit}
 \alias{plot.slseFit}
 \title{Plot methods}
 \description{
-Some plot utilities for object of class \code{slseFit}.
+Some plot utilities for object of class \code{cslseFit}.
 }
 \usage{
+\method{plot}{cslseFit}(x, y, which = y, interval = c("none", "confidence"), 
+                        level = 0.95, fixedCov = list(),
+                        vcov. = vcovHC,  add = FALSE, addToLegend = NULL,
+                        addPoints = FALSE, FUN = mean,
+                        plot=TRUE, graphPar=list(), ...)
 \method{plot}{slseFit}(x, y, which = y, interval = c("none", "confidence"), 
-                   counterfactual = FALSE, level = 0.95, fixedCov = list(),
-                   vcov. = vcovHC,  add = FALSE, addToLegend = NULL,
-                   addPoints = FALSE, FUN = mean,
-                   plot=TRUE, graphPar=list(), ...)
+                       level = 0.95, fixedCov = NULL,
+                       vcov. = vcovHC,  add = FALSE, addToLegend = NULL,
+                       addPoints = FALSE, FUN = mean,
+                       plot=TRUE, graphPar=list(), ...)
 }
 \arguments{
-  \item{x}{Object of class \code{slseFit}.}
+  \item{x}{Object of class \code{cslseFit}.}
   \item{y}{alias for \code{which} for compatibility with \code{plot}}
   \item{which}{Which covariate to plot against the outcome variable. It
     could be an integer or a character}
   \item{interval}{The type of confidence interval. The default is
     \code{none}.}
-  \item{counterfactual}{Should we plot the counterfactual prediction?}
   \item{level}{The confidence interval level if included.}
   \item{fixedCov}{List of covariates to fix to
     specific values for the nontreated and treated groups. By default,

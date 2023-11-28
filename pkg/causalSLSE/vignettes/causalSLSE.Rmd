@@ -326,50 +326,23 @@ of knots it set to `NULL`:
 k1$married
 ```
 
-Alternatively, we can create a list of `slseKnots` objects, one for
-the treated and one for the nontreated, using the `cslseKnots`
-function. This approach of generating the knots for each group will
-allow us to easily extend the package to models with multiple
-treatments. The function has the same arguments as `slseKnots`, but
-`form` must include a formula linking the outcome and the treatment
-indication and a formula listing the confounders, separated by the
-operator `|`. In the following example, we see the formula linking the
-outcome `re78` and the treatment indicator `treat`, and the list of
-confounders, which are the same as in the previous example::
-
-```{r}
-k <- cslseKnots(form = re78 ~ treat | ~ age + re75 + ed + married,
-                data = nsw)
-```
-
-The function returns an object of class `cslseKnots`. We can use its
-`print` method to print the knots, in which case the knots are
-printed for both groups:
-
-```{r}
-k
-```
-
-Note that `cslseKnots` objects are lists of `slseKnots`
-objects. Therefore, we can print the set of knots for a specific group
-using \$ followed by its label (treated or nontreated). For example,
-we can print the set of knots for the treated by typing
-`k$treated`.
-
 ## Creating a causal SLSE model \label{ssec:cslseModel}
 
-In general, users will not call `cslseKnots` explicitly. This function
-is called by the `cslseModel` function. The function returns an object
-of class `cslseModel` (or a causal SLSE model), which contains the
-information about the outcome ($Y$), the treatment indicator ($Z$),
-the confounders ($X$) and their knots ($\kappa_{l,k}$).  The arguments
-of the function are the same as for the `cslseKnots`
-function. Therefore, we can create a model with the same set of knots
-as in the previous section as follows:
+The function `cslseModel` returns an object of class `cslseModel` (or
+a causal SLSE model), which contains the information about the outcome
+($Y$), the treatment indicator ($Z$), the confounders ($X$) and their
+knots ($\kappa_{l,k}$). The function has the same arguments as
+`slseKnots`, but `form` must include a formula linking the outcome and
+the treatment indication and a formula listing the confounders,
+separated by the operator `|`. In the following example, we see the
+formula linking the outcome `re78` and the treatment indicator
+`treat`, and the list of confounders, which are the same as in the
+previous section:
 
 ```{r}
 model1 <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
 ```
+
 Its print method summarizes the characteristics of the model. In
 particular, it indicates which confounders have a positive number of
 knots and which ones have no knots.
@@ -383,12 +356,12 @@ method when the knots are automatically selected by the method
 described in the previous section. Later in the document, we will
 present methods for optimally selecting a subset of `Default`.
 
-The element `knots` of `model1` is the object of class `cslseKnots`
-created by the `cslseKnots` function, so we can print the knots as
-follows:
+The object `model1` is a list of `slseModel` models, one for each
+group. The element `knots` of each `slseModel` model is an object of
+class `slseKnots`, so we print it as follows
 
 ```{r}
-model1$knots
+model1$treated$knots
 ```
 
 Alternatively, we can print the knots by setting the `print` method
@@ -411,7 +384,7 @@ categorical variable `X2` with 3 levels, an ordinal variable `X3` with
 ```{r}
 data(simDat4)
 model2 <- cslseModel(Y ~ Z | ~ X1 + X2 + X3 + X4, data = simDat4)
-model2$knots$nontreated
+model2$nontreated$knots
 ```
 
 Character-type variables are automatically converted into factors. It
