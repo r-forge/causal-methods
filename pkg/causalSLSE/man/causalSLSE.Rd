@@ -16,6 +16,7 @@ least squares method. It returns an object of class
 \method{causalSLSE}{cslseModel}(object,
                                selType=c("SLSE","BLSE","FLSE"),
                                selCrit = c("AIC", "BIC", "PVT"),
+                               selVcov = c("HC0", "Classical", "HC1", "HC2", "HC3"),    
                                causal = c("ALL","ACT","ACE","ACN"),
                                pvalT = function(p) 1/log(p),
                                vcov.=vcovHC, reSelect=FALSE, ...)
@@ -25,6 +26,7 @@ least squares method. It returns an object of class
                              knots, 
                              selType=c("SLSE","BLSE","FLSE"),
                              selCrit = c("AIC", "BIC", "PVT"),
+                             selVcov = c("HC0", "Classical", "HC1", "HC2", "HC3"),        
                              causal = c("ALL","ACT","ACE","ACN"),
                              pvalT = function(p) 1/log(p),
                              vcov.=vcovHC, reSelect=FALSE, ...)
@@ -50,9 +52,13 @@ least squares method. It returns an object of class
   \item{pvalT}{A function to determine the p-value threshold for the
     significance of the coefficients. It has to be a function of one
     parameter, which is the average number of knots in the model.}
+  \item{selVcov}{The type of least squares covariance matrix used to
+    compute the p-values needed for the selection.}  
   \item{vcov.}{An alternative function to compute the covariance matrix
     of the least squares estimators. The default is the \code{vcovHC}
-    method for \code{lm} objects.}
+    method for \code{lm} objects. This function is only used to compute
+    the standard errors of the causal effect estimators and the
+    causal-SLSE coefficients.}  
   \item{reSelect}{The previous selections are stored in the model
     object. By default, it is the previous selections that is used. If
     \code{reSelect} is set to \code{TRUE}, the selection is re-computed.}  

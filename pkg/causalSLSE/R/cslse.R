@@ -2,7 +2,7 @@
 ## Many are based on functions for SLSE models.
 ################################################################
 
-
+ 
 ## causal-SLSE knots
 ####################
 
@@ -32,25 +32,22 @@ llSplines.cslseModel <- function (object, ...)
 ###############
 
 cslseModel <- function (form, data, nbasis = function(n) n^0.3, 
-                        knots, groupn=c(treated=1, nontreated=0))
+                        knots,  groupInd = c(treated=1, nontreated=0))
 {
     tmp <- as.character(form)
+    tmp2 <- strsplit(tmp[3], "\\|")[[1]]    
     if (!grepl("\\|", tmp[3])) 
         stop("form must be of the type y~z|~x")
-    if (is.null(names(groupn)))
-        stop("groupn must be a named vector")
-    if (length(groupn)>2)
+    if (is.null(names(groupInd)))
+        stop("groupInd must be a named vector")
+    if (length(groupInd)>2)
         stop("Only one treatment is possible in this current version of the package.")
-    if (length(groupn)<2)
-        stop("You need two groups in groupn.")
-    if (!all(names(groupn) %in% c("treated","nontreated")))
-        stop("The only allowed names for groupn are currently treated and nontreated.")  
-    tmp2 <- strsplit(tmp[3], "\\|")[[1]]
-    formX <- as.formula(tmp2[2], env = .GlobalEnv)
-    formY <- as.formula(paste(tmp[2], "~", tmp2[1], sep = ""))
-    Z <- model.matrix(formY, data)
-    if (attr(terms(formY), "intercept") == 1) 
-        Z <- Z[, -1, drop = FALSE]
+    if (length(groupInd)<2)
+        stop("You need two groups in groupInd.")
+    if (!all(names(groupInd) %in% c("treated","nontreated")))
+        stop("The only allowed names for groupInd are currently treated and nontreated.")  
+    treat <- all.vars(form)[2]  
+    Z <- data[,treat]
     form <-  as.formula(paste(tmp[2], tmp2[2], sep = ""))
     if (any(naZ <- is.na(Z)))
     {
@@ -58,25 +55,24 @@ cslseModel <- function (form, data, nbasis = function(n) n^0.3,
         Z <- Z[!naZ,,drop=FALSE]
         data <- data[!naZ,,drop=FALSE]
     }
-    if (!(all(Z %in% groupn)))
-        stop("The treatment indicator can only contains values contained in groupn")    
-    data <- lapply(groupn, function(zi) data[Z==zi,,drop=FALSE])
-    names(data) <- names(groupn)
-    select <- ifelse(missing(knots), "Default", "User Based")            
+    if (!(all(Z %in% groupInd)))
+        stop("The treatment indicator can only contain the values included in groupInd")
+    data <- lapply(groupInd, function(zi) data[Z==zi,,drop=FALSE])
+    names(data) <- names(groupInd)
     if (missing(knots))
     {
-        obj <- lapply(names(groupn), function(gi) slseModel(form, data[[gi]], nbasis))
+        obj <- lapply(names(groupInd), function(gi) slseModel(form, data[[gi]], nbasis))
     } else if (is.null(knots)) {
-        obj <- lapply(names(groupn), function(gi) slseModel(form, data[[gi]], nbasis, NULL))
+        obj <- lapply(names(groupInd), function(gi) slseModel(form, data[[gi]], nbasis, NULL))
     } else {
         if (!is.list(knots))
             stop("knots must be a list")
         if (is.null(names(knots)))
             stop("knots must be a named list")
-        if (!all(names(knots) %in% names(groupn)))
+        if (!all(names(knots) %in% names(groupInd)))
             stop(paste("The names of knots must be in: ",
-                       paste(names(groupn), collapse=", ", sep=""), sep=""))
-        obj <- lapply(names(groupn), function(gi)
+                       paste(names(groupInd), collapse=", ", sep=""), sep=""))
+        obj <- lapply(names(groupInd), function(gi)
         {
             if (gi %in% names(knots))
                 slseModel(form, data[[gi]], nbasis, knots[[gi]])
@@ -84,9 +80,9 @@ cslseModel <- function (form, data, nbasis = function(n) n^0.3,
                 slseModel(form, data[[gi]], nbasis)
         })
     }
-    attr(obj, "treatInd") <- colnames(Z)
-    attr(obj, "treatVal") <- groupn
-    names(obj) <- names(groupn)
+    attr(obj, "treatedVar") <- treat
+    attr(obj, "groupInd") <- groupInd
+    names(obj) <- names(groupInd)
     class(obj) <- "cslseModel"
     obj
 }
@@ -126,8 +122,8 @@ cslseModel <- function (form, data, nbasis = function(n) n^0.3,
                     if (!grepl("J", crit) & crit!="PVT")
                         crit <- paste(crit, "(Sep.)") 
                     cat("-",  gsub("J", "", crit), sep = "")
-                    cat("\n")
                 }
+            cat("\n")
         }
         cat("\n")
     }
@@ -194,16 +190,16 @@ print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
 update.cslseModel <- function(object, selKnots, selType, selCrit="AIC",
                               pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
 {
-    treat <- attr(object, "treatInd") 
-    group <- attr(object, "treatVal") 
+    treat <- attr(object, "treatedVar") 
+    group <- attr(object, "groupInd") 
     if (!missing(selKnots))
     {
         if (is.null(selKnots))
         {
             object <- lapply(object, function(mi) update(mi, selKnots=NULL))
             class(object) <- "cslseModel"
-            attr(object, "treatInd") <- treat
-            attr(object, "treatVal") <- group
+            attr(object, "treatedVar") <- treat
+            attr(object, "groupInd") <- group
         } else {
             if (!is.list(selKnots))
                 stop("selKnots must be a list")
@@ -219,8 +215,8 @@ update.cslseModel <- function(object, selKnots, selType, selCrit="AIC",
         object <- lapply(object, function(mi) update(object=mi, selType=selType, selCrit=selCrit,
                                                      pvalT=pvalT, vcov.=vcov., ...))
         class(object) <- "cslseModel"
-        attr(object, "treatInd") <- treat
-        attr(object, "treatVal") <- group
+        attr(object, "treatedVar") <- treat
+        attr(object, "groupInd") <- group
     }
     object
 }
@@ -238,20 +234,20 @@ as.model.cslseFit <- function(x, ...)
 {
     mod <- lapply(x, as.model)
     class(mod) <- "cslseModel"
-    attr(mod, "treatInd") <- attr(x, "treatInd")
-    attr(mod, "treatVal") <- attr(x, "treatVal")
+    attr(mod, "treatedVar") <- attr(x, "treatedVar")
+    attr(mod, "groupInd") <- attr(x, "groupInd")
     mod
 }
 
 as.model.cslse <- function(x, ...)
 {
-    treat <- attr(x, "treatInd")
-    group <- attr(x, "treatVal")
+    treat <- attr(x, "treatedVar")
+    group <- attr(x, "groupInd")
     mod <- lapply(names(group), function(gi) x[[gi]]$model)
     names(mod) <- names(group) 
     class(mod) <- "cslseModel"
-    attr(mod, "treatInd") <- treat
-    attr(mod, "treatVal") <- group
+    attr(mod, "treatedVar") <- treat
+    attr(mod, "groupInd") <- group
     mod
 }
 
@@ -267,8 +263,8 @@ estSLSE.cslseModel <- function(model, selKnots, ...)
 {
     model <- update(model, selKnots)
     fit <- lapply(model, function(mi) estSLSE(mi))
-    attr(fit, "treatInd") <- attr(model, "treatInd")
-    attr(fit, "treatVal") <- attr(model, "treatVal")
+    attr(fit, "treatedVar") <- attr(model, "treatedVar")
+    attr(fit, "groupInd") <- attr(model, "groupInd")
     class(fit) <- "cslseFit"
     fit
 }
@@ -284,7 +280,7 @@ print.cslseFit <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
     {
         cat(gi, "\n")
         cat(paste(rep("*", nchar(gi)), collapse="", sep=""), "\n")
-        print.default(coef(x[[gi]]$lm.out), print.gap = 2L, digits=digits,
+        print.default(coef(x[[gi]]$LSE), print.gap = 2L, digits=digits,
                       quote = FALSE)
         cat("\n")
     }
@@ -293,7 +289,7 @@ print.cslseFit <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
 
 summary.cslseFit <- function (object, vcov.=vcovHC, ...) 
 {
-    ans <- lapply(object, function(obj) summary(obj))
+    ans <- lapply(object, function(obj) summary(obj, vcov., ...))
     class(ans) <- "summary.cslseFit"
     ans
 }
@@ -314,11 +310,11 @@ print.summary.cslseFit <- function(x, groups,
         cat(paste(rep("*", nchar(gi)), collapse="", sep=""), "\n")
         q <- capture.output(print(x[[gi]]$lseSum, digits=digits,
                                   signif.stars=signif.stars))
-        
         q <- q[-(1:(grep("Residuals:", q)-1))]
+        q <- q[1:grep("Multiple R-squared", q)]
         q <- paste(q, collapse="\n")
         cat(q)
-        cat("\n")
+        cat("\n\n")
     }
     invisible()
 }
@@ -332,17 +328,19 @@ selSLSE <- function(model, ...)
 
 selSLSE.cslseModel <- function(model, selType=c("BLSE", "FLSE"),
                                selCrit = c("AIC", "BIC", "PVT"), 
-                               pvalT = function(p) 1/log(p), vcov.=vcovHC,
+                               pvalT = function(p) 1/log(p),
+                               vcovType = c("HC0", "Classical", "HC1", "HC2", "HC3"),
                                reSelect=FALSE, ...)
 {
     selCrit <- match.arg(selCrit)
     selType <- match.arg(selType)
+    vcovType <- match.arg(vcovType)
     tmp <- ifelse(selCrit=="PVT", "PVT", paste("J", selCrit, sep=""))
     chk <- sapply(model, function(mi)
         !is.null(mi$selections[[selType]][[tmp]]))
     if (all(chk) &  !reSelect)
         return(update(model, selType = selType, selCrit = selCrit))
-    mod <- .selCMod(model, selType, selCrit, pvalT)
+    mod <- .selCMod(model, selType, selCrit, pvalT, vcovType)
     mod
 }
 
@@ -412,9 +410,9 @@ print.cslsePval <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
                      causal=c("ACE", "ACT", "ACN", "ALL"))
 {
     causal <- match.arg(causal)
-    notNA <- lapply(fit, function(fi) !is.na(coef(fi$lm.out))[-1])
-    beta <- lapply(fit, function(fi)  na.omit(coef(fi$lm.out)))
-    e <- lapply(fit, function(fi) residuals(fi$lm.out))
+    notNA <- lapply(fit, function(fi) !is.na(coef(fi$LSE))[-1])
+    beta <- lapply(fit, function(fi)  na.omit(coef(fi$LSE)))
+    e <- lapply(fit, function(fi) residuals(fi$LSE))
     n <- sapply(e, length)
     Z <- do.call("c", lapply(names(e), function(gi)
         if (gi == "nontreated") rep(0, length(e[[gi]])) else rep(1, length(e[[gi]]))))
@@ -443,6 +441,7 @@ causalSLSE <- function(object, ...)
 causalSLSE.cslseModel <- function(object,
                                   selType=c("SLSE","BLSE","FLSE"),
                                   selCrit = c("AIC", "BIC", "PVT"),
+                                  selVcov = c("HC0", "Classical", "HC1", "HC2", "HC3"),
                                   causal = c("ALL","ACT","ACE","ACN"),
                                   pvalT = function(p) 1/log(p),
                                   vcov.=vcovHC, reSelect=FALSE, ...)
@@ -450,11 +449,12 @@ causalSLSE.cslseModel <- function(object,
     selType <- match.arg(selType)
     causal <- match.arg(causal)
     selCrit <- match.arg(selCrit)
+    selVcov <- match.arg(selVcov)    
     if (selType != "SLSE")
-        object <- selSLSE(object, selType, selCrit, pvalT, vcov., reSelect, ...)
+        object <- selSLSE(object, selType, selCrit, pvalT, selVcov, reSelect)
     res <- estSLSE(object)    
-    beta <- lapply(res, function(fi)  coef(fi$lm.out))
-    v <- lapply(res, function(fi)  vcov.(fi$lm.out, ...))
+    beta <- lapply(res, function(fi)  coef(fi$LSE))
+    v <- lapply(res, function(fi)  vcov.(fi$LSE, ...))
     for (gi in names(object))
     {
         if (any(is.na(beta[[gi]]))) 
@@ -468,8 +468,8 @@ causalSLSE.cslseModel <- function(object,
     ans <- .causal(object, res, v, U, causal)
     ans <- c(ans, res)
     class(ans) <- c("cslse", "cslseFit")
-    attr(ans, "treatInd") <- attr(res, "treatInd")
-    attr(ans, "treatVal") <- attr(res, "treatVal")    
+    attr(ans, "treatedVar") <- attr(res, "treatedVar")
+    attr(ans, "groupInd") <- attr(res, "groupInd")    
     ans    
 }
 
@@ -477,8 +477,8 @@ causalSLSE.cslseFit <- function(object, causal = c("ALL","ACT","ACE","ACN"),
                                vcov.=vcovHC, ...)
 {
     causal <- match.arg(causal)
-    beta <- lapply(object, function(fi)  coef(fi$lm.out))
-    v <- lapply(object, function(fi)  vcov.(fi$lm.out, ...))
+    beta <- lapply(object, function(fi)  coef(fi$LSE))
+    v <- lapply(object, function(fi)  vcov.(fi$LSE, ...))
     for (gi in names(object))
     {
         if (any(is.na(beta[[gi]]))) 
@@ -492,8 +492,8 @@ causalSLSE.cslseFit <- function(object, causal = c("ALL","ACT","ACE","ACN"),
     ans <- .causal(as.model(object), object, v, U, causal)
     ans <- c(ans, object)
     class(ans) <- c("cslse", "cslseFit")
-    attr(ans, "treatInd") <- attr(object, "treatInd")
-    attr(ans, "treatVal") <- attr(object, "treatVal")    
+    attr(ans, "treatedVar") <- attr(object, "treatedVar")
+    attr(ans, "groupInd") <- attr(object, "groupInd")    
     ans        
 }
 
@@ -501,6 +501,7 @@ causalSLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
                                knots, 
                                selType=c("SLSE","BLSE","FLSE"),
                                selCrit = c("AIC", "BIC", "PVT"),
+                               selVcov = c("HC0", "Classical", "HC1", "HC2", "HC3"),                               
                                causal = c("ALL","ACT","ACE","ACN"),
                                pvalT = function(p) 1/log(p),
                                vcov.=vcovHC, reSelect=FALSE, ...)
@@ -509,8 +510,9 @@ causalSLSE.formula <- function(object, data, nbasis=function(n) n^0.3,
     selType <- match.arg(selType)
     causal <- match.arg(causal)
     selCrit <- match.arg(selCrit)
+    selVcov <- match.arg(selVcov)        
     causalSLSE(object=model, selType = selType, selCrit = selCrit,
-               causal = causal, pvalT =  pvalT,
+               selVcov = selVcov, causal = causal, pvalT =  pvalT, 
                vcov. = vcov., reSelect, ...)    
 }
 
@@ -524,9 +526,9 @@ cslseSE <- function(object, vcov.=vcovHC, ...)
 {
     if(!inherits(object, "cslse"))
         stop("object must be of class cslse")
-    group <- attr(model, "treatVal")
-    treat <- attr(model, "treatInd")
     model <- as.model(object)
+    group <- attr(model, "groupInd")
+    treat <- attr(model, "treatedVar")
     causal <- c("ACE", "ACT", "ACN")
     causal <- causal[which(causal %in% names(object))]
     if (length(causal) > 1) 
@@ -534,15 +536,16 @@ cslseSE <- function(object, vcov.=vcovHC, ...)
     res <- lapply(names(model), function(gi) object[[gi]])
     names(res) <- names(model)
     class(res) <- "cslseFit2"
-    attr(res, "treatInd") <- treat
-    attr(res, "treatVal") <- group
-    v <- lapply(res, function(fi)  vcov.(fi$lm.out, ...))
+    attr(res, "treatedVar") <- treat
+    attr(res, "groupInd") <- group
+    v <- lapply(res, function(fi)  vcov.(fi$LSE, ...))
     U <-  llSplines(model)
-    notNA <- lapply(res, function(fi) !is.na(coef(fi$lm.out))[-1])
-    beta <- lapply(res, function(fi)  na.omit(coef(fi$lm.out)))
-    e <- lapply(res, function(fi) residuals(fi$lm.out))
+    notNA <- lapply(res, function(fi) !is.na(coef(fi$LSE))[-1])
+    beta <- lapply(res, function(fi)  na.omit(coef(fi$LSE)))
+    e <- lapply(res, function(fi) residuals(fi$LSE))
     n <- sapply(e, length)
-    Z <- do.call("c", lapply(names(e), function(gi) rep(group[[gi]], n[[gi]])))
+    Z <- do.call("c", lapply(names(e), function(gi)
+        if (gi == "nontreated") rep(0, length(e[[gi]])) else rep(1, length(e[[gi]]))))    
     U <- lapply(names(U), function(gi)
     {
         U.gi <- do.call(rbind, U[[gi]])
@@ -552,15 +555,12 @@ cslseSE <- function(object, vcov.=vcovHC, ...)
     })
     names(U) <- names(model)
     if (causal == "ALL") causal <- c("ACE","ACT","ACN")
-    se <- lapply(causal, function(ci)
-        .causali(Z, v, U, beta, ci, e)["se"])
+    se <- lapply(causal, function(ci) .causali(Z, v, U, beta, ci, e)["se"])
     names(se) <- causal   
     se
 }
 
-
 ## cslse methods
-
 
 print.cslse <- function (x, digits = max(3L, getOption("digits") - 3L), ...) 
 {
@@ -637,14 +637,31 @@ print.summary.cslse <- function (x, digits = max(3L, getOption("digits") - 3L),
 #######################################
 
 extract.cslse <- function (model, include.nobs = TRUE,
-                                include.nknots = TRUE,
-                                include.numcov = TRUE, include.rsquared = TRUE,
-                                include.adjrs = TRUE, 
-                                which=c("ALL","ACE","ACT","ACN","ACE-ACT",
-                                        "ACE-ACN","ACT-ACN"), ...) 
+                           include.nknots = TRUE,
+                           include.numcov = TRUE, include.rsquared = TRUE,
+                           include.adjrs = TRUE,
+                           separated.rsquared = FALSE,
+                           which=c("ALL","ACE","ACT","ACN","ACE-ACT",
+                                   "ACE-ACN","ACT-ACN"), ...) 
 {
     which <- match.arg(which)
     type <- c("ACE","ACT","ACN")
+    if (isTRUE(include.adjrs) | isTRUE(include.rsquared))
+    {
+        if (!isTRUE(separated.rsquared))
+        {
+            groupInd <- attr(model, "groupInd")
+            Y <- do.call("c", lapply(names(groupInd), function(gi) fitted(model[[gi]]$LSE)))
+            e <- do.call("c", lapply(names(groupInd), function(gi) residuals(model[[gi]]$LSE)))            
+            SSE <- sum((Y-mean(Y))^2)
+            SSR <- sum(e^2)
+            dfY <- sum(sapply(names(groupInd), function(gi) nobs(model[[gi]]$LSE)))-1
+            dfe <- sum(sapply(names(groupInd), function(gi) model[[gi]]$LSE$df.residual))
+            R2 <- SSE/(SSE+SSR)
+            R2adj <- 1 - (1 - R2)*dfY/dfe
+        }
+
+    }
     w <- if (which == "ALL") type
          else type[sapply(type, function(ti) grepl(ti, which))]
     s <- summary(model)
@@ -679,21 +696,35 @@ extract.cslse <- function (model, include.nobs = TRUE,
         gof.decimal <- c(gof.decimal, FALSE, FALSE)
     }
     if (isTRUE(include.rsquared)) {
-        s0 <- summary(model$nontreated$lm.out)
-        s1 <- summary(model$treated$lm.out)
-        R2 <- c(s0$r.squared, s1$r.squared)
-        gof <- c(gof, R2)
-        gof.names <- c(gof.names, "R$^2$ (nontreated)", "R$^2$ (treated)")
-        gof.decimal <- c(gof.decimal, TRUE, TRUE)
+        if (!isTRUE(separated.rsquared))
+        {
+            gof <- c(gof, R2)
+            gof.names <- c(gof.names, "R$^2$")
+            gof.decimal <- c(gof.decimal, TRUE)            
+        } else {
+            s0 <- summary(model$nontreated$LSE)
+            s1 <- summary(model$treated$LSE)
+            R2 <- c(s0$r.squared, s1$r.squared)
+            gof <- c(gof, R2)
+            gof.names <- c(gof.names, "R$^2$ (nontreated)", "R$^2$ (treated)")
+            gof.decimal <- c(gof.decimal, TRUE, TRUE)
+        }
     }
     if (isTRUE(include.adjrs)) {
-        s0 <- summary(model$nontreated$lm.out)
-        s1 <- summary(model$treated$lm.out)
-        R2 <- c(s0$adj.r.squared, s1$adj.r.squared)
-        gof <- c(gof, R2)
-        gof.names <- c(gof.names, "Adj. R$^2$ (nontreated)",
-                       "Adj. R$^2$ (treated)")
-        gof.decimal <- c(gof.decimal, TRUE, TRUE)
+        if (!isTRUE(separated.rsquared))
+        {
+            gof <- c(gof, R2adj)
+            gof.names <- c(gof.names, "Adj. R$^2$")
+            gof.decimal <- c(gof.decimal, TRUE)            
+        } else {
+            s0 <- summary(model$nontreated$LSE)
+            s1 <- summary(model$treated$LSE)
+            R2 <- c(s0$adj.r.squared, s1$adj.r.squared)
+            gof <- c(gof, R2)
+            gof.names <- c(gof.names, "Adj. R$^2$ (nontreated)",
+                           "Adj. R$^2$ (treated)")
+            gof.decimal <- c(gof.decimal, TRUE, TRUE)
+        }
     }   
     tr <- createTexreg(coef.names = names(co), coef = co, se = se, 
                        pvalues = pval, gof.names = gof.names, gof = gof,
@@ -710,7 +741,7 @@ extract.slseFit <- function (model, include.rsquared = TRUE, include.adjrs = TRU
                              include.nobs = TRUE, include.fstatistic = FALSE, include.rmse = FALSE,
                              ...)
 { 
-    extract(model$lm.out, include.rsquared, include.adjrs, 
+    extract(model$LSE, include.rsquared, include.adjrs, 
             include.nobs, include.fstatistic, include.rmse)
 }
 
@@ -753,7 +784,7 @@ as.list.cslseFit <- function(x, ...)
 }
 
 
-.initPar <- function()
+.initParCSLSE <- function()
 {
     treated <- list(points=list(pch = 21, col = 2),
                     lines=list(col = 2, lty = c(2, 3, 3), lwd = 2, type='l'))
@@ -765,7 +796,7 @@ as.list.cslseFit <- function(x, ...)
          common=common, legend=legend)
 }
 
-.cslsePar <- function(addPar, startPar=.initPar())
+.cslsePar <- function(addPar, startPar=.initParCSLSE())
 {
     startPar$treated$points <- .findrep(startPar$treated$points, addPar$treated$points)
     startPar$treated$lines <- .findrep(startPar$treated$lines, addPar$treated$lines) 
@@ -785,16 +816,16 @@ predict.cslseFit <- function (object, interval = c("none", "confidence"),
                                newdata = NULL, level = 0.95, vcov. = vcovHC, ...) 
 {
     interval <- match.arg(interval)
-    treatInd <- attr(object, "treatInd")
-    treatVal <- attr(object, "treatVal")
-    group <- names(treatVal)
+    treatedVar <- attr(object, "treatedVar")
+    groupInd <- attr(object, "groupInd")
+    group <- names(groupInd)
     if (!is.null(newdata))
     {
-        if (!(treatInd %in% names(newdata)))
+        if (!(treatedVar %in% names(newdata)))
             stop("The treatment indicator must be included in newdata")
         newdata <- lapply(group, function(gi)
         {
-            dati <- newdata[newdata[,treatInd]==treatVal[gi],,drop=FALSE]
+            dati <- newdata[newdata[,treatedVar]==groupInd[gi],,drop=FALSE]
             if (nrow(dati)) dati else NULL
         })
     } else {

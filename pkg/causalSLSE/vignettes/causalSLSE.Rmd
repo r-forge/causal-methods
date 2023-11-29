@@ -6,7 +6,7 @@ bibliography: slse.bib
 output:
  pdf_document:
   number_sections: true
-abstract: "This vignette explains how to use the causalSLSE package to estimate causal effects using the semiparametric least squares methods developed by @tlse23. We describe the classes and methods implemented in the package as well as how they can be used to analyze synthetic and real data."
+abstract: "This vignette explains how to use the causalSLSE package to estimate causal effects using the semiparametric least squares methods developed by @cslse23. We describe the classes and methods implemented in the package as well as how they can be used to analyze synthetic and real data."
 vignette: >
   %\VignetteIndexEntry{Semiparametric Least Squares Inference for Causal Effects}
   %\VignetteEngine{knitr::rmarkdown}
@@ -27,7 +27,7 @@ header-includes:
 
 This document presents the `causalSLSE` package describing the
 functions implemented in the package. It is intended for users
-interested in the details about the methods presented in @tlse23 and
+interested in the details about the methods presented in @cslse23 and
 how they are implemented. We first present the theory and will present
 the package in the following sections.
 
@@ -40,26 +40,30 @@ knitr::knit_hooks$set(chunk = function(x, options) {
 knitr::opts_chunk$set(comment="")
 ```
 
-The general semiparametric additive regression model is 
+The general causal semiparametric additive regression model is 
 
-\begin{eqnarray*} 
-Y &=&  \beta_0 (1-Z) + \beta_1 Z + 
+\begin{equation} \label{cslseTrue}
+\begin{split}
+Y & =  \beta_0 (1-Z) + \beta_1 Z + 
 \sum_{l=1}^q f_{l,0}(X_l)(1-Z) + \sum_{l=1}^q f_{l,1}(X_l)Z + \xi\\
- &\equiv& \beta_0 (1-Z) + \beta_1 Z +  f_0(X)(1-Z) + f_1(X)Z + \xi\,, 
-\end{eqnarray*} 
+ & \equiv \beta_0 (1-Z) + \beta_1 Z +  f_0(X)(1-Z) + f_1(X)Z + \xi\,, 
+ \end{split}
+\end{equation} 
 
 where $Y\in \reals$ is the response variable, $Z$ is the treatment
 indicator defined as $Z=1$ for the treated and $Z=0$ for the
 nontreated, and $X\in \reals^q$ is a $q$-vector of confounders. We 
 approximate this model by the following regression model:
 
-\begin{eqnarray*} 
-Y &=&  \beta_0 (1-Z) + \beta_1 Z + 
+\begin{equation} \label{cslseApp}
+\begin{split}
+Y & =  \beta_0 (1-Z) + \beta_1 Z + 
 \sum_{l=1}^q \tp{\psi_{l,0}}U_{l,0}(1-Z) + 
 \sum_{l=1}^q \tp{\psi_{l,1}}U_{l,1}Z +  \zeta\\
-&\equiv&\beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(1-Z) + 
+& \equiv \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(1-Z) + 
 \tp{\psi_1}U_1Z + \zeta\,, 
-\end{eqnarray*} 
+ \end{split}
+\end{equation} 
 
 where $U_{l,k}=u_{l,k}(X_l)=(u_{j,l,k}(X_l)~:~ 1 \leq j \leq
 p_{l,k})\in\reals^{p_{l,k}}$ is a vector of basis functions
@@ -75,38 +79,41 @@ to differ across confounders and groups.
 
 Let the following be the regression model estimated by least squares:
 
-\[ 
+\begin{equation}\label{cslseReg}
 Y_i = \beta_0 (1-Z_i) + \beta_1 Z_i + \tp{\psi_0}U_{i,0}(1-Z_i) + 
 \tp{\psi_1}U_{i,1}Z_i + \zeta_i\mbox{ for } i=1,...,n\,,
-\] 
+\end{equation} 
 
 and $\hat\beta_0$, $\hat\beta_1$, $\hat\psi_0$ and $\hat\psi_1$ be the
-least squares estimates of the regression parameters. Then, the
+least squares estimators of the regression parameters. Then, the
 semiparametric least squares estimators (SLSE) of the average causal
 effect (ACE), causal effect on the treated (ACT) and causal effect on
 the non-treated (ACN) are defined respectively as follows:
 
-\begin{eqnarray*}
-\mathrm{ACE} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_1 -
+\begin{equation} \label{causalEst}
+\begin{split}
+\mathrm{ACE} & = \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_1 -
 \tp{\hat{\psi}_0}\bar{U}_0 \\
-\mathrm{ACT} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_{1,1} -
+\mathrm{ACT} & = \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_{1,1} -
 \tp{\hat{\psi}_0}\bar{U}_{0,1} \\
-\mathrm{ACN} &=& \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_{1,0} -
+\mathrm{ACN} & = \hat\beta_1-\hat\beta_0 + \tp{\hat{\psi}_1}\bar{U}_{1,0} -
 \tp{\hat{\psi}_0}\bar{U}_{0,0} \,,
-\end{eqnarray*}
+\end{split}
+\end{equation} 
+
 
 where $\bar{U}_k = \frac{1}{n}\sum_{i=1}^n U_{i,k}$, $\bar{U}_{k, 1} =
 \frac{1}{n_1}\sum_{i=1}^n U_{i, k}Z_i$, $\bar{U}_{k, 0} =
 \frac{1}{n_0}\sum_{i=1}^n U_{i, k}(1-Z_i)$, for $k=0,1$, and $n_0$ and
 $n_1$ are the sample sizes of the nontreated and treated groups
-respectively. As shown by @tlse23, under some regularity conditions
+respectively. As shown by @cslse23, under some regularity conditions
 these estimators are consistent and asymptotically normal.
 
 To derive the variance of these causal effect estimators, note that
 they can be expressed as a linear combination of the vector of least
 squares estimates. Let $\hat{\theta}=\tp{\{\hat\beta_0, \hat\beta_1,
 \tp{\hat\psi_0}, \tp{\hat\psi_1}\}}$. Then, the causal effect
-estimates can be written as $\tp{\hat{D}_{\mathrm{c}}}\hat{\theta}$
+estimators can be written as $\tp{\hat{D}_{\mathrm{c}}}\hat{\theta}$
 for c=ACE, ACT or ACN, with $\hat{D}_{\mathrm{ACE}}=\tp{\{-1, 1,
 \tp{-\bar{U}_0}, \tp{\bar{U}_1}\}}$, $\hat{D}_{\mathrm{ACT}}=\tp{\{-1,
 1, \tp{-\bar{U}_{0,1}}, \tp{\bar{U}_{1,1}}\}}$ and
@@ -114,12 +121,12 @@ $\hat{D}_{\mathrm{ACN}}=\tp{\{-1, 1, \tp{-\bar{U}_{0,0}},
 \tp{\bar{U}_{1,0}}\}}$. Since $\hat{D}_\mathrm{c}$ is random, we need
 a first order Taylor expansion to derive the variance of the
 estimators. Assuming that the data set is iid and using the asymptotic
-properties of least squares, we can show that the variance of
+properties of least squares estimators, we can show that the variance of
 ACE=$\tp{\hat{D}_{\mathrm{ACE}}}\hat{\theta}$ can be consistently
 estimated as follows (we can derive a similar expression for the ACT
 and ACN):
 
-\[
+\begin{equation} \label{causalVar}
 \hat{V}_\mathrm{ACE} = \begin{pmatrix} -\hat\beta_0 & \hat\beta_1 & 
 \tp{\hat{D}_\mathrm{ACE}} \end{pmatrix}
 \begin{pmatrix}
@@ -128,13 +135,13 @@ and ACN):
 \hat\Sigma_{\hat\theta,0} & \hat\Sigma_{\hat\theta,1} & \hat\Sigma_{\hat\theta} 
 \end{pmatrix}
 \begin{pmatrix} -\hat\beta_0 \\ \hat\beta_1 \\ \hat{D}_\mathrm{ACE} \end{pmatrix}\,,
-\]
+\end{equation} 
 
 where $\hat\Sigma_k=\widehat{\var(\bar{U}_k)}$,
 $\hat\Sigma_{k,l}=\widehat{\cov(\bar{U}_k, \bar{U}_l)}$,
 $\hat\Sigma_{k, \hat\theta}=\tp{\hat\Sigma_{\hat\theta,
 k}}=\widehat{\cov(\bar{U}_k, \hat\theta)}$, for $k,l=0,1$, and
-$\hat\Sigma_{\hat\theta}$ is a consistent estimator of variance of
+$\hat\Sigma_{\hat\theta}$ is a consistent estimator of the variance of
 $\hat\theta$. We will discuss the choice of the covariance matrix
 estimator $\hat\Sigma_{\hat\theta}$ in the next section.
 
@@ -150,12 +157,14 @@ strictly inside the support of $X$ satisfying
 $\kappa_{1}<\kappa_2<\ldots < \kappa_{p-1}$. In the case of local
 linear splines described in the paper, we have:
 
-\begin{eqnarray*}
-u_1(x) &=& xI(x\leq \kappa_{1}) + \kappa_{1}I(x> \kappa_{1}) \\
-u_j(x) &=& (x -  \kappa_{j-1})I(\kappa_{j-1} \leq x \leq \kappa_{j}) +
+\begin{equation}\label{basisFct}
+\begin{split}
+u_1(x) &= xI(x\leq \kappa_{1}) + \kappa_{1}I(x> \kappa_{1}) \\
+u_j(x) &= (x -  \kappa_{j-1})I(\kappa_{j-1} \leq x \leq \kappa_{j}) +
 (\kappa_{j} - \kappa_{j-1})I(x> \kappa_{j})\,,~~2\leq j \leq p-1\\
-u_p(x) &=& (x - \kappa_{p-1})I(x > \kappa_{p-1})
-\end{eqnarray*}
+u_p(x) &= (x - \kappa_{p-1})I(x > \kappa_{p-1})
+\end{split}
+\end{equation}
 
 Therefore, if the number of knots is equal to 1, we only have two
 local linear splines. Since the knots must be strictly inside the
@@ -192,29 +201,99 @@ $l=1,...,q$, must be strictly inside the sample range of
 $(X_{i,l}~:~1\leq i\leq n,~ Z_i=k)\in\reals^{n_k}$, where $n_k$ is
 the sample size in group $k$, instead of inside the support of $X_l$.
 
+The following section explains in details how to use the package to
+estimate the causal effects using this method, and the last section
+summarizes the package by providing a list of all objects and methods.
+
+
 # The `causalSLSE` package \label{sec:causalSLSE}
 
-## The starting knots \label{ssec:knots}
+## The Semiparametric LSE model
 
-By default, the knots for each variable are based on the following
-procedure applied separately for the treated and nontreated. The term
-`sample size` refers either to the number of observations in the
-treated or nontreated group.
+Note that the regression model presented by Equation \eqref{cslseReg}
+can expressed as:
 
-1. The starting number of knots is a function of the sample size and
-   is determined by the argument `nbasis`, a function of one argument,
-   the sample size. The floor value of what the function returns is
-   the number of basis functions. The starting number of knots is
-   therefore equal to the `floor` of what the function returns minus 1
-   (or 0 if the function returns a value strictly less than 1). The
-   default function is `function(n) n^0.3`. For example, if the total
-   sample size is 500, with 200 treated and 300 nontreated, the
-   starting number of knots in the treated and nontreated groups are
-   respectively equal to 3=`floor(200^0.3)-1` and
-   4=`floor(300^0.3)-1`, respectively. It is possible to have a number
-   of knots that does not depend on the sample size. All we need is to
-   set the argument `nbasis` to a function that returns an integer,
-   e.g., `nbasis=function(n) 4` for 4 basis functions or 3 knots.
+\begin{equation}\label{slseTwo} 
+\begin{split}
+Y_i & = \beta_0 + \tp{\psi_0}U_{i,0}+  \zeta_{i,0} \mbox{ for } i  \mbox{ s.t. } Z_i=0\\
+Y_i & = \beta_1 + \tp{\psi_1}U_{i,1}+  \zeta_{i,1} \mbox{ for } i  \mbox{ s.t. } Z_i=1\,.
+\end{split}
+\end{equation} 
+
+Estimating Equation \eqref{cslseReg} is identical to estimating the
+previous two models separately. The latter may even be numerically
+more accurate since it avoids many unnecessary operations. Also, as
+mentioned in the previous section, the knots and basis functions are
+obtained separately for the treated and nontreated. Therefore, we can
+see the model from Equation \eqref{cslseReg} as two semiparametric LSE
+(SLSE) models, one for the treated and one for the nontreated, and
+this is the approach that we take in the package. One benefit of this
+approach is to allow an extension to multiple treatment models. For
+example, a two treatment model is like a one treatment model with one
+more SLSE model. 
+
+Since our causal SLSE model is a collection of SLSE models, we start
+by presenting how SLSE models are defined in the package. We ignore
+for now that our objective is to estimate causal effects and consider
+the following SLSE model:
+
+\begin{equation} \label{slseOne}
+\begin{split}
+Y & = \beta + \sum_{l=1}^q \tp{\psi_l}U_{l}+  \zeta\\
+Y & = \beta + \tp{\psi}U+  \zeta\,,
+\end{split}
+\end{equation}
+
+where $U_l=u_l(X_l)=(u_{j,l}(X_l)~:~ 1 \leq j \leq
+p_l)\in\reals^{p_{l}}$, $\psi_{l}\in\reals^{p_{l}}$ is an unknown
+vector of regression coefficients, $U=u(X)=(u_{l}(X_l)~:~ 1 \leq l
+\leq q)\in\reals^{p}$ and $\psi=(\psi_{l}~:~ 1 \leq l \leq
+q)\in\reals^{p}$, with $p=\sum_{l=1}^q p_{l}$. The next section
+explains how the knots are determined.
+
+### The starting knots \label{sssec:knots}
+
+The starting knots are automatically generated by the function
+`slseKnots`. The following is the list of arguments of the function:
+
+- **form**: A formula with the right-hand side being the list of
+  covariates. If a left-hand side is provided, the `slseKnots`
+  function will ignore it, because its purpose is only to generate
+  the knots.
+  
+- **data**: A `data.frame` containing all variables included in the
+  formula.
+  
+- **X**: Alternatively, we can input directly the matrix of
+  covariates. If a matrix `X` is provided, the arguments `form` and
+  `data` are ignored.
+  
+- **nbasis**: A function that determines the number of basis functions
+  as explained in the procedure below. The default is
+  `nbasis=function(n) n^0.3`.
+
+- **knots**: This argument is used to set the knots manually. We will
+  explain how to use this argument in the next section.
+
+The following is the procedure implemented by the function
+`slseKnots`. It explains the procedure for any covariate $X$.
+
+1. The starting number of knots, also equal to the number of basis
+   functions minus 1, depends on the type of covariate. Unless it has
+   a type that restricts the number of knots, which is explained
+   below, it is determined by the argument `nbasis`. This is a
+   function of one argument, the same size, and it returns the default
+   number of basis functions. This number cannot be smaller than 2 (we
+   will see other ways of forcing the number of basis functions to be
+   equal to 1 below) and must be an integer. To be more specific, the
+   number of basis functions is set to the maximum between 2 and the
+   ceiling of what the `nbasis` function returns. For example, if the
+   sample size is 500, the default starting number of basis functions
+   is 7=`ceiling(500^0.3)`, which implies a starting number of knots
+   of 6. It is possible to have a number of knots that does not depend
+   on the sample size. All we need is to set the argument `nbasis` to
+   a function that returns an integer, e.g., `nbasis=function(n) 4`
+   for 4 basis functions or 3 knots.
    
 2. Let $(p-1)$ be the number of knots determined in the previous
    step. The default knots are obtained by computing $p+1$ quantiles
@@ -224,7 +303,7 @@ treated or nontreated group.
    the probabilities 0.25, 0.5 and 0.75.
    
 3. We drop any duplicated knots and any knots equal to either the max
-   or the min of X. If the resulting number of knots is equal to 0,
+   or the min of $X$. If the resulting number of knots is equal to 0,
    the vector of knots is set to `NULL`. When the knots is equal to
    `NULL` for a variable $X$, it means that $u(x)=x$.
    
@@ -236,155 +315,123 @@ the number of levels for a nominal variable is 3, the number of knots
 cannot exceed 1.
 
 To illustrate how to use the package, we are using the dataset from
-@lalonde86. The dataset, called `nsw`, contains some continuous
-and categorical variables, so we can illustrate how knots are selected
-initially. The dataset is included in the `causalSLSE` package.
+@lalonde86. The purpose of this dataset is to measure the causal effect
+of a training program on real income, but we ignore it for the
+moment. The dataset is included in the `causalSLSE` package and can be
+loaded as follows.
 
 ```{r}
 library(causalSLSE)
 data(nsw)
 ```
 
-The outcome is the real income in 1978 (`re78`) and the purpose is to
-estimate the causal effect of a training program (`treat`) on
-`re78`. The dataset includes the continuous variables age (`age`),
-education (`ed`), the 1975 real income (`re75`), and binary variables
-(`black`, `hisp`, `married` and `nodeg`). 
-
-The process of selecting knots is the same for the treated and
-nontreated. In fact, the knots are created by calling the `slseKnots`
-function for each group. This function is not restricted to causal
-models. We could use it to generate knots for any SLSE regression
-model. But, estimating such models is not yet implemented in the
-package. The arguments of the function are:
-
-- **form**: A formula with the right-hand side being the list of
-  confounders. If a left-hand side is provided, the `slseKnots`
-  function will ignore it.
-  
-- **data**: A `data.frame` containing all variables included in the
-  formula.
-  
-- **X**: Instead of providing the function with a formula, we can
-  input directly the matrix of confounders. 
-  
-- **nbasis**: A function that determines the number of basis functions
-  as explained above.
-
-- **knots**: This argument is used to set the knots manually. We will
-  explain how to use this argument in the next section.
-
-We start by considering the confounders `age`, `re75`, `ed`, and
-`married`. To create a set of knots for a specific group using
-`slseKnots`, we can restrict the sample using the `subset`
-function. For example, we can create the initial knots for the treated
-and nontreated as follows:
+The dependent variable is the real income in 1978 (`re78`) and the
+dataset contains the following covariates: the continuous variables
+age (`age`), education (`ed`) and the 1975 real income (`re75`), and
+the binary variables `black`, `hisp`, `married` and `nodeg`. We start
+by considering a model that includes the covariates `age`, `re75`,
+`ed`, and `married`. Since we do not need to specify the left-hand
+side, we can create the initial knots as follows
 
 ```{r}
-k1 <- slseKnots(form = ~ age + re75 + ed + married,
-                data = subset(nsw, treat==1))
-k0 <- slseKnots(form = ~ age + re75 + ed + married,
-                data = subset(nsw, treat==0))
+k <- slseKnots(form = ~ age + re75 + ed + married, data = nsw)
 ```
 
 The function returns an object of class `slseKnots` and its `print`
 method produces a nice display separating confounders with and without
-knots. For example, the following are the starting knots for the
-treated:
+knots. For example, the following are the starting knots:
+
+\newpage
 
 ```{r}
-k1
+print(k)
 ```
 
-The sample size for the treated is `r sum(nsw$treat==1)`.  Given the
-default `nbasis`, it implies a number of starting knots equal to `r floor(sum(nsw$treat==1)^.3)-1`=`floor(`$297^{0.3}$`)`-1.  This is the
-number of knots we have for `ed` and `age`. However, the number of
-knots for `re75` is 3. The reason is that `re75` contains a large
-fraction of zeros. Since the 20$^\mathrm{th}$ percentile is equal to 0
-and 0 is also the minimum value of `ed75`, it is dropped. This can be
-seen as follows (the `type` argument of the `quantile` function is the
-same as it is implemented in the package):
+The sample size is equal to `r nrow(nsw)` and the default `nbasis` is
+$n^{0.3}$, which implies a default number of starting knots equal to
+`r ceiling(nrow(nsw)^.3)-1` = `ceiling(``r nrow(nsw)`$^{0.3}$`)`-1.
+This is the number of knots we have for `age`. However, the number of
+knots for `ed` is 5 and it is 4 for `re75`. To understand why, the
+following shows the 7 default quantiles for `re75` and `ed` (the
+`type` argument of the `quantile` function is the same as it is
+implemented in the package):
 
 ```{r}
-quantile(nsw[nsw$treat==1,'re75'], c(.2,.4,.6,.8), type=1)
+p <- seq(0,1,len=9)[c(-1,-9)] # these are the probabilities with 7 knots
+quantile(nsw[,'re75'], p, type=1)
+quantile(nsw[,'ed'], p, type=1)
 ```
+
+We can see that the first three quantiles of `re75` are equal to its
+minimum, so they are removed. For the `ed` variable, 10 and 11 appear
+twice, so one 10 and one 11 must be removed.
 
 Note that each object in the package is S3-class, so the elements can
 be accessed using the operator $. For example, we can extract the
 knots for `age` as follows:
 
 ```{r}
-k1$age
+k$age
 ```
 
-Note that the confounders are listed in the "no knots" section when
+Note that the covariates are listed in the "no knots" section when
 their values are set to `NULL`. In the above example, it is the case
 of `married` because it is a binary variable. As we can see its list
 of knots it set to `NULL`:
 
 ```{r}
-k1$married
+k$married
 ```
 
-## Creating a causal SLSE model \label{ssec:cslseModel}
+### Creating a SLSE model \label{sssec:slseModel}
 
-The function `cslseModel` returns an object of class `cslseModel` (or
-a causal SLSE model), which contains the information about the outcome
-($Y$), the treatment indicator ($Z$), the confounders ($X$) and their
-knots ($\kappa_{l,k}$). The function has the same arguments as
-`slseKnots`, but `form` must include a formula linking the outcome and
-the treatment indication and a formula listing the confounders,
-separated by the operator `|`. In the following example, we see the
-formula linking the outcome `re78` and the treatment indicator
-`treat`, and the list of confounders, which are the same as in the
-previous section:
+The SLSE model is created by the function `slseModel`. The arguments
+of the function are the same as for the `slseknots` function except
+for the argument `X`, which is not needed. The difference is that
+`form` must include the left-hand side variable. For example, we can
+create a SLSE model using `re78` as dependent variance and the same
+covariates used in the previous section as follows:
 
 ```{r}
-model1 <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
+mod1 <- slseModel(form = re78 ~ age + re75 + ed + married, data = nsw)
 ```
 
-Its print method summarizes the characteristics of the model. In
-particular, it indicates which confounders have a positive number of
-knots and which ones have no knots.
+The function returns an object of class `slseModel` and its print
+method provides a summary of its specification:
+
+\newpage
 
 ```{r}
-model1
+print(mod1)
 ```
 
-Note that the selection method is set to `Default`. We refer to this
-method when the knots are automatically selected by the method
-described in the previous section. Later in the document, we will
-present methods for optimally selecting a subset of `Default`.
-
-The object `model1` is a list of `slseModel` models, one for each
-group. The element `knots` of each `slseModel` model is an object of
-class `slseKnots`, so we print it as follows
+Note that the selection method is set to `Default` when the knots are
+selected using the procedure described in the previous section. The
+function selects the knots using the `slseKnots` and stores them in
+the object under `knots`. We can print them using the \$ operator as
+follows and compare them with the ones obtained in the previous
+section:
 
 ```{r}
-model1$treated$knots
+mod1$knots
 ```
 
-Alternatively, we can print the knots by setting the `print` method
-argument `which` to "selKnots". Also, all `print` methods offers the
-possibility of changing the number of digits. For example, the
-following would print the knots using 4 digits:
+Note that we can also print the knots by running the command
+`print(mod, which="selKnots")`. 
 
-```{r, eval=FALSE}
-print(model1, which="selKnots", digits=4)
-```
-
-We have also included, in the package, the simulated dataset
-`simDat4`, which contains special types of confounders. It helps to
-further illustrate how the knots are determined. The dataset contains
-a continuous variable `X1` with a large proportion of zeros, the
-categorical variable `X2` with 3 levels, an ordinal variable `X3` with
-3 levels, and a binary variable `X4`. The levels for `X2` are
+In order to present another example with different types of
+covariates, the dataset `simDat4` is included in the package. This is
+a simulated dataset which contains special types of covariates. It
+helps to further illustrate how the knots are determined. The dataset
+contains a continuous variable `X1` with a large proportion of zeros,
+the categorical variable `X2` with 3 levels, an ordinal variable `X3`
+with 3 levels, and a binary variable `X4`. The levels for `X2` are
 {"first","second","third"} and for `X3` the levels are {1,2,3}.
 
 ```{r}
 data(simDat4)
-model2 <- cslseModel(Y ~ Z | ~ X1 + X2 + X3 + X4, data = simDat4)
-model2$nontreated$knots
+mod2 <- slseModel(Y ~ X1 + X2 + X3 + X4, data = simDat4)
+print(mod2, which="selKnots")
 ```
 
 Character-type variables are automatically converted into factors. It
@@ -396,27 +443,16 @@ number of knots is set to 0, and for the ordinal variable `X3`, the
 number of knots is set to 1 because the min and max values 1 and 3
 cannot be selected.
 
-### Setting the knots manually \label{sssec:ManKnots}
+
+### Selecting the knots manually \label{sssec:slseManKnots}
 
 The user has control over the selection of knots through the argument
-`knots`. When the argument is missing (the default), all knots for
-both groups are set automatically as described above. One way to set
-the number of knots to 0 for all variables in both groups is to set
-the argument to `NULL`. 
+`knots`. When the argument is missing (the default), all knots are set
+automatically as described above. One way to set the number of knots
+to 0 for all variables is to set the argument to `NULL`.
 
 ```{r}
-cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
-           knots = NULL)
-```
-
-If we want to set the number of knots to 0 for one group, we must
-specify the group using a named list. In the following, it is set to 0
-for the treated only:
-
-```{r}
-selK <- list(treated=NULL)
-cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
-           knots = selK)
+slseModel(~ age + re75 + ed + married, data = nsw, knots = NULL)
 ```
 
 Notice that the selection method is defined as "User Based" whenever
@@ -428,22 +464,221 @@ provide a list of knots. For each variable, we have three options:
 - `NULL`: The number of knots is set to 0 for this variable only.
 
 -  A numeric vector: The vector cannot contain missing or duplicated
-   values and must be strictly inside the range of the variable for
-   the group.
+   values and must be strictly inside the range of the variable.
    
 In the following, we describe all possible formats for the list of
 knots.
 
-1. An unnamed list of length equal to the number of confounders. In
-  that case, the knots must be defined in the same order of confounders
-  implied by the formula. 
-  
-   Suppose we want to set for the nontreated group an automatic
-  selection for `age`, no knots for `ed`, the knots $\{1000, 5000,
-  10000\}$ for `re75`, and the knots to be automatically selected for
-  the treated group. We proceed as follows. Note that setting the
-  value to `NA` or `NULL` has the same effect for the binary variable
-  `married`. 
+**Case 1: An unnamed list of length equal to the number of covariates.**
+
+In that case, the knots must be defined in the same order of variables
+implied by the formula. For example, if we want to set an automatic
+selection for `age`, no knots for `ed` and the knots $\{1000, 5000,
+10000\}$ for `re75`, we proceed as follows. Note that setting the
+value to `NA` or `NULL` has the same effect for the binary variable
+`married`.
+
+```{r}
+selK <- list(NA, c(1000,5000,10000), NULL, NA)
+mod <- slseModel(re78 ~ age + re75 + ed + married, data = nsw,
+                 knots = selK)
+print(mod, which = "selKnots")
+```
+
+**Case 2: A named list of length equal to the number of covariates.**
+
+In that case, the order of the list of variables does not matter. The
+`slseModel` function will automatically reorder the variables to match
+the order implied by the formula. The names must match perfectly the
+variable names generated by R. In the following example, we want to
+add the interaction between `ed` and `age`. We want the same set of
+knots as in the previous example and no knots for the interaction
+term. The name of the interaction depends on how we enter it in the
+formula. For example, it is "age:ed" if we enter `age*ed` in the
+formula and "ed:age" if we enter `ed*age`. For factors, the names
+depend on which binary variable is omitted. Using the above example
+with the `simDat4` model, if we interact `X2` and `X4` by adding
+`X2*X4` to the formula, the names of the interaction terms are
+"X2second:X4" and "X2third:X4". When we are uncertain about the names,
+we can print the knots of a model with the default sets of knots. In
+the following, we change the order of variables to show that the order
+does not matter.
+
+```{r}
+selK <- list(married = NA, ed = NULL, 'age:ed' = NULL, re75 = c(1000,5000,10000), age = NA)
+model <- slseModel(re78 ~ age * ed + re75 + married, data = nsw, knots = selK)
+print(model, which="selKnots")
+```
+
+**Case 3: A named list of length strictly less than the number of confounders.**
+
+The names of the selected variables must match perfectly the names
+generated by R and the order does not matter. This is particularly
+useful when the number of covariates is large. If we consider the
+previous example, the knots are set manually only `age`. By default,
+all names not included in the list of knots are set to
+`NA`. Therefore, we can create the same model from the previous
+example as follows:
+
+```{r}
+selK <- list(ed = NULL, 'age:ed' = NULL, re75 = c(1000,5000,10000))
+model <- slseModel(re78 ~ age * ed + re75 + married, data = nsw, knots = selK)
+print(model, which="selKnots")
+```
+
+Note that the previous case offers an easy way of setting the number
+of knots to 0 for a subset of the covariates. For example, suppose we
+want to add more interaction terms and set the knots to 0 for all of
+them. We can proceed as follows.
+
+```{r}
+selK <- list('age:ed' = NULL, 'ed:re75' = NULL, 'ed:married' = NULL)
+model <- slseModel(re78 ~ age * ed + re75 * ed + married * ed,
+                   data = nsw, knots = selK)
+```
+
+\newpage
+
+```{r}
+model
+```
+
+Note also that `slseModel` deals with interaction terms as any other
+variable. For example, `ed:black` is like a continuous variable with a
+large proportion of zeros. The following shows the default selected
+knots for `ed:black`.
+
+```{r}
+model <- slseModel(re78 ~ age + ed * black, data = nsw)       
+model$knots[["ed:black"]]
+```
+
+We can see that the number of knots is smaller than 7. This is because
+`ed:black` has many zeros and the quantiles equal to 0 are removed.
+
+
+### Methods for `slseModel` objects \label{sssec:slseMethods}
+
+Other methods are registered for `slseModel` objects. For example, we
+can estimate `slseModel` objects using the `estSLSE` method and
+summarize the results using the `summary` method. The following is an
+example using a simpler model:
+
+
+```{r}
+mod2 <- slseModel(form = re78 ~ ed + married, data = nsw)
+fit2 <- estSLSE(mod2)
+summary(fit2)
+```
+
+We can also plot the predicted dependent variable as a function of
+education using the `plot` method and add a confidence region:
+
+```{r, fig.align='center', out.width='50%', fig.height=5}
+plot(fit2, "ed", interval="confidence", level=0.95)
+```
+
+In the next section, we present the `cslseModel` class which
+represents the causal-SLSE model of Equation \eqref{cslseReg}. We will
+see that it is just a list of `slseModel` objects. Therefore, the
+methods registered for `cslseModel` objects are derived from
+`slseModel` methods. Since this paper is about causal-SLSE, we choose
+to present these methods through the `cslseModel` object.
+
+## The causal-SLSE model (`cslseModel`) \label{ssec:cslseModel}
+
+The function `cslseModel` returns an object of class `cslseModel` (or
+causal-SLSE model). It is a list of `slseModel` objects, one for each
+treatment group. The object also contains names of the variable
+representing the treatment indicator ($Z$) and what values of this
+indicator is associated with the treated and the nontreated. The
+function has the same arguments as `slseModel`, plus the argument
+`groupInd` that specifies which value of $Z$ is associated with the
+treated and which one is associated with the nontreated. The default
+is `groupInd=c(treated = 1, nontreated = 0)`. It is possible to have
+other values or even characters as indicator, but the names must be
+treated and nontreated. We will allow more names in future version of
+the package once the multiple treatment method is implemented.
+
+The argument `form` must include a formula linking the outcome and the
+treatment indicator and a formula listing the confounders, separated
+by the operator `|`. In the following example, we see the formula
+linking the outcome `re78` and the treatment indicator `treat`, and a
+list of confounders:
+
+```{r}
+model1 <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
+```
+
+Its print method summarizes the characteristics of the model. It is
+like the `slseModel` object, but the information is provided by group
+
+```{r}
+model1
+```
+
+Since `model1` is a list of `slseModel` objects, stored as `treated`
+and `nontreated`, we can access the knots of a specific group as
+follows
+
+```{r}
+model1$treated$knots
+```
+
+Alternatively, we can use the print method for `slseModel` objects and
+print the knots of a specific gropup using the command
+`print(model1$treated, which="selKnots")'. To print the list of knots
+for both groups, we can proceed as follows:
+
+```{r}
+print(model1, which="selKnots")
+```
+
+To understand how to create a `cslseModel` when the treatment
+indicator is not binary, consider the dataset `simDat4` that we
+described in Section \ref{sssec:slseModel}. In the following we create
+the treatment indicator variable `treat` equal to "treat" for the
+treated and "notreat" for the nontreated.
+
+```{r}
+simDat4$treat <- ifelse(simDat4$Z==1, "treat", "notreat")
+```
+
+We can create a `cslseModel` object by specifying the value associated
+with each group in the argument `groupInd`:
+
+```{r}
+model2 <- cslseModel(Y ~ treat | ~ X1 + X2 + X3 + X4, data = simDat4,
+                     groupInd = c(treated = "treat", nontreated = "notreat"))
+model2
+```
+
+If some values in the treatment indicator variable differ from the
+values in `groupInd`, the function will return an error message.
+
+
+### Setting the knots manually \label{sssec:cslseManKnots}
+
+As for SLSE models, we can select the knots using the argument
+`knots`. The procedure is the same, but we need to specified the name
+of the group associated with the knots. If `knots` is set to `NULL`,
+the number of knots it set to 0 for all confounders and all groups. If
+we only want the number of knots to be 0 for one group, we need to
+specify the group. For example, the number of knots is set to 0 for
+the treated only in the following:
+
+```{r}
+selK <- list(treated=NULL)
+cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
+           knots = selK)
+```
+
+The 3 cases presented in Section \ref{sssec:slseManKnots} are the
+same, but it applies group by group. If a group is missing from the
+argument `knots`, the knots of the missing group are set
+automatically. For example, if we want to set the knots as in Case 1,
+but only for the nontreated and let `cslseModel` choose them for the
+treated, we would proceed as follows:
 
 ```{r}
 selK <- list(nontreated=list(NA, c(1000,5000,10000), NULL, NA))
@@ -452,89 +687,7 @@ model <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw,
 print(model, which = "selKnots")
 ```
 
-Note that the selection method is set to `Default` for the treated and
-`User Based` for the nontreated. This is because the knots were
-manually selected only for the nontreated. However, when we print the model,
-the selection method will be set to `User Based` whenever at least one
-of the sets of knots is `User Based` as in the following:
-
-```{r}
-model
-```
-
-2. A named list of length equal to the number of confounders. In that
-  case, the order of the list of variables does not matter. The
-	  `cslseModel` function will automatically reorder the variables to
-  match the order implied by the formula. The names must match
-  perfectly the confounder names generated by R. 
-
-   In the following example, we want to add the interaction between
-  `ed` and `age`. We want the same set of knots as in the previous
-  example and no knots for the interaction term. The name of the
-  interaction depends on how we enter it in the formula. For example,
-  it is "age:ed" if we enter `age*ed` in the formula and "ed:age" if
-  we enter `ed*age`. For factors, the names depend on which binary
-  variable is omitted. Using the above example with the `simDat4`
-  model, if we interact `X2` and `X4` by adding `X2*X4` to the
-  formula, the names of the interaction terms are "X2second:X4" and
-  "X2third:X4". When we are uncertain about the names, we can print
-  the knots of a model with the default sets of knots. In the
-  following, we change the order of variables to show that the order does
-  not matter.
-
-```{r}
-selK <- list(nontreated=list(married = NA, ed = NULL, 'age:ed' = NULL, 
-                             re75 = c(1000,5000,10000), age = NA))
-model <- cslseModel(re78 ~ treat | ~ age * ed + re75 + married, data = nsw,
-                  knots = selK)
-model$knots$nontreated
-```
-
-3. A named list of length strictly less than the number of
-  confounders. The names of the selected confounders must match
-  perfectly the names generated by R and the order does not
-  matter. This is particularly useful when the number of confounders is
-  large.
-  
-   If we consider the previous example, the knots are set manually only
-  for `ed`, `ed:age` and `re75`. By default, all names not included in
-  the list of knots are set to `NA`. Therefore, we can create the same
-  model from the previous example as follows:
-
-```{r}
-selK <- list(nontreated=list(ed = NULL, 'age:ed' = NULL,
-                             re75 = c(1000,5000,10000)))
-model <- cslseModel(re78 ~ treat | ~ age * ed + re75 + married, data = nsw,
-                    knots = selK)
-model$knots$nontreated
-```
-
-Note that the previous case offers an easy way of setting the number
-of knots to 0 for a subset of confounders. For example, suppose we want
-to add more interaction terms and set the knots to 0 for all of
-them. We can proceed as follows. 
-
-```{r}
-selK <- list()
-selK$treated <- selK$nontreated <- list('age:ed' = NULL, 'ed:re75' = NULL,
-                                        'ed:married' = NULL)
-model <- cslseModel(re78 ~ treat | ~ age * ed + re75 * ed + married * ed,
-                    data = nsw, knots = selK)
-model
-```
-
-Note also that `cslseModel` deals with interaction terms as any other
-variable. For example, `ed:black` is like a continuous variable with
-a large proportion of zeros. The following shows the default selected
-knots for `ed:black`.
-
-
-```{r}
-model <- cslseModel(re78 ~ treat | ~ age + ed * black, data = nsw)         
-model$knots$nontreated[["ed:black"]]
-```
-
-## Estimating the model \label{ssec:estSLSE}
+### Estimating the model \label{sssec:estSLSE}
 
 Given the set of knots from the model object, the estimation is just a
 least squares method applied to the extended set of confounders defined
@@ -553,63 +706,87 @@ needed. The arguments are:
 
 - `model`: A model created by the function `cslseModel`.
 
-- `selKnots`: As for the `knots` argument of `cslseModel`, it is a
-  list of one or two elements, one for each group. Each element is a
-  list of integers to select knots for the associated group. For
-  example, suppose we have 2 confounders with 5 knots each. If we want
-  to estimate the model with only the first knot for the first
-  confounder and knots 3 and 5 for the second for the treated and all
-  knots for the nontreated, we set `selKnots` to
+- `selKnots`: It is a list of one or two elements, one for each
+  group. Each element is a list of integers to select knots for the
+  associated group. For example, suppose we have 2 confounders with 5
+  knots each. If we want to estimate the model with only the first
+  knot for the first confounder and knots 3 and 5 for the second for
+  the treated and all knots for the nontreated, we set `selKnots` to
   `list(treated=list(1L,c(3L, 5L)))`. By default it is missing and all
   the knots from the model are used.
-
-We illustrate the use of `estSLSE` with a simple model containing 2
-confounders and one knot per variable.
+  
+Note that the `cslseModel` object is a list of slseModel
+objects. Also, we saw that the above model can be written as two
+regression models, one for each group. Therefore, the `estSLSE` method
+is simply estimating the `slseModel` objects separately. We illustrate
+the use of `estSLSE` with a simple model containing 2 confounders and
+one knot per variable. 
 
 ```{r}
 model <- cslseModel(re78 ~ treat | ~ age + married, data = nsw,
-                  nbasis = function(n) 2)
-model$knots
+                    nbasis = function(n) 2)
 fit <- estSLSE(model)
 fit
 ```
 
-The object of class `slseFit` returned by `estSLSE` has its own print
-method that returns the coefficient estimates. A more detailed
-presentation of the results can be obtained using the `summary`
-method. The following is an example with the previous model.
+We see that the coefficients are separated by group. The coefficients
+for the treated correspond to $\{\hat\beta_1, \hat\psi_1\}$ and the
+coefficients for the nontreated correspond to $\{\hat\beta_0,
+\hat\psi_0\}$. Note that the `cslseFit` object returned by the method
+is a list of `slseFit`, which is the object returned by `estSLSE` when
+it is applied to `slseModel`. We can access the estimated SLSE model
+for each group using the \$ operator. For example, the following is
+the estimated model for the treated:
 
 ```{r}
-summary(fit)
+fit$treated
 ```
 
-For example, the coefficient of `Xf0age_1` is the effect of age for
-the control on `re78` when `age`$\leq 23$ and `Xf0age_2` is the effect
-when `age`$> 23$. Note that the $R^2$ and adjusted $R^2$ are different
-from what we obtain using the summary of the `lm` object:
+A more detailed presentation of the results can be obtained using the
+`summary` method. The only arguments of `summary` is the `cslseFit`
+object and `vcov.`. The latter is a function that returns the
+estimated covariance matrix of the LSE. By default, it is equal to the
+`vcovHC` function of the `sandwich` package (@sandwich) with its
+default `type="HC3"`. The following is an example with the previous
+model using and the HC0 type:
 
 ```{r}
-summary(fit$lm.out)[c("r.squared","adj.r.squared")]
+s <- summary(fit, type="HC0")
 ```
 
-This is because our model does not explicitly contain an intercept and
-the $R^2$ is computed differently for models without an
-intercept. But, assuming that our model does not have an intercept is wrong
-since it includes both $Z$ and $(1-Z)$.
+The object `s` is an object of class `summary.cslseFit`, which is a
+list of objects of class `summary.slseFit`, one for each group. By
+default, if we print `s`, we will see the two LSE summary tables, one
+for each group. Alternatively, we can print the result for one group
+using the \$ operator. For example, the following is the result for
+the nontreated:
 
-## The `predict` and `plot` methods \label{ssec:pred-plot}
+```{r}
+s$nontreated
+```
 
-The `predict` method is very similar to the `predict.lm` method. We
-use the same arguments: `object`, `interval`, `se.fit`, `newdata` and
-`level`. The difference is that it returns the predicted outcome for
-the treated and nontreated separately, and the argument `vcov.`
-provides a way of changing how the least squares covariance matrix is
-computed. By default, it is computed using `vcovHC` from the
-`sandwich` package (@sandwich). The function returns a list of 2
-elements, `treated` and `nontreated`. By default (`se.fit=FALSE` and
-`interval="none"`), each element contains a vector of
-predictions. Here is an example with the previously fitted model
-`fit`:
+We can see that the only knot for `age` in the nontreated group is 23:
+
+```{r}
+model$nontreated$knots$age
+```
+
+Therefore, the coefficient of `U.age_1` is the effect of age for
+the nontreated on `re78` when `age`$\leq 23$ and `U.age_2` is the effect
+when `age`$> 23$. 
+
+### The `predict` method \label{sssec:pred}
+
+The `predict` method is very similar to `predict.lm`. We use the same
+arguments: `object`, `interval`, `se.fit`, `newdata` and `level`. The
+difference is that it returns the predicted outcome for the treated
+and nontreated separately, and the argument `vcov.` provides a way of
+changing how the least squares covariance matrix is computed. By
+default, it is computed using `vcovHC` from the `sandwich`
+package. The function returns a list of 2 elements, `treated` and
+`nontreated`. By default (`se.fit=FALSE` and `interval="none"`), each
+element contains a vector of predictions. Here is an example with the
+previously fitted model `fit`:
 
 ```{r}
 predict(fit,
@@ -628,25 +805,32 @@ predict(fit,
         interval = "confidence")
 ```
 
-If `se.fit` is set to `TRUE`, each element, treated or nontreated, is a
-list with the elements `pr`, containing the predictions, and `se.fit`,
-containing the standard errors. In the following, we only show the
-result for the same fitted model:
+If `se.fit` is set to `TRUE`, each element, treated or nontreated, is
+a list with the elements `pr`, containing the predictions, and
+`se.fit`, containing the standard errors. In the following, we show
+the result for the same fitted model:
 
 ```{r}
 predict(fit, newdata = data.frame(treat = c(1,1,0,0),age = 20:23, married = 1),
         se.fit = TRUE)
 ```
 
+### The `plot` method \label{sssec:plot}
+
 The `predict` method is called by the `plot` method to visually assess
 the predicted outcome for the treated and nontreated with respect to a
-given confounder, controlling for the other variables in the model. The
-arguments of the `plot` method are:
+given confounder, controlling for the other variables in the
+model. Note that this method is very close to the `plot` method for
+`slseFit` objects. In fact, the arguments are the same with some
+exceptions that we briefly explain below. Since the predicted outcome
+is obtained separately for the treated and nontreated the method for
+`cslseFit` objects simply apply the method for `slseFit` objects on
+each group. The following is the list of arguments:
 
-- **x**: An object of class `slseFit`.
+- **x**: An object of class `cslseFit` (or `slseFit').
 
 - **y**: An alias for `which` for compatibility with the generic
-  `plot` function.
+  `plot` function. 
   
 - **which**: confounder to plot against the outcome variable. It could
   be an integer (the position of the confounder) or a character (the
@@ -666,7 +850,8 @@ arguments of the `plot` method are:
 	values for the treated and nontreated, `fixedCov` is a named list
 	of 1 or 2 elements (for the treated, nontreated or both), each
 	element being a named list of values for the covariates.  See the
-	examples below.
+	examples below. When applied to `slseFit` objects, it is just a
+	named list with the variables names.
   
 - **vcov.**: An optional function to compute the estimated matrix of
   covariance of the least squares estimators. This argument only
@@ -677,18 +862,21 @@ arguments of the `plot` method are:
   default is `FALSE`.
 
 - **addToLegend**: An optional character string to add to the legend
-  next to "treated" and "nontreated".
+  next to "treated" and "nontreated". Note that a legend is added when
+  applied to `slseFit` objects, so this argument has no effect in this
+  case.
 
 - **addPoints**: Should we include the scatterplot of the outcome and
   confounder to the graph? The default is `FALSE`.
   
 - **FUN**: A function to determine how the other confounders are
   fixed. The default is `mean`. Note that the function is applied to
-  each group separately.
+  each group separately (obviously since the plot is applied to each
+  group separately).
 
 - **plot**: By default, the method produces a graph. Alternatively, we
   can set this argument to `FALSE` and it returns one `data.frame` per
-  group with the variable selected by `which` and the prediction.
+  group with the variable selected by `which` and the prediction. 
 
 - **graphPar**: A list of graphical parameters if not satisfied with
   the default ones.
@@ -698,17 +886,18 @@ arguments of the `plot` method are:
   default HC3 to any available methods included in the `sandwich`
   package (@sandwich). 
 
-
 The default set of graphical parameters can be obtained by running the
-function `causalSLSE:::.initPar()`. The function returns a list of
-four elements: `treated`, `nontreated`, `common`, `legend`. The first
-two are lists of two elements: `points` for the list of parameters of
-the scatterplot produced when `addPoints=TRUE` and `lines` for the
-line parameters. For example, we can see that the type of points for
-the treated is initially set to `pch=21` and their colour to `2`:
+function `causalSLSE:::.initParCSLSE()` (or
+`causalSLSE:::.initParSLSE()` for `slseFit` objects). The function
+returns a list of four elements: `treated`, `nontreated`, `common`,
+`legend`. The first two are lists of two elements: `points` for the
+list of parameters of the scatterplot produced when `addPoints=TRUE`
+and `lines` for the line parameters. For example, we can see that the
+type of points for the treated is initially set to `pch=21` and their
+colour to `2`:
 
 ```{r}
-causalSLSE:::.initPar()$treated$points
+causalSLSE:::.initParCSLSE()$treated$points
 ```
 
 The element `common` are for parameters not specific to a group like
@@ -719,10 +908,11 @@ parameters of the `treated` and `nontreated` elements.
 
 The default parameters can be modified by the argument
 `graphPar`. This argument must follow the structure of
-`causalSLSE:::.initPar()`. For example, if we want a new title, new
-x-axis label, new type of lines for the treated, new type of points
-for the nontreated and a different position for the legend, we create
-the following `graphPar`:
+`causalSLSE:::.initParCSLSE()` (or `causalSLSE:::.initParSLSE()` for
+`slseFit` objects). For example, if we want a new title, new x-axis
+label, new type of lines for the treated, new type of points for the
+nontreated and a different position for the legend, we create the
+following `graphPar`:
 
 ```{r}
 graphPar <- list(treated = list(lines = list(lty=5, col=4)),
@@ -732,9 +922,6 @@ graphPar <- list(treated = list(lines = list(lty=5, col=4)),
 ```
 
 In the following, we illustrate some examples. 
-
-
-### Plot examples \label{sssec:plotEx}
 
 **Example 1:** 
 
@@ -757,8 +944,9 @@ library(sandwich)
 arg1 <- list(treated = list(lines = list(col = "darkred", lty = 4)),
              nontreated = list(lines = list(col = "darkgreen", lty = 2)),
              legend = list(x = "topleft"))
+arg2 <- list(legend = list(x = "top", cex=0.7))
 plot(fit1, "ed", vcov. = vcov, graphPar=arg1)
-plot(fit1, "age", interval = 'confidence', level = 0.9, type = "HC1")
+plot(fit1, "age", interval = 'confidence', level = 0.9, type = "HC1", graphPar=arg2)
 ```
 
 **Example 2:**
@@ -784,10 +972,13 @@ It is also possible to set some of the other confounders to a specific
 value by changing the argument `fixedCov`. To fix some variables to
 the same values for both groups, `fixedCov` must be a named list with
 the names corresponding to the variables you want to fix. You can also
-add a description to the legend with the argument `addToLegend`.
+add a description to the legend with the argument `addToLegend`. In
+the following `re75` is fixed at 10,000 and we compare the predicted
+outcome for the married individuals (the left graph) with the
+non-married ones (the right graph)
 
 ```{r, fig.show='hold', out.width='50%'}
-arg2 <- list(legend = list(cex = 0.8))
+arg2 <- list(legend = list(cex = 0.8), common=list(ylim=c(4000,9000)))
 plot(fit1, "age", fixedCov = list(married = 1, re75 = 10000),
      addToLegend = "married", graphPar = arg2)
 plot(fit1, "age", fixedCov = list(married = 0, re75 = 10000),
@@ -801,16 +992,16 @@ plotted on the same graph by setting the argument `add.` to `TRUE`. We
 just need to adjust some of the arguments to better distinguish the
 different curves. In the following example, we set the colors and line
 shapes to different values and change the position of the legend for
-the second set of lines.
+the second set of lines. 
 
 ```{r, fig.align='center', out.width='70%'}
-arg3 <- list(legend = list(cex = 0.8),
+arg3 <- list(legend = list(cex = 0.7),
              common = list(ylim = c(3000, 10000)))
 plot(fit1, "age", fixedCov = list(married = 1, re75 = 10000),
      addToLegend = "married", graphPar = arg3)
 arg4 <- list(treated = list(lines = list(col = "darkred", lty = 5)),
              nontreated = list(lines = list(col = "darkgreen", lty = 4)),
-             legend = list(x = "topleft", cex = 0.8))
+             legend = list(x = "topleft", cex = 0.7))
 plot(fit1, "age", fixedCov = list(married = 0, re75 = 10000),
      addToLegend = "non-married", add = TRUE, graphPar = arg4)
 ```
@@ -893,9 +1084,13 @@ We have implemented two methods for selecting the knots: the backward
 semiparametric LSE (BLSE) and the forward semiparametric LSE (FLSE)
 methods. For each method, we have 3 criteria: the p-value threshold
 (PVT), the Akaike Information criterion (AIC), and the Bayesian
-Information criterion (BIC). The two selection methods can be
-summarized as follows:
+Information criterion (BIC). Note that the consistency of the causal
+effect estimators has only been proved for the last two in
+@cslse23. The two selection methods can be summarized as follows:
 
+> We first compute one p-value per knot using either the BLSE or
+> FLSE method:
+>
 > **BLSE**: 
 >
 > 1. We estimate the model with all knots included in the model.
@@ -903,18 +1098,7 @@ summarized as follows:
 > 2. For each knot, we test if the slopes of the basis functions
 >    adjacent to the knot are the same, and return the p-value.
 >
-> 3. The knots are selected using one of the following criteria
->
->    - **PVT**: We remove all knots with a p-value greater than a
->      specified threshold.
->
->     - **AIC** or **BIC**: We order the p-values in
->      descending order. Then, going from the largest to the smallest,
->      we remove the knot associated with the p-value one by one,
->      estimate the model and return the information criterion. We
->      keep the model with the smallest information citerion.
-
-
+> 
 > **FLSE**: 
 >
 > 1. We estimate the model by including a subset of the knots, one
@@ -935,6 +1119,8 @@ summarized as follows:
 >      slopes adjacent to knot $i$, for $i=1,...,p$, using the sets of
 >      knots $\{1,2\}$, $\{1,2,3\}$, $\{2,3,4\}$, ..., $\{p-2,p-1,p\}$
 >      and $\{p-1,p\}$ respectively.
+>
+> Once we have the p-values, we proceed to step 3:
 >
 > 3. The knots are selected using one of the following criteria
 >

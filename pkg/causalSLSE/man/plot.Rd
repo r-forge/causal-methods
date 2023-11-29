@@ -13,7 +13,7 @@ Some plot utilities for object of class \code{cslseFit}.
                         plot=TRUE, graphPar=list(), ...)
 \method{plot}{slseFit}(x, y, which = y, interval = c("none", "confidence"), 
                        level = 0.95, fixedCov = NULL,
-                       vcov. = vcovHC,  add = FALSE, addToLegend = NULL,
+                       vcov. = vcovHC,  add = FALSE, 
                        addPoints = FALSE, FUN = mean,
                        plot=TRUE, graphPar=list(), ...)
 }

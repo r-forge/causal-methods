@@ -4,14 +4,15 @@
 \title{\code{\link{extract}} method for \code{cslse} objects}
 \usage{
 \S4method{extract}{cslse}(
-  model,
-  include.nobs = TRUE,
-  include.nknots = TRUE,
-  include.numcov = TRUE,
-  include.rsquared = TRUE,
-  include.adjrs=TRUE,
-  which = c("ALL","ACE","ACT","ACN","ACE-ACT","ACE-ACN","ACT-ACN"),
-  ...)
+    model,
+    include.nobs = TRUE,
+    include.nknots = TRUE,
+    include.numcov = TRUE,
+    include.rsquared = TRUE,
+    include.adjrs=TRUE,
+    separated.rsquared = FALSE,    
+    which = c("ALL","ACE","ACT","ACN","ACE-ACT","ACE-ACN","ACT-ACN"),
+    ...)
 }
 \arguments{
 \item{model}{A statistical model object.}
@@ -28,6 +29,9 @@
 
 \item{include.adjrs}{Report the adjusted R-squared of the final
   regression estimtion}
+
+\item{separated.rsquared}{Should we print the R-squared separately for
+  each group? This applies as well to the adjusted R-squared. }
 
 \item{which}{Which causal effect measures should be printed?}
 

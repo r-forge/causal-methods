@@ -12,7 +12,7 @@ the local linear polynomial.
 }
 \usage{
 cslseModel(form, data, nbasis = function(n) n^0.3, 
-           knots, groupn=c(treated=1, nontreated=0))
+           knots, groupInd=c(treated=1, nontreated=0))
 slseModel(form, data, nbasis = function(n) n^0.3, 
            knots)
 }
@@ -31,7 +31,7 @@ slseModel(form, data, nbasis = function(n) n^0.3,
     covariates. The choice for each covariate is NULL for no knots or
     numeric to provide specific values. If missing, the knots are 
     automatically generated.}
-  \item{groupn}{A named vector with the group names and values. By
+  \item{groupInd}{A named vector with the group names and values. By
     default, the treatment indicator defined in \code{form} is equal to
     1 for the treated group and 0 for the nontreated. For now, these are
     the only allowed names, but the values can differ. In particular,

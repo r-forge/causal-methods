@@ -13,11 +13,13 @@ removed.
 \usage{
 \method{selSLSE}{cslseModel}(model, selType=c("BLSE", "FLSE"),
         selCrit = c("AIC", "BIC", "PVT"), 
-        pvalT = function(p) 1/log(p), vcov.=vcovHC, 
+        pvalT = function(p) 1/log(p),
+        vcovType = c("HC0", "Classical", "HC1", "HC2", "HC3"),
         reSelect=FALSE, ...)
 \method{selSLSE}{slseModel}(model, selType=c("BLSE", "FLSE"),
         selCrit = c("AIC", "BIC", "PVT"), 
-        pvalT = function(p) 1/log(p), vcov.=vcovHC, 
+        pvalT = function(p) 1/log(p),
+        vcovType = c("HC0", "Classical", "HC1", "HC2", "HC3"),
         reSelect=FALSE, ...)
 }
 \arguments{
@@ -29,13 +31,13 @@ removed.
   \item{pvalT}{A function to determine the p-value threshold for the
     significance of the coefficients. It has to be a function of one
     parameter, which is the average number of knots in the model.}
-  \item{vcov.}{An alternative function to compute the covariance matrix
-    of the least squares estimators. The default is the \code{vcovHC}
-    method for \code{lm} objects.}
+  \item{vcovType}{The type of least squares covariance matrix used to
+    compute the p-values needed for the selection.}
   \item{reSelect}{The previous selections are stored in the model
     object. By default, it is the previous selections that is used. If
     \code{reSelect} is set to \code{TRUE}, the selection is re-computed.}
-  \item{...}{Additional arguments to pass to \code{vcov.}}
+  \item{...}{Additional arguments to pass to other methods. Currently
+    not used.}
 }
 
 \examples{

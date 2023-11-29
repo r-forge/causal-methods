@@ -61,7 +61,7 @@
 .selCMod <- function(model, selType=c("BLSE","FLSE"),
                      selCrit = c("AIC", "BIC", "PVT"),
                      pvalT=function(p) 1/log(p),
-                     vT=c("HC0", "vcov", "HC1", "HC2", "HC3"))
+                     vT=c("HC0", "Classical", "HC1", "HC2", "HC3"))
 {
     selType <- match.arg(selType)
     selCrit <- match.arg(selCrit)
@@ -79,7 +79,7 @@
         }
     }
     vT <- switch(vT,
-                 vcov = -1,
+                 Classical = -1,
                  HC0 = 0,
                  HC1 = 1,
                  HC2 = 2,
@@ -106,7 +106,8 @@
                     w1bic=integer(spec$treated$mnk*spec$treated$p),
                     w1aic=integer(spec$treated$mnk*spec$treated$p),
                     w1pvt=integer(spec$treated$mnk*spec$treated$p), npval=integer(1))
-    giv <- attr(model, "treatVal")
+    ## For the fortran code, it is currently only treated=1 amnd nontreated=0
+    giv <- c(treated=1, nontreated=0)
     for (gi in names(model))
     {
         resi <- res[grepl(giv[gi], names(res))]
@@ -136,7 +137,7 @@
 .selMod <- function(model, selType=c("BLSE","FLSE"),
                     selCrit = c("AIC", "BIC", "PVT"),
                     pvalT=function(p) 1/log(p),
-                    vT=c("HC0", "vcov", "HC1", "HC2", "HC3"))
+                    vT=c("HC0", "Classical", "HC1", "HC2", "HC3"))
 {
     selType <- match.arg(selType)
     selCrit <- match.arg(selCrit)
@@ -150,7 +151,7 @@
     }
     vT <- match.arg(vT)
     vT <- switch(vT,
-                 vcov = -1,
+                 Classical = -1,
                  HC0 = 0,
                  HC1 = 1,
                  HC2 = 2,

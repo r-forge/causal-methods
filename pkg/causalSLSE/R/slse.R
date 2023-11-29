@@ -388,14 +388,16 @@ model.matrix.slseModel <- function(object, ...)
 
 selSLSE.slseModel <- function(model, selType=c("BLSE", "FLSE"),
                               selCrit = c("AIC", "BIC", "PVT"), 
-                              pvalT = function(p) 1/log(p), vcov.=vcovHC,
+                              pvalT = function(p) 1/log(p),
+                              vcovType = c("HC0", "Classical", "HC1", "HC2", "HC3"),
                               reSelect=FALSE, ...)
 {
     selCrit <- match.arg(selCrit)
     selType <- match.arg(selType)
+    vcovType <- match.arg(vcovType)    
     if (!is.null(model$selections[[selType]][[selCrit]]) & !reSelect)
         return(update(model, selType=selType, selCrit=selCrit))
-    model <- .selMod(model, selType, selCrit, pvalT)
+    model <- .selMod(model, selType, selCrit, pvalT, vcovType)
     model
 }
 
@@ -444,7 +446,7 @@ estSLSE.slseModel <- function(model, selKnots, ...)
     form <- model$slseForm
     environment(form) <-  environment()    
     fit <- lm(form, data)
-    obj <- list(lm.out=fit, model=model)
+    obj <- list(LSE=fit, model=model)
     class(obj) <- "slseFit"
     obj
 }
@@ -463,15 +465,15 @@ print.slseFit <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
         cat("\n")
     }
     cat("\n")
-    print.default(coef(x$lm.out), print.gap = 2L, digits=digits,
+    print.default(coef(x$LSE), print.gap = 2L, digits=digits,
                   quote = FALSE)
     invisible()
 }
 
 summary.slseFit <- function (object, vcov.=vcovHC, ...) 
 {
-    s <- summary(object$lm.out)
-    v <- vcov.(object$lm.out, complete=FALSE, ...)
+    s <- summary(object$LSE)
+    v <- vcov.(object$LSE, complete=FALSE, ...)
     se <- sqrt(diag(v))
     t <- s$coefficients[,1]/se
     pv <- 2 * pnorm(-abs(t))
@@ -498,8 +500,10 @@ print.summary.slseFit <- function(x, digits = max(3L, getOption("digits") - 3L),
                               signif.stars=signif.stars))
     
     q <- q[-(1:(grep("Residuals:", q)-1))]
+    q <- q[1:grep("Multiple R-squared", q)]    
     q <- paste(q, collapse="\n")
     cat(q)
+    cat("\n")
     invisible()
 }
 
@@ -516,16 +520,16 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
     else newdata <- model$data
     nameS <- all.vars(object$model$slseForm)[2]
     newdata[[nameS]] <- llSplines(model)    
-    tt <- terms(object$lm.out)
+    tt <- terms(object$LSE)
     tt <- delete.response(tt)
-    m <- model.frame(tt, newdata, xlev = object$lm.out$xlevels)    
+    m <- model.frame(tt, newdata, xlev = object$LSE$xlevels)    
     X <- model.matrix(tt, m)
-    b <- coef(object$lm.out)
+    b <- coef(object$LSE)
     naCoef <- !is.na(b)
     b <- na.omit(b)    
     pr <- c(X[, naCoef] %*% b)
     if (se.fit | interval == "confidence") {
-        v <- vcov.(object$lm.out, ...)
+        v <- vcov.(object$LSE, ...)
         se <- apply(X[, naCoef], 1, function(x) sqrt(c(t(x) %*% 
                                                        v %*% x)))
     }
@@ -608,7 +612,7 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
 
 plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"), 
                           level = 0.95, fixedCov = NULL,
-                          vcov. = vcovHC, add = FALSE, addToLegend = NULL, 
+                          vcov. = vcovHC, add = FALSE, 
                           addPoints = FALSE, FUN = mean, plot=TRUE, graphPar=list(), ...) 
 {
     interval <- match.arg(interval)
@@ -643,8 +647,8 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     common <- list(xlab=which, ylab=x$model$nameY,
                    ylim=ylim, xlim=range(x$model$data[, which]),
                    main=paste(x$model$nameY, " vs ", which, " using SLSE", sep = ""))
-    allPar <- .cslsePar2(list(common=common))
-    allPar <- .cslsePar2(graphPar, allPar)
+    allPar <- .slsePar(list(common=common))
+    allPar <- .slsePar(graphPar, allPar)
     lpch <- if(addPoints)
             {
                 allPar$points$pch
@@ -667,14 +671,15 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     grid()
     invisible()
 }
-.cslsePar2 <- function(addPar, startPar=.initPar2())
+.slsePar <- function(addPar, startPar=.initParSLSE())
 {
     startPar$points <- .findrep(startPar$points, addPar$points)
     startPar$lines <- .findrep(startPar$lines, addPar$lines) 
     startPar$common <- .findrep(startPar$common, addPar$common)
     startPar
 }
-.initPar2 <- function()
+
+.initParSLSE <- function()
 {
     points <- list(pch = 21, col = 1)
     lines <- list(col = 1, lty = c(1, 3, 3), lwd = 2, type='l')
@@ -688,7 +693,7 @@ extract.slseFit <- function (model, include.rsquared = TRUE, include.adjrs = TRU
                              include.nobs = TRUE, include.fstatistic = FALSE,
                              include.rmse = FALSE, ...)
 { 
-    extract(model$lm.out, include.rsquared, include.adjrs, 
+    extract(model$LSE, include.rsquared, include.adjrs, 
             include.nobs, include.fstatistic, include.rmse)
 }
 
