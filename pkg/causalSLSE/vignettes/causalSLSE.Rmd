@@ -240,7 +240,7 @@ the following SLSE model:
 \begin{equation} \label{slseOne}
 \begin{split}
 Y & = \beta + \sum_{l=1}^q \tp{\psi_l}U_{l}+  \zeta\\
-Y & = \beta + \tp{\psi}U+  \zeta\,,
+ & \equiv \beta + \tp{\psi}U+  \zeta\,,
 \end{split}
 \end{equation}
 
@@ -406,18 +406,21 @@ print(mod1)
 ```
 
 Note that the selection method is set to `Default` when the knots are
-selected using the procedure described in the previous section. The
-function selects the knots using the `slseKnots` and stores them in
-the object under `knots`. We can print them using the \$ operator as
-follows and compare them with the ones obtained in the previous
-section:
+selected using the procedure described in the previous section. Also,
+the print function shows the number of knots for each covariate inside
+the parentheses next to its name. In this example, we see that the
+initial number of knots for `age`, `re75` and `ed` are respectively 7,
+4 and 5. The function selects the knots using the `slseKnots` and
+stores them in the object under `knots`. We can print them using the
+\$ operator as follows and compare them with the ones obtained in the
+previous section:
 
 ```{r}
 mod1$knots
 ```
 
 Note that we can also print the knots by running the command
-`print(mod, which="selKnots")`. 
+`print(mod1, which="selKnots")`. 
 
 In order to present another example with different types of
 covariates, the dataset `simDat4` is included in the package. This is
@@ -426,7 +429,7 @@ helps to further illustrate how the knots are determined. The dataset
 contains a continuous variable `X1` with a large proportion of zeros,
 the categorical variable `X2` with 3 levels, an ordinal variable `X3`
 with 3 levels, and a binary variable `X4`. The levels for `X2` are
-{"first","second","third"} and for `X3` the levels are {1,2,3}.
+{"first","second","third"} and for `X3` the levels are {1,2,3}. 
 
 ```{r}
 data(simDat4)
@@ -589,16 +592,14 @@ to present these methods through the `cslseModel` object.
 
 The function `cslseModel` returns an object of class `cslseModel` (or
 causal-SLSE model). It is a list of `slseModel` objects, one for each
-treatment group. The object also contains names of the variable
-representing the treatment indicator ($Z$) and what values of this
-indicator is associated with the treated and the nontreated. The
-function has the same arguments as `slseModel`, plus the argument
-`groupInd` that specifies which value of $Z$ is associated with the
-treated and which one is associated with the nontreated. The default
-is `groupInd=c(treated = 1, nontreated = 0)`. It is possible to have
-other values or even characters as indicator, but the names must be
-treated and nontreated. We will allow more names in future version of
-the package once the multiple treatment method is implemented.
+treatment group.  The function has the same arguments as `slseModel`,
+plus the argument `groupInd` that specifies which value of $Z$ is
+associated with the treated and which one is associated with the
+nontreated. The default is `groupInd=c(treated = 1, nontreated =
+0)`. It is possible to have other values or even characters as
+indicator, but the names must be treated and nontreated. We will allow
+more names in future version of the package once the multiple
+treatment method is implemented.
 
 The argument `form` must include a formula linking the outcome and the
 treatment indicator and a formula listing the confounders, separated
@@ -617,18 +618,28 @@ like the `slseModel` object, but the information is provided by group
 model1
 ```
 
-Since `model1` is a list of `slseModel` objects, stored as `treated`
-and `nontreated`, we can access the knots of a specific group as
-follows
+The object also contains additional information about the model stored
+as attributes:
+
+```{r}
+attr(model1, "treatedVar")
+attr(model1, "groupInd")
+```
+
+This information is needed in order to compute the causal effects. The
+object `model1` is a list of 2 elements, `treated` and `nontreated`,
+which are `slseModel` objects. Following Section
+\ref{sssec:slseModel}, we can therefore access the knots of a specific
+group as follows:
 
 ```{r}
 model1$treated$knots
 ```
 
 Alternatively, we can use the print method for `slseModel` objects and
-print the knots of a specific gropup using the command
-`print(model1$treated, which="selKnots")'. To print the list of knots
-for both groups, we can proceed as follows:
+print the knots of a specific group using the command
+`print(model1$treated, which="selKnots")`. To print the list of knots
+for both groups, we can print the `cslseModel` object as follows:
 
 ```{r}
 print(model1, which="selKnots")
@@ -636,15 +647,10 @@ print(model1, which="selKnots")
 
 To understand how to create a `cslseModel` when the treatment
 indicator is not binary, consider the dataset `simDat4` that we
-described in Section \ref{sssec:slseModel}. In the following we create
-the treatment indicator variable `treat` equal to "treat" for the
-treated and "notreat" for the nontreated.
-
-```{r}
-simDat4$treat <- ifelse(simDat4$Z==1, "treat", "notreat")
-```
-
-We can create a `cslseModel` object by specifying the value associated
+described in Section \ref{sssec:slseModel}. The dataset also contains
+the variable `treat`, which is a character variable equal to "treat"
+when `Z=1` and "notreat" when `Z=0`. We can create a `cslseModel`
+object using `treat` instead of `Z` by specifying the value associated
 with each group in the argument `groupInd`:
 
 ```{r}
@@ -690,9 +696,7 @@ print(model, which = "selKnots")
 ### Estimating the model \label{sssec:estSLSE}
 
 Given the set of knots from the model object, the estimation is just a
-least squares method applied to the extended set of confounders defined
-as the local linear splines corresponding to the set of knots. The
-regression model is given by:
+least squares method applied to the regression model given by:
 
 \[ 
 Y = \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(1-Z) + \tp{\psi_1}U_1Z + \zeta\,, 
@@ -700,7 +704,7 @@ Y = \beta_0 (1-Z) + \beta_1 Z + \tp{\psi_0}U_0(1-Z) + \tp{\psi_1}U_1Z + \zeta\,,
 
 where $U_0=u_0(X)$ and $U_1=u_1(X)$ are defined above (which depend on
 the knots of the model). The method that estimates the model is
-`estSLSE` which has three arguments, but two of them are mainly used
+`estSLSE` which has two arguments, but one of them is mainly used
 internally by other functions. We present them in case they are
 needed. The arguments are:
 
@@ -715,26 +719,46 @@ needed. The arguments are:
   `list(treated=list(1L,c(3L, 5L)))`. By default it is missing and all
   the knots from the model are used.
   
-Note that the `cslseModel` object is a list of slseModel
-objects. Also, we saw that the above model can be written as two
-regression models, one for each group. Therefore, the `estSLSE` method
-is simply estimating the `slseModel` objects separately. We illustrate
-the use of `estSLSE` with a simple model containing 2 confounders and
-one knot per variable. 
+We illustrate the use of `estSLSE` with a simple model containing 2
+confounders and a maximum of one knot.
 
 ```{r}
 model <- cslseModel(re78 ~ treat | ~ age + married, data = nsw,
                     nbasis = function(n) 2)
+```
+  
+Note that the `cslseModel` object is a list of slseModel
+objects. Also, we saw that the above model can be written as two
+regression models, one for each group. Therefore, the `estSLSE` method
+is simply estimating the `slseModel` objects separately. For example,
+we can obtain $\{\hat\beta_1,\hat\psi_1\}$ as follows:
+
+```{r}
+estSLSE(model$treated)
+```
+
+The output is an object of class `slseFit`. When we apply the method
+to `model`, the model is estimated for each group:
+
+```{r}
 fit <- estSLSE(model)
 fit
 ```
 
-We see that the coefficients are separated by group. The coefficients
-for the treated correspond to $\{\hat\beta_1, \hat\psi_1\}$ and the
-coefficients for the nontreated correspond to $\{\hat\beta_0,
-\hat\psi_0\}$. Note that the `cslseFit` object returned by the method
-is a list of `slseFit`, which is the object returned by `estSLSE` when
-it is applied to `slseModel`. We can access the estimated SLSE model
+This is an object of class `cslseFit`, which is a list of
+`slseFit`. Like 'cslseModel' objects, it also contains the information
+about the treatment indicator variable and the value associated with
+each group stored as attributes:
+
+```{r}
+attr(fit, "treatedVar")
+attr(fit, "groupInd")
+```
+
+When we print, `fit`, the coefficients are separated by group. The
+coefficients for the treated correspond to $\{\hat\beta_1,
+\hat\psi_1\}$ and the coefficients for the nontreated correspond to
+$\{\hat\beta_0, \hat\psi_0\}$. We can access the estimated SLSE model
 for each group using the \$ operator. For example, the following is
 the estimated model for the treated:
 
@@ -748,7 +772,7 @@ object and `vcov.`. The latter is a function that returns the
 estimated covariance matrix of the LSE. By default, it is equal to the
 `vcovHC` function of the `sandwich` package (@sandwich) with its
 default `type="HC3"`. The following is an example with the previous
-model using and the HC0 type:
+model using the HC0 type:
 
 ```{r}
 s <- summary(fit, type="HC0")
@@ -775,6 +799,21 @@ Therefore, the coefficient of `U.age_1` is the effect of age for
 the nontreated on `re78` when `age`$\leq 23$ and `U.age_2` is the effect
 when `age`$> 23$. 
 
+**The `extract` method**
+
+The package comes with an `extract` method for `slseFit` objects,
+which allows to present estimated SLSE models in a Latex table using
+the `texreg` package of @texreg. There is no `extract` method for
+`cslseFit` objects, but we can still use `texreg` by converting
+`cslseFit` objects into lists using the method `as.list`. Here is an
+example (the argument `table=FALSE` is used to avoid having a floating
+table):
+
+```{r, results='asis', message=FALSE}
+library(texreg)
+texreg(as.list(fit), table=FALSE)
+```
+
 ### The `predict` method \label{sssec:pred}
 
 The `predict` method is very similar to `predict.lm`. We use the same
@@ -789,8 +828,7 @@ element contains a vector of predictions. Here is an example with the
 previously fitted model `fit`:
 
 ```{r}
-predict(fit,
-        newdata = data.frame(treat = c(1,1,0,0),age = 20:23, married = 1))
+predict(fit, newdata = data.frame(treat = c(1,1,0,0),age = 20:23, married = 1))
 ```
 
 If `interval` is set to "confidence", but `se.fit` remains equal to
@@ -800,8 +838,7 @@ determined by the argument `level` (set to 0.95 by default). Here is
 an example with the same fitted model:
 
 ```{r}
-predict(fit,
-        newdata = data.frame(treat = c(1,1,0,0),age = 20:23, married = 1),
+predict(fit,  newdata = data.frame(treat = c(1,1,0,0),age = 20:23, married = 1),
         interval = "confidence")
 ```
 
@@ -827,12 +864,12 @@ is obtained separately for the treated and nontreated the method for
 `cslseFit` objects simply apply the method for `slseFit` objects on
 each group. The following is the list of arguments:
 
-- **x**: An object of class `cslseFit` (or `slseFit').
+- **x**: An object of class `cslseFit` (or `slseFit`).
 
 - **y**: An alias for `which` for compatibility with the generic
   `plot` function. 
   
-- **which**: confounder to plot against the outcome variable. It could
+- **which**: confounder to plot against the outcome variable. It can
   be an integer (the position of the confounder) or a character (the
   name of the confounder)
 
@@ -855,36 +892,33 @@ each group. The following is the list of arguments:
   
 - **vcov.**: An optional function to compute the estimated matrix of
   covariance of the least squares estimators. This argument only
-  affects the confidence intervals. The default is `vcovHC` with
-  `type="HC3"`. 
+  affects the confidence intervals. The default is `vcovHC` from the
+  sandwich package with `type="HC3"`.
 
 - **add**: Should the curves be added to an existing plot? The
   default is `FALSE`.
 
 - **addToLegend**: An optional character string to add to the legend
-  next to "treated" and "nontreated". Note that a legend is added when
-  applied to `slseFit` objects, so this argument has no effect in this
-  case.
+  next to "treated" and "nontreated". Note that a legend is not added
+  when applied to `slseFit` objects, so this argument has no effect in
+  this case.
 
 - **addPoints**: Should we include the scatterplot of the outcome and
   confounder to the graph? The default is `FALSE`.
   
 - **FUN**: A function to determine how the other confounders are
   fixed. The default is `mean`. Note that the function is applied to
-  each group separately (obviously since the plot is applied to each
-  group separately).
+  each group separately.
 
 - **plot**: By default, the method produces a graph. Alternatively, we
   can set this argument to `FALSE` and it returns one `data.frame` per
-  group with the variable selected by `which` and the prediction. 
+  group with the variable selected by `which` and the prediction. This
+  could be useful if one wants to design the graphs differently.
 
 - **graphPar**: A list of graphical parameters if not satisfied with
   the default ones.
 
-- **...**: Other arguments are passed to the `vcov.` function. For
-  example, it is possible to change the type of `vcovHC` from the
-  default HC3 to any available methods included in the `sandwich`
-  package (@sandwich). 
+- **...**: Other arguments are passed to the `vcov.` function. 
 
 The default set of graphical parameters can be obtained by running the
 function `causalSLSE:::.initParCSLSE()` (or
@@ -902,9 +936,10 @@ causalSLSE:::.initParCSLSE()$treated$points
 
 The element `common` are for parameters not specific to a group like
 the main title or the axis labels and `legend` are the parameters that
-control the legend. Note, however, that the colour and line shapes for
-the legend are automatically determined by the lines and points
-parameters of the `treated` and `nontreated` elements.
+control the legend (for `cslseFit` only). Note, however, that the
+colour and line shapes for the legend are automatically determined by
+the lines and points parameters of the `treated` and `nontreated`
+elements.
 
 The default parameters can be modified by the argument
 `graphPar`. This argument must follow the structure of
@@ -945,7 +980,7 @@ arg1 <- list(treated = list(lines = list(col = "darkred", lty = 4)),
              nontreated = list(lines = list(col = "darkgreen", lty = 2)),
              legend = list(x = "topleft"))
 arg2 <- list(legend = list(x = "top", cex=0.7))
-plot(fit1, "ed", vcov. = vcov, graphPar=arg1)
+plot(fit1, "ed", vcov. = vcov, graphPar=arg1, interval = 'confidence')
 plot(fit1, "age", interval = 'confidence', level = 0.9, type = "HC1", graphPar=arg2)
 ```
 
@@ -1137,7 +1172,9 @@ effect estimators has only been proved for the last two in
 
 The knot selection is done using the `selSLSE` method. The arguments are:
 
-- **model**: An object of class `cslseModel`.
+- **model**: An object of class `cslseModel`.  The method also exists
+  for `slseModel` objects. We will discuss it briefly at the end of
+  this section.
 
 - **selType**: This is the selection method. We have the choice between
   "FLSE" and "BLSE" (the default).
@@ -1151,26 +1188,37 @@ The knot selection is done using the `selSLSE` method. The arguments are:
   applied to each group separately. Therefore, the threshold may be
   different for the treated and non-treated. It is also possible to
   set it to a fix threshold. For example, `function(p) 0.20` sets the
-  threshold to 0.2. This argument affects the result only when
-  `selCrit` is set to "PVT".
+  threshold to 0.2. Note that when the function returns a value
+  greater than 1, all knots are kept. This argument affects the result
+  only when `selCrit` is set to "PVT".
   
-- **vcov.**: An optional function to compute the least squares
-  standard errors. By default, the p-values are computed using the
-  `vcovHC` method from the `sandwich` package with `type="HC3"` (@sandwich).
+- **vcovType**: The type of LSE covariance matrix used to compute the
+  p-values. The options are "HC0" (the default), "HC1", "HC2", "HC3"
+  and "Classical" (for the homoskedastic case). Using a
+  heteroskedasticity robust covariance matrix is recommended, but
+  there is not need to choose the usually recommended HC3 for the
+  selection. The reason is that HC3 requires the hat values, which
+  slows down the process, especially for FLSE, and simulations show
+  that the choice of HC has very little effect on the
+  selection. Note that the model is estimated separately for the
+  treated and nontreated. Therefore, we assume a different variance of
+  the residuals even when `vcovType` is set to "Classical".
   
-- **...**: This is used to pass arguments to the `vcov.` function.
-
+- **reSelect**: Should we recompute the optimal knots or use the ones
+  already saved in the object. See below for more details.
+  
 The function returns a model of class `cslseModel` with the optimal
 selection of knots. For example, we can compare the starting knots of
-`model1`, with the model selected by the default arguments.
+the following model, with the ones selected by the default arguments.
 
 ```{r}
-print(model1, which = "selKnots")
+model1 <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
+model1
 model2 <- selSLSE(model1)
-print(model2,  which = "selKnots")
+model2
 ```
 
-For example, the BLSE-AIC method has removed all knots from `re75`
+For example, the BLSE-AIC method has kept all knots from `re75`
 for the treated and kept two knots for the nontreated. The print
 method indicates which method was used to select the knots. It is
 possible to recover the p-values of all original knots by setting the
@@ -1195,23 +1243,203 @@ Since the `selSLSE` method returns a new model, we can apply the
 estSLSE(selSLSE(model1, selType = "FLSE", selCrit = "BIC"))
 ```
 
-## The `causalSLSE` method for `slseFit` objects \label{ssec:causalForFit}
+### Selections saved in `slseModels` objects.
 
-The method `causalSLSE` estimates the causal effects from `slseFit`
+Optimal selection of knots can be time consuming, especially for large
+sample sizes. To avoid having to recompute the selection each time we
+change the selection method and/or the criterion, the selection is
+saved in the 'slseModel` object. Let's consider the following model:
+
+```{r}
+model <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
+model
+```
+
+Suppose we select the knots using BLSE and AIC. We can replace the
+object by the new one.
+
+```{r}
+model <- selSLSE(model, selType="BLSE", selCrit="AIC")
+```
+
+The main source of computing time for the selection comes from the
+number of regressions we need to estimate. Once estimated, all tests
+are simple operations, so the proportion of time allocated to testing
+the knots is negligible. Once we have the p-values, no additional
+regressions are needs for the `PVT` criterion, but we need one
+regression for each p-value for the AIC and BIC (plus 2 if we count
+the model with no knots). It is therefore worth saving the selection
+somewhere. This information is saved separately in each `slseModel`
+object under `selections`.
+
+```{r}
+names(model$treated$selections)
+names(model$treated$selections)
+```
+
+We see that the model keeps the original knots, so we lost nothing by
+replacing `model` by the new one. The other argument is `BLSE` which
+contains information about the selection. If we want to compare `BLSE`
+with `FLSE`, we can call the `selSLSE` once more and replace `model`
+by the new one:
+
+```{r}
+model <- selSLSE(model, selType="FLSE", selCrit="AIC")
+names(model$treated$selections)
+names(model$treated$selections)
+```
+
+The new selections are added to the model without deleting the
+previous ones. The following is what we can find in the element `BLSE`
+(or `FLSE`) of a given group:
+
+```{r}
+names(model$treated$selections$BLSE)
+```
+
+The `pval` element is an object of class `pvalSLSE`. If we print it,
+we obtain the same output as when we print the model with the argument
+`which="Pvalues"`. The element `Threshold` is the p-value threshold
+used for the `PVT` criterion and the selections are saved in the
+elements `PVT`, `JAIC` and `JBIC`. The `J` in front of AIC and BIC
+means that the selection is based on the joint AIC and BIC, as opposed
+to a selection model by model. There is no `J` in front of `PVT`
+because the selection using this criterion is identical if we proceed
+jointly or separately. Note that we do not see the `J` when we print
+the `cslseModel` object, because it is assumed that AIC and BIC are
+obtained jointly for causal SLSE models. However, if we select the
+knots of one of the SLSE model separately, we will see the difference
+when we print the model. For example, the following replace the SLSE
+model of the treated by the SLSE model selected by AIC (separately):
+
+```{r}
+model$treated <- selSLSE(model$treated, "BLSE", "AIC")
+model
+```
+
+The print output indicates that the selection was done jointly for the
+nontreated (just `AIC`) and separately for the treated. Now, the SLSE
+model for the treated has many different selection elements:
+
+```{r}
+names(model$treated$selections$BLSE)
+```
+
+With all selections saved in the model, how do we know which knots are
+used? We know it by printing the model or by printing the following
+knots attribute:
+
+```{r}
+attr(model$nontreated$knots, "curSel")
+```
+
+It tells us that the current set of knots for that model is BLSE with
+a joint AIC. 
+
+The elements `PVT`, `JAIC`, `JBIC`, `AIC` and `BIC` are lists of knots
+selection vectors in the same format as the argument `selKnots` of the
+`estSLSE` method. For example, the following is the list of selection
+vectors for the BLSE with AIC:
+
+```{r}
+model$treated$selections$BLSE$JAIC
+```
+
+For example, we see that the knots 1 and 3 of `age` is selected by
+AIC. We could use this selection list to estimate the model:
+
+```{r}
+estSLSE(model$treated, model$treated$selections$BLSE$JAIC)
+```
+
+Note that we never explicitly selected the BIC criterion above, but it
+was added to the model anyway. The reason is that the cost of
+computing the selection based on BIC is negligible once we do it for
+AIC. Since it is also negligible to add the selection by `PVT`, if the
+`selCrit` argument is set to `"AIC"` or `"BIC"`, all three selections
+are computed simultaneously and stored in the model. It is only when
+`selCrit` is set to `"PVT"` that the selection is done for the chosen
+criterion only.
+
+### Select a saved selection with `update`
+
+Now that we understand that all previous selections are saved in
+`slseModel` objects, how do we select them? This is done with the
+`update` method. The method is registered for `slseModel` and
+`cslseModel` objects and work very similarly. The arguments are
+`selType`, `selCrit` and `selKnots`. The latter is used to select the
+knots manually and we will not cover this option. The First two are as
+in the `selSLSE` method. The purpose of `update` is to replace the
+current knots by a selection saved in the model. If the selection we
+want is not in the model, `update` will return an error message. For
+example, the object `model` from the previous section has all
+selections saved, but the current is a mixture of FLSE-AIC and
+BLSE-AIC (Sep.).
+
+```{r}
+model
+```
+
+We can update the model to the FLSE with joint AIC selection as
+follows (AIC means joint AIC for `cslseModel`)
+
+```{r}
+model <- update(model, selType="FLSE", selCrit="AIC")
+model
+```
+
+This is done without any computation. The `update` method simply
+replaces the knots using the appropriate list of selection vectors. If
+we want to recover the initial model, we simply set the argument
+`selType` to `"None"`. In the following, we see that the selection
+method is back to its initial selection:
+
+```{r}
+update(model, selType="None")
+```
+
+As a last application of the `update` method, the following shows that
+the joint AIC and the one applied to each group separately produces
+different results. Since we just set the `model` object to FLSE-AIC,
+the current treated model in `model` is based on the joint AIC
+criterion:
+
+```{r}
+model$treated
+```
+
+Since we have the AIC computed separately in the treated model, we can
+use `update` for `slseModel` to compare the two:
+
+```{r}
+update(model$treated, "BLSE", "AIC")
+```
+
+The selection for `age` and `ed` are the same, but the AIC selects 3
+knots for `re75` and the JAIC selects only 1 knot. 
+
+Note that the `selSLSE` method computes the selection only if the
+requested selection is not saved in the model, unless the argument
+`reSelect` is set to `TRUE`. Therefore, `selSLSE` is not different
+from `update` when the requested selection is saved in the model.
+
+## The `causalSLSE` method for `cslseFit` objects \label{ssec:causalForFit}
+
+The method `causalSLSE` estimates the causal effects from `cslseFit`
 objects using the knots included in the estimated model. The arguments
 of the method are:
 
-- **object**: An object of class `slseFit`.
+- **object**: An object of class `cslseFit`.
  
 - **causal**: What causality measure should the function compute? We
   have the choice between "ALL" (the default), "ACE", "ACT" or "ACN".
    
 - **vcov.**: An alternative function used to compute the covariance
   matrix of the least squares estimates. This is the
-  $\hat\Sigma_{\hat\theta}$ defined in the Introduction section. By default,
-  `vcovHC` is used with `type="HC3"`. Simulations show that using
-  `vcovHC` with `type="HC3"` produces the most accurate estimate of
-  the variance of ACE, ACT and ACN in small and large samples.
+  $\hat\Sigma_{\hat\theta}$ defined in the Introduction section. By
+  default, `vcovHC` is used with `type="HC3"`. Simulations show that
+  using `vcovHC` with `type="HC3"` produces the most accurate estimate
+  of the variance of ACE, ACT and ACN in small and large samples.
   
 - **...**: This is used to pass arguments to the `vcov.` function.
 
@@ -1221,29 +1449,40 @@ initial knots (without selection).
 ```{r}
 model1 <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data=nsw)
 fit1 <- estSLSE(model1)
-causalSLSE(fit1)
+ce <- causalSLSE(fit1)
+ce
 ```
 
 We see that the selection method used to select the knots are set to
 `Default` because the knots were first selected by the default method
 and no additional selection method was used. The method returns an
 object of class `cslse` and its `print` method only prints the causal
-effect estimates. For more details about the estimation, which
-includes standard errors and significance tests, we can use the
-`summary` method:
+effect estimates. We can extract any causal estimate and its standard
+error by using the \$ operator followed by the type of causal
+estimate. For example, the following is the ACE:
 
 ```{r}
-ce <- causalSLSE(fit1)
+ce$ACE
+```
+
+The object also contains the two `slseFit` objects and the model
+attributes that specify the name of the treatment indicator variable
+and the value of the indicator associated with each group. 
+
+For more details about the estimation, which includes standard errors
+and significance tests, we can use the `summary` method:
+
+```{r}
 sce <- summary(ce)
 sce
 ```
 
 The `summary` method returns an object of class `summary.cslse` and
 the above output is produced by its `print` method. If needed, we can
-extract the above table using `$causal`, the least squares
-coefficients table using `$beta` or the list of knots using `$knots`.
+extract the above table using `$causal`. The summary tables for the
+treated and nontreated LSE can be extracted using `$lse`.
 
-The `cslse` object inherits from the class `slseFit`, so we can apply
+The `cslse` object inherits from the class `cslseFit`, so we can apply
 the `plot` (or the `predict`) method directly on this object as shown below:
 
 ```{r, fig.align='center', out.width='65%'}
@@ -1252,11 +1491,10 @@ plot(ce, "re75")
 
 ### The `extract` method  \label{sssec:extract}
 
-The package comes with an `extract` method for objects of class
-`cslse`, which is a required method for creating Latex tables using
-the `texreg` package (@texreg). For example, we can compare different
-methods in a single table. In the following example, we compare the
-SLSE, BLSE-AIC and FLSE-AIC:
+The package also comes with an `extract` method for objects of class
+`cslse`. For example, we can compare different methods in a single
+table. In the following example, we compare the SLSE, BLSE-AIC and
+FLSE-AIC:
 
 ```{r, eval=FALSE}
 library(texreg)
@@ -1265,7 +1503,7 @@ fit2 <- estSLSE(selSLSE(model1, selType="BLSE"))
 fit3 <- estSLSE(selSLSE(model1, selType="FLSE"))
 c2 <- causalSLSE(fit2)
 c3 <- causalSLSE(fit3)
-texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=4)
+texreg(list(SLSEC=c1, BLSE_AIC=c2, FLSE_AIC=c3), table=FALSE, digits=4)
 ```
 
 \begin{center}
@@ -1281,12 +1519,9 @@ texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=4)
 \end{center}
 
 Note that we refer to SLSE when no optimal selection method is used,
-which includes the `Default` and `User Based` methods. The option
-`table=FALSE`, from the `texreg` package, is used to remove the Latex
-floating table environment. With this option, the table appears right
-after the code instead of being placed somewhere else by Latex. The
-arguments of the `extract` methods, which control what is printed and
-can be modified through the `texreg` function, are:
+which includes the `Default` and `User Based` methods. The arguments
+of the `extract` methods, which control what is printed and can be
+modified through the `texreg` function, are:
 
 - **include.nobs**: Include the number of observations. The
   default is `TRUE`.
@@ -1298,6 +1533,11 @@ can be modified through the `texreg` function, are:
   
 - **include.adjrs**: Include the adjusted $R^2$.  The default is
   `TRUE`.
+  
+- **separated.rsquared** Should we return one $R^2$ per `slseModel`?
+  By default it is set to `FALSE` and one $R^2$ is computed for the
+  joint estimation of Equation \eqref{cslseReg}. This argument applies
+  also to the adjusted $R^2$.
 
 - **which**: Which causal effects should be printed? The options are
   "ALL" (the default), "ACE", "ACT", "ACN", "ACE-ACT", "ACE-ACN" or
@@ -1306,14 +1546,14 @@ can be modified through the `texreg` function, are:
 Here is one example on how to change some arguments:
 
 ```{r, eval=FALSE}
-texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE,
-       which="ACE-ACT", include.adjrs=FALSE)
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=3,
+       which="ACE-ACT", include.adjrs=FALSE, separated.rsquared=TRUE)
 ```
 
 \begin{center}
 ```{r, results='asis', message=FALSE, echo=FALSE}
-texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE,
-       which="ACE-ACT", include.adjrs=FALSE)
+texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=3, 
+       which="ACE-ACT", include.adjrs=FALSE, separated.rsquared=TRUE)
 ```
 \end{center}
 
@@ -1322,10 +1562,10 @@ texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE,
 When applied directly to `cslseModel` objects, the `causalSLSE` method
 offers the possibility to select the knots and estimate the causal
 effects all at once. The method also returns an object of class
-`cslse`. The arguments are the same as the method for `slseFit`
+`cslse`. The arguments are the same as the method for `cslseFit`
 objects, plus the necessary arguments for the knots selection. The
 following are the arguments not already defined for objects of class
-`slseFit`. The details of these arguments are presented in Section
+`cslseFit`. The details of these arguments are presented in Section
 \ref{ssec:select}.
 
 - **object**: An object of class `cslseModel`.
@@ -1358,6 +1598,30 @@ texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table=FALSE, digits=4)
 ```
 \end{center}
 
+Note that this `causalSLSE` method calls `selSLSE` for the knot
+selection. Therefore, the selection is done without any computation if
+the selection is already saved in the model object. It would therefore
+be inefficient to compare FLSE with AIC, BIC and PVT using the
+following, because it would involve recomputing all FLSE selections
+3 times:
+
+```{r, eval=FALSE}
+c1 <- causalSLSE(model1, selType="FLSE", selCrit="AIC")
+c2 <- causalSLSE(model1, selType="FLSE", selCrit="BIC")
+c3 <- causalSLSE(model1, selType="FLSE", selCrit="PVT")
+```
+
+It is better to add all `FLSE` selections in the model first and then
+call the `causalSLSE` method 3 times as follows:
+
+```{r}
+model1 <- selSLSE(model1, selType="FLSE")
+c1 <- causalSLSE(model1, selType="FLSE", selCrit="AIC")
+c2 <- causalSLSE(model1, selType="FLSE", selCrit="BIC")
+c3 <- causalSLSE(model1, selType="FLSE", selCrit="PVT")
+```
+
+
 ## The `causalSLSE` method for `formula` objects  \label{ssec:causalForForm}
 
 This last method, offers an alternative way of estimating the causal
@@ -1387,12 +1651,14 @@ texreg(list(SLSE=c1, BLSE=c2, FLSE=c3), table = FALSE, digits = 4)
 \end{center}
 
 Note that this method calls `cslseModel`, `selSLSE`, `estSLSE` and the
-method `causalSLSE` for `slseFit` objects sequentially. It is easier
+method `causalSLSE` for `cslseFit` objects sequentially. It is easier
 to simply work with this method, but manually going through all steps
 may be beneficial to better understand the procedure. Also, it is more
 convenient to work with a model when we want to compare the different
 selection methods, or if we want to compare estimations with different
-standard errors. 
+standard errors. In particular, this approach does not offer the more
+efficient option of computing all selections once and save them in the
+model as explained at the end of the previous section.
 
 # Examples \label{sec:example}
 
@@ -1418,6 +1684,8 @@ $10^7$). We can start by building the starting model:
 ```{r}
 data(simDat1)
 mod <- cslseModel(Y ~ Z | ~ X, data = simDat1)
+mod <- selSLSE(mod, "BLSE") ## Let's save them all first
+mod <- selSLSE(mod, "FLSE")
 ```
 
 Then we can compare three different methods:
@@ -1491,6 +1759,7 @@ can compare the SLSE, BLSE-AIC and BLSE-BIC.
 ```{r}
 data(simDat2)
 mod <- cslseModel(Y~Z | ~X, data=simDat2)
+mod <- selSLSE(mod, "BLSE") ## We just add BLSE because we do not use FLSE
 ```
 
 ```{r, eval=FALSE}
@@ -1548,6 +1817,7 @@ $10^7$). We can compare the SLSE, FLSE with AIC and FLSE with BIC.
 ```{r}
 data(simDat3)
 mod <- cslseModel(Y ~ Z | ~ X1 + X2, data = simDat3)
+mod <- selSLSE(mod, "FLSE") ## We just add FLSE because we do not use BLSE
 ```
 
 ```{r, eval=FALSE}
@@ -1646,6 +1916,7 @@ sim_model <- function(n)
 ```{r}
 data(simDat5)
 mod <- cslseModel(Y ~ Z | ~ X1 * X2, data = simDat5)
+mod <- selSLSE(mod, "FLSE") ## We just add FLSE because we do not use BLSE
 ```
 
 ```{r, eval=FALSE}
@@ -1743,38 +2014,52 @@ files exist for non-exported methods and the latter must be called
 using `causalSLSE:::` before the method names.
 
 - **slseKnots**: The object is created by the function `slseKnots` and
-  the only exported registered method is `print`. The method `update`,
-  which is used by `estSLSE` to select knots before estimating the
-  model is not exported. 
+  the only exported registered methods are `print` and `update`. 
 
-- **cslseKnots**: The object is created by the function `cslseKnots`
-  and it is a list of `slseKnots` objects. As for `slseKnots` object,
-  the only exported registered method is `print` and there is an
-  non-exported method `update`. 
-  
+- **slseModel**: The object is created by the function `slseModel` and
+  the exported registered methods are `print`, `estSLSE` (estimate the
+  regression model), `selSLSE` (optimal selection of knots), `update`
+  (select knots from saved selections) and `causalSLSE` (to compute
+  the causal effects). There are two non-exported methods: `pvalSLSE`
+  (used to compute the p-values) and `model.matrix` (to extract the
+  matrix of confounders).
+
 - **cslseModel**: The object is created by the function `cslseModel`
   and the exported registered methods are `print`, `estSLSE` (estimate
-  the regression model), `selSLSE` (optimal selection of knots) and
-  `causalSLSE` (to compute the causal effects). There are two
-  non-exported methods: `pvalSLSE` (used to compute the p-values) and
-  `model.matrix` (to extract the matrix of confounders). 
+  the regression model), `selSLSE` (optimal selection of knots),
+  `update` (select knots from saved selections) and `causalSLSE` (to
+  compute the causal effects). There are two non-exported methods:
+  `pvalSLSE` (used to compute the p-values) and `model.matrix` (to
+  extract the matrix of confounders).
   
-- **slseFit**: The object is created by the method `estSLSE` and the
-  exported registered methods are `print`, `causalSLSE` (to compute
-  the causal effects), `predict` (to predict the outcome), `plot` (to
-  plot the outcome as a function of one confounder) and `summary` (to
-  give more details about the least squares estimation)
+- **slseFit** and **cslseFit**: The objects are created by the method
+  `estSLSE` (the former when apply to `slseModel` object and the
+  latter when applied to `cslseModel` objects) and the exported
+  registered methods are `print`, `causalSLSE` (to compute the causal
+  effects), `predict` (to predict the outcome), `plot` (to plot the
+  outcome as a function of one confounder), `summary` (to give more
+  details about the least squares estimation). There is one
+  non-exported method, `as.model`, which extracts the model object from
+  the `slseFit` or `cslseFit` object.
   
-- **summary.slseFit**: The object is created by the `summary` method
-  for `slseFit` objects. The only exported registered method is
-  `print`.
+- **slseFit**: One registered method that only applies to this class
+	is `extract`. It is needed to generate Latex table with `texreg`.
+	
+- **cslseFit**: One registered method that only applies to this class
+	is `as.list`. It converts the objects into a list of `slseFit`
+	objects.
+  
+- **summary.slseFit** and **summary.cslseFit**: The objects are
+  created by the `summary` method for `slseFit` and `cslseFit`
+  objects. The only exported registered method is `print`.
 
 - **cslse**: The object is created by any `causalSLSE` method. It
-  inherits from `slseFit` object. The methods that are common through
+  inherits from `cslseFit` object. The methods that are common through
   this inheritance are `plot` and `predict`. The exported registered
   methods specific to `cslse` objects are `print`, `summary` (to give
   more details about the causal effect estimation) and `extract` (a
-  method needed for `texreg`)
+  method needed for `texreg`). There is one non-exported method,
+  `as.model`, which extracts the model object.
 
 Note that the method `causalSLSE` is also registered for objects of
 class `formula`. 

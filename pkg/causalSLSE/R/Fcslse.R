@@ -114,8 +114,10 @@
         nresi <- names(resi)
         pval <- .reshapePval(model[[gi]]$knots, resi$pval)
         model[[gi]]$selections[[selType]]$pval <- pval
-        model[[gi]]$selections[[selType]]$PVT <- .reshapeSelKnots(model[[gi]]$knots, resi[[grep("pvt", nresi)]],
-                                                                  spec[[gi]]$mnk)
+        model[[gi]]$selections[[selType]]$PVT <-
+            .reshapeSelKnots(model[[gi]]$knots, resi[[grep("pvt", nresi)]],
+                             spec[[gi]]$mnk)
+        model[[gi]]$selections[[selType]]$Threshold <- spec[[gi]]$pvt        
         if (selType !="PVT")
         {
             model[[gi]]$selections[[selType]]$JAIC <-

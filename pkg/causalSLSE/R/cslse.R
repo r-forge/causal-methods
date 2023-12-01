@@ -147,12 +147,19 @@ print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
                 cat("Number of NA (", gi,"): ", length(x[[gi]]$na), "\n")
         }
         .prtSel(x)
-        cat("Confounders approximated by SLSE:\n")
+        cat("Confounders approximated by SLSE (num. of knots):\n")
         for (gi in names(x))
         {
             w <- sapply(x[[gi]]$knots, is.null)
             selPW <- x[[1]]$nameX[!w]
-            isApp <- if (length(selPW)) paste(selPW, collapse=", ", sep="") else "None"
+            nK <- sapply(x[[gi]]$knots, length)[!w]
+            isApp <- if (length(selPW))
+                     {
+                         selPW <- paste(selPW, "(", nK, ")", sep="")
+                         paste(selPW, collapse=", ", sep="") 
+                     } else {
+                         "None"
+                     }
             cat("\t", gi, ": ", isApp, "\n", sep="")
         }
         cat("Confounders not approximated by SLSE:\n") 
@@ -171,24 +178,17 @@ print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
             print(x[[gi]]$knots, header="Select", digits=digits, ...)
         }
     } else {
-        if (is.null(x$selections))
+        for (gi in names(x))
         {
-            cat("No p-values are available. You must apply a selection methods first.\n")
-        } else {
-            selType <- attr(x,"curSel")$select
-            if (is.null(x$selections[[selType]]$pval))
-            {
-                cat("No p-values are available in the model object\n")
-            } else {
-                print(x$selections[[selType]]$pval, digits=digits, ...)
-            }
+            cat(gi, "\n")
+            cat(paste(rep("*", nchar(gi)), collapse="", sep=""), "\n")
+            print(x[[gi]], which="Pvalues", digits=digits, ...)
         }
     }
     invisible()
 }
 
-update.cslseModel <- function(object, selKnots, selType, selCrit="AIC",
-                              pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
+update.cslseModel <- function(object, selType, selCrit="AIC", selKnots, ...)
 {
     treat <- attr(object, "treatedVar") 
     group <- attr(object, "groupInd") 
@@ -212,8 +212,8 @@ update.cslseModel <- function(object, selKnots, selType, selCrit="AIC",
         }
     } else if (!missing(selType)) {
         selCrit <- ifelse(selCrit=="PVT", "PVT", paste("J", selCrit, sep=""))
-        object <- lapply(object, function(mi) update(object=mi, selType=selType, selCrit=selCrit,
-                                                     pvalT=pvalT, vcov.=vcov., ...))
+        object <- lapply(object, function(mi)
+            update(object=mi, selType=selType, selCrit=selCrit, ...))
         class(object) <- "cslseModel"
         attr(object, "treatedVar") <- treat
         attr(object, "groupInd") <- group

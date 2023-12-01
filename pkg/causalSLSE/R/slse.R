@@ -312,10 +312,17 @@ print.slseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
         if (attr(x$knots,"curSel")$crit != "")
             cat("-",  attr(x$knots,"curSel")$crit, sep = "")
         cat("\n\n")
-        cat("Covariates approximated by SLSE:\n")
+        cat("Covariates approximated by SLSE (num. of knots):\n")
         w <- sapply(x$knots, is.null)
         selPW <- x$nameX[!w]
-        isApp <- if (length(selPW)) paste(selPW, collapse=", ", sep="") else "None"
+        nK <- sapply(x$knots, length)[!w]
+        isApp <- if (length(selPW))
+                 {
+                     selPW <- paste(selPW, "(", nK, ")", sep="")
+                     paste(selPW, collapse=", ", sep="") 
+                 } else {
+                     "None"
+                 }
         cat("\t", isApp, "\n", sep="")
         cat("Covariates not approximated by SLSE:\n")   
         w <- sapply(x$knots, is.null)
@@ -342,8 +349,7 @@ print.slseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
 }
 
 update.slseModel <- function(object, selType, selCrit="AIC",
-                             selKnots, 
-                             pvalT = function(p) 1/log(p), vcov.=vcovHC, ...)
+                             selKnots, ...)
 {
     knots <- if(!is.null(object$selections))
              {

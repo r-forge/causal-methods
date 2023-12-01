@@ -47,7 +47,7 @@ Print methods for different objects from the package.
   \item{header}{What description of the object should be printed.}
   \item{groups}{The names of the group to be printed. By default,
     they are all printed.}
-\item{...}{Argument for other type of objects}
+\item{...}{Argument for other type of objects.}
 }
 
 \examples{

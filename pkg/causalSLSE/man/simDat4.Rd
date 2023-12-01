@@ -10,7 +10,7 @@ different functionalities of the package.
 }
 \usage{data("simDat4")}
 \format{
-  A data frame with 500 observations on the following 9 variables. 
+  A data frame with 500 observations on the following 7 variables. 
   \describe{
     \item{\code{Z}}{Treatment indicator.}
     \item{\code{Y}}{Observed outcome.}
@@ -20,7 +20,8 @@ different functionalities of the package.
       as factor).}
     \item{\code{X3}}{A categorical variable with 3 numerical levels (not expressed
       as factor).}
-    \item{\code{X4}}{A binary variable.}          
+    \item{\code{X4}}{A binary variable.}
+    \item{\code{treat}}{A character variable.}          
   }
 }
 
