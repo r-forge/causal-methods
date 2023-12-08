@@ -393,18 +393,26 @@ print.cslsePval <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
     X <- X[id,,drop=FALSE]
     X1 <- c(scale(X1, scale=FALSE)%*%beta1)
     X0 <- c(scale(X0, scale=FALSE)%*%beta0)
-    tmp2 <- c(e*X%*%solve(SigmaX, Dvec))
-    addT <- 2*mean(X1*tmp2) - 2*mean(X0*tmp2)
-    se <- (sum(Dvec0*c(crossprod(vcov$nontreated, Dvec0))) +
-           sum(Dvec1*c(crossprod(vcov$treated, Dvec1))) +
-           sum(beta0*c(crossprod(vcovXf0, beta0)))/n +
-           sum(beta1*c(crossprod(vcovXf1, beta1)))/n -
-           2 * c(beta0 %*% vcovXf01 %*% beta1)/n +
-           2*mean(X1*tmp2) - 2*mean(X0*tmp2))^0.5
+    se.Fct <- function()
+    {
+        tmp2 <- c(e*X%*%solve(SigmaX, Dvec))
+        addT <- 2*mean(X1*tmp2) - 2*mean(X0*tmp2)
+        (sum(Dvec0*c(crossprod(vcov$nontreated, Dvec0))) +
+         sum(Dvec1*c(crossprod(vcov$treated, Dvec1))) +
+         sum(beta0*c(crossprod(vcovXf0, beta0)))/n +
+         sum(beta1*c(crossprod(vcovXf1, beta1)))/n -
+         2 * c(beta0 %*% vcovXf01 %*% beta1)/n +
+         2*mean(X1*tmp2) - 2*mean(X0*tmp2))^0.5
+    }
+    se <- try(se.Fct(), silent=TRUE)
+    if (inherits(se, "try-error"))
+        se <- NA
     ans <- c(est, se)
     names(ans) <- c("est","se")
     ans
 }
+
+
 
 .causal <- function(model, fit, vcov, U, 
                      causal=c("ACE", "ACT", "ACN", "ALL"))
