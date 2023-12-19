@@ -1165,13 +1165,18 @@ effect estimators has only been proved for the last two criteria in
 >    - **PVT**: We remove all knots with a p-value greater than a
 >      specified threshold.
 >
->     - **AIC** or **BIC**: We order the p-values in ascending
+>    - **AIC** or **BIC**: We order the p-values in ascending
 >      order. Then, starting with a model with no knots and going from
 >      the smallest to the highest p-value, we add the knot associated
 >      with the smallest remaining p-value one by one, estimate the
 >      model and return the information criterion. We select the model
->      with the smallest value of the information citerion.
-
+>      with the smallest value of the information citerion. 
+>
+> Note that the SLSE models for the treatment groups contained in
+> `cslseModel` objects are estimated separately. However, the AIC and
+> BIC are computed as if the they were estimated jointly as in
+> Equation \eqref{cslseApp}. As we will see below, a joint selection
+> does not necessarily correspond to a selection done group by group.
 
 The knot selection is done using the `selSLSE` method. The arguments are:
 
@@ -1246,7 +1251,48 @@ Since the `selSLSE` method returns a new model, we can apply the
 estSLSE(selSLSE(model1, selType = "FLSE", selCrit = "BIC"))
 ```
 
-### Selections saved in `slseModels` objects.
+### Selection for `slseModel` versus `cslseModel` objects
+
+As mentioned in the previous section, the information criteria for
+`cslseModel` objects are computed as if the SLSE models of the
+treatment groups were estimated using Equation \eqref{cslseApp}. This
+approach may lead to a selection different from what we would obtain
+by selecting the knots group by group. To see this, consider the
+following model and joint selection based on BLSE-AIC:
+
+```{r}
+model1 <- cslseModel(re78 ~ treat | ~ age + re75 + ed + married, data = nsw)
+model2 <- selSLSE(model1, selType="BLSE", selCrit="AIC")
+model2
+```
+
+We could also apply the same selection method, but group by group. In
+the following, we show how to select the knots group by group by using
+the `selSLSE` method for `slseModel` objects. Note that the Selection
+method is set to `BLSE-AIC (Sep.)` to indicate that it was done
+separately.
+
+```{r}
+model3 <- model1
+model3$treated <- selSLSE(model3$treated, selType="BLSE", selCrit="AIC")
+model3$nontreated <- selSLSE(model3$nontreated, selType="BLSE", selCrit="AIC")
+model3
+```
+
+We can see that the selected knots are quite different. For example,
+the number of knots of `age` for the treated is 2 when selected
+jointly and 3 when selected separately. Also, the number of knots of
+all confounders for the nontreated are set to 0 when the selection is
+done separately. This is very different from the joint
+selection. Since the joint selection is the one developed and studied by
+@cslse23, it is the one we recommend.
+
+Note that the PVT approach leads to identical selection whether it is
+done separately or jointly. The reason is that both approaches produce
+identical p-values, and the thresholds depend on the number of knots
+in each group.
+
+### Selections saved in `slseModel` objects.
 
 Optimal selection of knots can be time consuming, especially for large
 sample sizes. To avoid having to recompute the selection each time we
@@ -1281,11 +1327,11 @@ names(model$treated$selections)
 names(model$treated$selections)
 ```
 
-We see that the model keeps the original knots, so we lost nothing by
-replacing `model` with the new one. The other argument is `BLSE` which
-contains information about the selection. If we want to compare `BLSE`
-with `FLSE`, we can call the `selSLSE` once more and replace `model`
-with the new one:
+We see that the model keeps the original knots, so we loose no
+information by replacing the model object with the new one. The other
+element of the list is `BLSE` which contains information about the
+selection. If we want to compare `BLSE` with `FLSE`, we can call the
+`selSLSE` once more and replace `model` with the new one:
 
 ```{r}
 model <- selSLSE(model, selType="FLSE", selCrit="AIC")
@@ -1304,17 +1350,18 @@ names(model$treated$selections$BLSE)
 The `pval` element is an object of class `pvalSLSE`. If we print it,
 we obtain the same output as when we print the model with the argument
 `which="Pvalues"`. The element `Threshold` is the p-value threshold
-used for the `PVT` criterion and the selections are saved in the
-elements `PVT`, `JAIC` and `JBIC`. The `J` in front of AIC and BIC
-means that the selection is based on the joint AIC and BIC, as opposed
-to a selection model by model. There is no `J` in front of `PVT`
+used for the `PVT` criterion, `JIC` is a matrix of BIC and AIC values,
+ordered from the smallest to the highest p-value, and the selections
+are saved in the elements `PVT`, `JAIC` and `JBIC`. The `J` in front
+of IC, AIC and BIC means that the selection is based on the joint
+estimation of the SLSE models. There is no `J` in front of `PVT`
 because the selection using this criterion is identical if we proceed
 jointly or separately. Note that we do not see the `J` when we print
-the `cslseModel` object, because it is assumed that AIC and BIC are
-obtained jointly for causal SLSE models. However, if we select the
-knots of one of the SLSE model separately, we will see the difference
-when we print the model. For example, the following replace the SLSE
-model of the treated with the SLSE model selected by AIC (separately):
+the object, because it is assumed that AIC and BIC are obtained
+jointly for `cslseModel` objects. If we select the knots of one of the
+SLSE model separately, we will see the difference when we print the
+model. For example, the following replace the SLSE model of the
+treated with the SLSE model selected by AIC (separately):
 
 ```{r}
 model$treated <- selSLSE(model$treated, "BLSE", "AIC")
@@ -1323,7 +1370,8 @@ model
 
 The print output indicates that the selection was done jointly for the
 nontreated (just `AIC`) and separately for the treated. Now, the SLSE
-model for the treated has many different selection elements:
+model for the treated has three more selection elements: `IC`, `AIC` and
+`BIC`:
 
 ```{r}
 names(model$treated$selections$BLSE)
@@ -1343,7 +1391,7 @@ a joint AIC.
 The elements `PVT`, `JAIC`, `JBIC`, `AIC` and `BIC` are lists of knots
 selection vectors in the same format as the argument `selKnots` of the
 `estSLSE` method. For example, the following is the list of selection
-vectors for the BLSE with AIC for the treated:
+vectors using BLSE with AIC for the treated:
 
 ```{r}
 model$treated$selections$BLSE$JAIC
@@ -1362,7 +1410,7 @@ computing the selection based on BIC is negligible once we do it for
 AIC. Since it is also negligible to add the selection by `PVT`, if the
 `selCrit` argument is set to `"AIC"` or `"BIC"`, all three selections
 are computed simultaneously and stored in the model. It is only when
-`selCrit` is set to `"PVT"` that the selection is done for the chosen
+`selCrit` is set to `"PVT"` that the selection is done for this
 criterion only.
 
 ### Select a saved selection with `update`
