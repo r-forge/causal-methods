@@ -35,7 +35,7 @@ void R_init_causalSLSE(DllInfo *dll)
 			NULL, NULL, 
 			fortranMethods, NULL);
      R_useDynamicSymbols(dll, FALSE);
-   };
+   }
 
 
 
