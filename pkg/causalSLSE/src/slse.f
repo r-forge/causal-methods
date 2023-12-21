@@ -702,7 +702,7 @@ c     It does not compute the variance of LSE, so it is faster
       
       subroutine modfitsel(y, x, p, n, tol, k, nk, mnk, tnk,
      *     w, bic, aic)
-      integer p, n, nk(p), mnk, tnk, w(mnk0,p), rk
+      integer p, n, nk(p), mnk, tnk, w(mnk,p), rk
       integer nks(p), tnks, piv(tnk+p+1), i 
       double precision ks(mnk,p), k(mnk,p), y(n), x(n,p)
       double precision tol, aic, bic, ll, pi
