@@ -24,12 +24,22 @@ When the information about a model is available, it reconstructs it and returns 
 \item{...}{Other arguments to pass to other methods. Currently not used.}
 }
 
+\value{
+The method returns an object of class \code{\link{slseModel}} or
+\code{\link{cslseModel}}. 
+}
 
 \examples{
 data(simDat3)
-mod <- cslseModel(Y~Z|~X1*X2, data=simDat3)
+mod <- cslseModel(Y ~ Z | ~ X1 * X2, data = simDat3)
 fit <- estSLSE(mod)
+
+## Extract the model from a cslseModel object
+
 as.model(fit)
+
+## Extract the model from a cslse object
+
 cs <- causalSLSE(mod)
 as.model(cs)
 }

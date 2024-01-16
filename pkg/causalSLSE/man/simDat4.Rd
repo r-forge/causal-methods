@@ -2,7 +2,7 @@
 \alias{simDat4}
 \docType{data}
 \title{
-Simulated data.
+Simulated Data.
 }
 \description{
 This dataset is used in several documentation files to illustrate the

@@ -48,7 +48,7 @@ cslseModel <- function (form, data, nbasis = function(n) n^0.3,
         stop("The only allowed names for groupInd are currently treated and nontreated.")  
     treat <- all.vars(form)[2]  
     Z <- data[,treat]
-    form <-  as.formula(paste(tmp[2], tmp2[2], sep = ""))
+    form <-  as.formula(paste(tmp[2], tmp2[2], sep = ""), new.env())
     if (any(naZ <- is.na(Z)))
     {
         warning("Missing values in the treatment indicator are not allowed. The observations have been removed")

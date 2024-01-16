@@ -15,7 +15,8 @@
     ...)
 }
 \arguments{
-\item{model}{A statistical model object.}
+\item{model}{A causal effect object created by
+  \code{\link{causalSLSE}}.} 
 
 \item{include.nobs}{Report the number of obervations?}
 
@@ -41,4 +42,8 @@ not in use.}
 \description{
 \code{\link{extract}} method for \code{cslse} objects created by the
 \code{\link[causalSLSE]{causalSLSE}} function.
+}
+
+\value{
+It returns an object of class \code{\link{texreg}}.  
 }

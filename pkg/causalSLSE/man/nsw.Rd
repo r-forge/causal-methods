@@ -1,7 +1,7 @@
 \name{nsw}
 \docType{data}
 \alias{nsw}
-\title{Lalonde subsample of the National Supported Work Demonstration Data
+\title{Lalonde Subsample of the National Supported Work Demonstration Data
 (NSW)}
 \description{
 This data was collected to evaluate the National Supported Work
@@ -27,7 +27,6 @@ A data frame containing 9 variables.
   The dataset was obtained from the ATE package (see reference).
   }
   
-
 \source{
 "NSW Data Files" from Rajeev Dehejia's website. URL:
 \url{http://users.nber.org/~rdehejia/data/.nswdata2.html}

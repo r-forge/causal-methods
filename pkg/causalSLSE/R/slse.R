@@ -277,7 +277,7 @@ slseModel <- function (form, data, nbasis = function(n) n^0.3,
         nameS <- paste(nameS, "U", collapse="", sep="")
     }
     nameS <- paste(nameS, ".", sep="")
-    formY <- as.formula(paste(nameY, "~", nameS), env = .GlobalEnv)
+    formY <- as.formula(paste(nameY, "~", nameS), new.env())
     xlevels <- .getXlevels(mt,mf)
     na <- na.omit(cbind(Y,X))
     if (!is.null(attr(na, "omit")))
@@ -594,12 +594,12 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
          } else {
              paste("~", paste(colnames(X), collapse="+"))
          }   
-    formX <- formula(f, .GlobalEnv)
+    formX <- formula(f, new.env())
     xlevels <- list()
     funVar <- colnames(X)[!(colnames(X) %in% c(varCov, names(conCov)))]
     for (fi in funVar)
     {
-        formi <- formula(paste("~",fi,"-1",sep=""), .GlobalEnv)
+        formi <- formula(paste("~",fi,"-1",sep=""), new.env())
         vari <- all.vars(formi)
         dati <- data[,vari,drop=FALSE]
         chk <- vari %in% varCov
@@ -635,7 +635,7 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     }
     ind <- order(x$model$data[, which])
     x$model$data <- x$model$data[ind, ]
-    x$model$formX <- formula(delete.response(terms(x$model$form)))
+    x$model$formX <- formula(delete.response(terms(x$model$form)), new.env())
     obj <- .prDatak(x, which, fixedCov, NULL, FUN)
     x$model$data <- obj$data
     x$model$xlevels <- obj$xlevels

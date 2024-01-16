@@ -14,7 +14,7 @@
 
 }
 \arguments{
-\item{model}{A statistical model object.}
+\item{model}{A model estimated by \code{\link{estSLSE}}.} 
 
 \item{include.rsquared}{Report the R-squared of the final regression
   estimation}
@@ -35,4 +35,8 @@ not in use.}
 \description{
 \code{\link{extract}} method for \code{slseFit} objects created by the
 \code{\link[causalSLSE]{estSLSE}} function.
+}
+
+\value{
+It returns an object of class \code{\link{texreg}}.  
 }
