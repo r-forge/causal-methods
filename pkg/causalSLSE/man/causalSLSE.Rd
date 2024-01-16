@@ -4,7 +4,7 @@
 \alias{causalSLSE.cslseFit}
 \alias{causalSLSE.formula}
 \title{
-Causal Effect based on semiparametric Least Squares models
+Causal Effect Based on Semiparametric Least Squares Models
 }
 \description{
 This is the main method to estimate the causal effects using the semiparametric

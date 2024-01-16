@@ -4,7 +4,7 @@
 \alias{as.model.cslseFit}
 \alias{as.model.cslse}
 \title{
-Extract the model from objects.
+Converter into Model Objects
 }
 \description{
 When the information about a model is available, it reconstructs it and returns a valid model object. 

@@ -1,7 +1,7 @@
 \name{extract,slseFit-method}
 \alias{extract,slseFit-method}
 \alias{extract.slseFit}
-\title{\code{\link{extract}} method for \code{slseFit} objects}
+\title{\code{\link{extract}} Method for \code{slseFit} Objects}
 \usage{
 \S4method{extract}{slseFit}(
   model,

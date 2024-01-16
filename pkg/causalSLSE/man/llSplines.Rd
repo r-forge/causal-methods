@@ -3,7 +3,7 @@
 \alias{llSplines.slseModel}
 \alias{llSplines.cslseModel}
 \title{
-Local Linear Splines Generator for Model Objects.
+Local Linear Splines Generator for Model Objects
 }
 \description{
 It generates a matrix of basis functions using local linear splines. The

@@ -1,7 +1,7 @@
 \name{extract,cslse-method}
 \alias{extract,cslse-method}
 \alias{extract.cslse}
-\title{\code{\link{extract}} method for \code{cslse} objects}
+\title{\code{\link{extract}} Method for \code{cslse} Objects}
 \usage{
 \S4method{extract}{cslse}(
     model,
