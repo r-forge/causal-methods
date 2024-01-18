@@ -10,17 +10,17 @@
 llSplines.slseModel <- function(object, ...)
 {
     knots <- object$knots
-    all <- lapply(1:length(object$nameX), function(i) {
+    all <- lapply(1:length(knots), function(i) {
         Uf <- .llSpline(object, i)
         nk <- length(knots[[i]]) + 1
         colnames(Uf) <- if (nk == 1)
                         {
-                            object$nameX[i]
+                            names(knots)[i]
                         } else {
-                            paste(object$nameX[i], "_", 1:nk, sep = "")
+                            paste(names(knots)[i], "_", 1:nk, sep = "")
                         }
         Uf})
-    names(all) <- object$nameX
+    names(all) <- names(knots)
     all <- do.call(cbind, all)
     all
 }
@@ -32,18 +32,16 @@ llSplines.slseModel <- function(object, ...)
     knots <- model$knots[[which]] 
     if (is.null(knots)) 
         return(as.matrix(X))
-    nz <- X!=0
     n <- length(X)
     p <- length(knots) + 1
-    X <- X[nz]
     Ui <- matrix(0, nrow = n, ncol = p)
-    Ui[nz, 1] <- X * (X <= knots[1]) + knots[1] * (X > knots[1])
-    Ui[nz, p] <- (X - knots[p - 1]) * (X > knots[p - 1])
+    Ui[, 1] <- X * (X <= knots[1]) + knots[1] * (X > knots[1])
+    Ui[, p] <- (X - knots[p - 1]) * (X > knots[p - 1])
     if (p >= 3)
     {
          for (j in 2:(p - 1))
         {
-            Ui[nz, j] <- (X - knots[j-1]) * (X >= knots[j-1]) *
+            Ui[, j] <- (X - knots[j-1]) * (X >= knots[j-1]) *
                 (X <= knots[j]) + (knots[j] - knots[j-1]) * (X > knots[j])
         }
     }
@@ -262,22 +260,25 @@ slseModel <- function (form, data, nbasis = function(n) n^0.3,
                        knots)
 {
     mf <- model.frame(form, data)
-    mt <- attr(mf, "terms")
+    mt <- attr(mf, "terms")       
+    if (isTRUE(attr(mt, "response") == 0))
+        stop("The formula must contain a response variable")
+    if (length(all.vars(form))<2)
+        stop("The model must have at least one covariate")
     X <- model.matrix(mt, mf)
     if (attr(terms(form), "intercept") == 1) 
         X <- X[, -1, drop = FALSE]
     nameX <- colnames(X)
-    nameY <- all.vars(form)[1]    
+    nameY <- all.vars(form)[1]
+    formX <- capture.output(form[[3]])
     Y <- data[,nameY]
-    nameS <- "U"
+    nameS <- "U."
     while (TRUE)
     {
-        if (!(nameS %in% c(nameX, nameY)))
+        if (!(nameS %in% names(data)))
             break
-        nameS <- paste(nameS, "U", collapse="", sep="")
+        nameS <- paste("U", nameS, collapse="", sep="")
     }
-    nameS <- paste(nameS, ".", sep="")
-    formY <- as.formula(paste(nameY, "~", nameS), new.env())
     xlevels <- .getXlevels(mt,mf)
     na <- na.omit(cbind(Y,X))
     if (!is.null(attr(na, "omit")))
@@ -289,8 +290,8 @@ slseModel <- function (form, data, nbasis = function(n) n^0.3,
         na <- NULL
     }
     knots <- slseKnots(X=X, nbasis=nbasis, knots=knots)
-    obj <- list(na=na, slseForm=formY, form=form, nameY=nameY,
-                knots=knots, data=data, nameX=nameX, nameS=nameS, xlevels=xlevels)
+    obj <- list(na=na, formX=formX, nameY=nameY,
+                knots=knots, data=data, nameS=nameS, xlevels=xlevels)
     class(obj) <- "slseModel"
     obj
 }
@@ -303,6 +304,7 @@ print.slseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
     which <- match.arg(which)
     if (which == "Model")
     {
+        nameX <- names(x$knots)
         cat("Semiparametric LSE Model\n")
         cat("************************\n\n")
         cat("Number of observations: ", nrow(x$data), "\n")
@@ -314,7 +316,7 @@ print.slseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
         cat("\n\n")
         cat("Covariates approximated by SLSE (num. of knots):\n")
         w <- sapply(x$knots, is.null)
-        selPW <- x$nameX[!w]
+        selPW <- nameX[!w]
         nK <- sapply(x$knots, length)[!w]
         isApp <- if (length(selPW))
                  {
@@ -326,7 +328,7 @@ print.slseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
         cat("\t", isApp, "\n", sep="")
         cat("Covariates not approximated by SLSE:\n")   
         w <- sapply(x$knots, is.null)
-        nonselPW <- x$nameX[w]
+        nonselPW <- nameX[w]
         notApp <- if (length(nonselPW)) paste(nonselPW,collapse=", ",sep="") else "None"
         cat("\t", notApp, "\n", sep="")            
     } else if (which == "selKnots") {
@@ -383,9 +385,9 @@ update.slseModel <- function(object, selType, selCrit="AIC",
 
 model.matrix.slseModel <- function(object, ...)
 {
-    tt <- delete.response(terms(object$form))
-    X <- model.matrix(tt, object$data, xlev=object$xlevels)    
-    if (attr(terms(object$form), "intercept") == 1) 
+    f <- reformulate(object$formX)
+    X <- model.matrix(f, object$data, xlev=object$xlevels)    
+    if (attr(terms(f), "intercept") == 1) 
         X <- X[, -1, drop = FALSE]
     X
 }
@@ -446,11 +448,9 @@ print.slsePval <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
 estSLSE.slseModel <- function(model, selKnots, ...)
 {
     model <- update(model, selKnots=selKnots)
+    form <- reformulate(model$nameS, model$nameY)
     data <- model$data
-    Sname <- all.vars(model$slseForm)[2]
-    data[[Sname]] <- llSplines(model)
-    form <- model$slseForm
-    environment(form) <-  environment()    
+    data[[model$nameS]] <- llSplines(model)
     fit <- lm(form, data)
     obj <- list(LSE=fit, model=model)
     class(obj) <- "slseFit"
@@ -524,7 +524,7 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
     if (!is.null(newdata)) 
         model$data <- newdata
     else newdata <- model$data
-    nameS <- all.vars(object$model$slseForm)[2]
+    nameS <- model$nameS
     newdata[[nameS]] <- llSplines(model)    
     tt <- terms(object$LSE)
     tt <- delete.response(tt)
@@ -556,7 +556,7 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
     if (is.null(sel))
         sel <- 1:nrow(model$data)
     data <- model$data[sel,]
-    vnames <- all.vars(model$formX)
+    vnames <- all.vars(reformulate(model$formX))
     if (!is.null(varCov))
     {
         if (!is.character(varCov)) 
@@ -588,18 +588,12 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
     model$data <- data
     X <- model.matrix(model)
     data[,colnames(X)] <- X
-    f <- if (ncol(X)==1)
-         {
-             paste("~", colnames(X))
-         } else {
-             paste("~", paste(colnames(X), collapse="+"))
-         }   
-    formX <- formula(f, new.env())
+    f <- paste(colnames(X), collapse="+")
     xlevels <- list()
     funVar <- colnames(X)[!(colnames(X) %in% c(varCov, names(conCov)))]
     for (fi in funVar)
     {
-        formi <- formula(paste("~",fi,"-1",sep=""), new.env())
+        formi <- formula(paste("~",fi,"-1",sep=""))
         vari <- all.vars(formi)
         dati <- data[,vari,drop=FALSE]
         chk <- vari %in% varCov
@@ -610,7 +604,7 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
         }
         data[,fi] <- model.matrix(formi, dati)
     }
-    list(data=data, formX=formX, xlevels=xlevels)
+    list(data=data, formX=f, xlevels=xlevels)
 }
 
 ## The plot method
@@ -622,7 +616,7 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
                           addPoints = FALSE, FUN = mean, plot=TRUE, graphPar=list(), ...) 
 {
     interval <- match.arg(interval)
-    vnames <- all.vars(x$model$form)[-1]
+    vnames <- all.vars(reformulate(x$model$formX))
     if (is.numeric(which)) 
         which <- vnames[which]
     if (!is.character(which) & length(which) != 1) 
@@ -635,11 +629,10 @@ plot.slseFit <- function (x, y, which = y, interval = c("none", "confidence"),
     }
     ind <- order(x$model$data[, which])
     x$model$data <- x$model$data[ind, ]
-    x$model$formX <- formula(delete.response(terms(x$model$form)), new.env())
     obj <- .prDatak(x, which, fixedCov, NULL, FUN)
     x$model$data <- obj$data
     x$model$xlevels <- obj$xlevels
-    x$model$form <- obj$formX
+    x$model$formX <- obj$formX
     pr <- predict(object=x, interval = interval, level = level, newdata=x$model$data,
         se.fit = FALSE, vcov. = vcov., ...)
     if (!plot)

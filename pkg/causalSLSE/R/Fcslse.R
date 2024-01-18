@@ -35,8 +35,9 @@
 .modelPrepF <- function(model, pvalT=function(p) 1/log(p))
 {
     y <- model$data[, model$nameY]
-    x <- model.matrix(model$form, model$data)[,,drop=FALSE]
-    if (attr(terms(model$form), "intercept") == 1) 
+    f <- reformulate(model$formX)
+    x <- model.matrix(f, model$data)[,,drop=FALSE]
+    if (attr(terms(f), "intercept") == 1) 
         x <- x[, -1, drop = FALSE]
     n <- length(y)
     p <- ncol(x)

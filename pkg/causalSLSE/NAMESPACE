@@ -2,7 +2,7 @@ useDynLib(causalSLSE, .registration = TRUE, .fixes="F_")
 importFrom(stats, quantile, lm, predict, coef, vcov, printCoefmat, cov, pnorm,
            as.formula, model.frame, model.matrix, delete.response, formula, 
            na.omit, pf, qnorm, residuals, terms, var, fitted, nobs, .getXlevels,
-           update, AIC, BIC)
+           update, AIC, BIC, reformulate)
 importFrom(graphics, grid, legend, matplot)
 importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)

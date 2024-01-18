@@ -456,7 +456,7 @@ automatically as described above. One way to set the number of knots
 to 0 for all variables is to set the argument to `NULL`.
 
 ```{r}
-slseModel(~ age + re75 + ed + married, data = nsw, knots = NULL)
+slseModel(re78 ~ age + re75 + ed + married, data = nsw, knots = NULL)
 ```
 
 Notice that the selection method is defined as "User Based" whenever

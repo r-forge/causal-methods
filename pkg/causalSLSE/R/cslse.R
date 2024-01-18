@@ -48,7 +48,7 @@ cslseModel <- function (form, data, nbasis = function(n) n^0.3,
         stop("The only allowed names for groupInd are currently treated and nontreated.")  
     treat <- all.vars(form)[2]  
     Z <- data[,treat]
-    form <-  as.formula(paste(tmp[2], tmp2[2], sep = ""), new.env())
+    form <-  as.formula(paste(tmp[2], tmp2[2], sep = ""))
     if (any(naZ <- is.na(Z)))
     {
         warning("Missing values in the treatment indicator are not allowed. The observations have been removed")
@@ -148,10 +148,11 @@ print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
         }
         .prtSel(x)
         cat("Confounders approximated by SLSE (num. of knots):\n")
+        nameX <- names(x[[1]]$knots)
         for (gi in names(x))
         {
             w <- sapply(x[[gi]]$knots, is.null)
-            selPW <- x[[1]]$nameX[!w]
+            selPW <- nameX[!w]
             nK <- sapply(x[[gi]]$knots, length)[!w]
             isApp <- if (length(selPW))
                      {
@@ -166,7 +167,7 @@ print.cslseModel <- function(x, which=c("Model", "selKnots", "Pvalues"),
         for (gi in names(x))
         {
             w <- sapply(x[[gi]]$knots, is.null)
-            nonselPW <- x[[1]]$nameX[w]
+            nonselPW <- nameX[w]
             notApp <- if (length(nonselPW)) paste(nonselPW,collapse=", ",sep="") else "None"
             cat("\t", gi, ": ", notApp, "\n", sep="")            
         }
@@ -414,24 +415,27 @@ print.cslsePval <- function(x, digits = max(3L, getOption("digits") - 3L), ...)
 
 
 
-.causal <- function(model, fit, vcov, U, 
-                     causal=c("ACE", "ACT", "ACN", "ALL"))
+.causal <- function(fit, vcov, U, 
+                    causal=c("ACE", "ACT", "ACN", "ALL"))
 {
     causal <- match.arg(causal)
+    groups <- names(U)
+    fit <- fit[groups]
+    vcov <- vcov[groups]
     notNA <- lapply(fit, function(fi) !is.na(coef(fi$LSE))[-1])
     beta <- lapply(fit, function(fi)  na.omit(coef(fi$LSE)))
     e <- lapply(fit, function(fi) residuals(fi$LSE))
     n <- sapply(e, length)
     Z <- do.call("c", lapply(names(e), function(gi)
         if (gi == "nontreated") rep(0, length(e[[gi]])) else rep(1, length(e[[gi]]))))
-    U <- lapply(names(U), function(gi)
+    U <- lapply(groups, function(gi)
     {
         U.gi <- do.call(rbind, U[[gi]])
         if (length(notNA[[gi]]))
             U.gi <- U.gi[, notNA[[gi]], drop=FALSE]
         U.gi
     })
-    names(U) <- names(model)
+    names(U) <- groups
     if (causal == "ALL") causal <- c("ACE","ACT","ACN")
     ans <- lapply(causal, function(ci)
         .causali(Z, vcov, U, beta, ci, e))
@@ -473,7 +477,7 @@ causalSLSE.cslseModel <- function(object,
                                 collapse = ", "), "\n", sep = ""))
     }
     U <- llSplines(object)
-    ans <- .causal(object, res, v, U, causal)
+    ans <- .causal(res, v, U, causal)
     ans <- c(ans, res)
     class(ans) <- c("cslse", "cslseFit")
     attr(ans, "treatedVar") <- attr(res, "treatedVar")
@@ -497,7 +501,7 @@ causalSLSE.cslseFit <- function(object, causal = c("ALL","ACT","ACE","ACN"),
                                 collapse = ", "), "\n", sep = ""))
     }
     U <- llSplines(as.model(object))
-    ans <- .causal(as.model(object), object, v, U, causal)
+    ans <- .causal(object, v, U, causal)
     ans <- c(ans, object)
     class(ans) <- c("cslse", "cslseFit")
     attr(ans, "treatedVar") <- attr(object, "treatedVar")
@@ -691,7 +695,7 @@ extract.cslse <- function (model, include.nobs = TRUE,
         gof.decimal <- c(gof.decimal, FALSE, FALSE)
    }
     if (isTRUE(include.numcov)) {
-        rs3 <- length(model$treated$model$nameX)
+        rs3 <- length(model$treated$model$knots)
         gof <- c(gof, rs3)
         gof.names <- c(gof.names, "Num. confounders")
         gof.decimal <- c(gof.decimal, FALSE)

@@ -70,11 +70,9 @@ The function \code{slseModel} creates a semiparametric least squares
 model or a class \code{slseModel} object. It is a list with the
 following elements:
 
-\item{slseForm}{The formula for the semiparametric estimation. It links
-  the outcome variable with the matrix of basis functions.}
-
-\item{form}{The \code{form} argument passed to the function
-  \code{slseModel}.}
+\item{formX}{The right-hand side of the \code{form} argument expressed
+  as character. It can be converted into a \code{formula} using
+  \code{\link{reformulate}}.}  
 
 \item{nameY}{The name of the variable representing the outcome}
 
@@ -83,10 +81,6 @@ following elements:
 
 \item{knots}{An object of class \code{\link{slseKnots}}. It is the set of
   knots that define the local linear splines.}
-
-\item{nameX}{The names of all covariates included in the model. They are
-  all variables implied by the formula \code{form}, which may include
-  interactions and functions of variables.}
 
 \item{nameS}{The prefix added to the covariate names when the basis
   functions are generated. By default, it is equal to \code{"U."}}
