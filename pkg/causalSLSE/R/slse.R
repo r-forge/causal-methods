@@ -259,7 +259,7 @@ print.slseKnots <- function(x, header=c("None", "All", "Select"),
 slseModel <- function (form, data, nbasis = function(n) n^0.3, 
                        knots)
 {
-    mf <- model.frame(form, data)
+    mf <- model.frame(form, data, na.action=NULL)
     mt <- attr(mf, "terms")       
     if (isTRUE(attr(mt, "response") == 0))
         stop("The formula must contain a response variable")
@@ -270,8 +270,8 @@ slseModel <- function (form, data, nbasis = function(n) n^0.3,
         X <- X[, -1, drop = FALSE]
     nameX <- colnames(X)
     nameY <- all.vars(form)[1]
-    formX <- capture.output(form[[3]])
-    Y <- data[,nameY]
+    formX <- gsub(" ", "", paste(capture.output(form[[3]]), collapse=""))
+    Y <- model.response(mf)
     nameS <- "U."
     while (TRUE)
     {

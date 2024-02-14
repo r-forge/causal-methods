@@ -1,6 +1,6 @@
 Package: causalSLSE
 Version: 0.4
-Date: 2024-01-18
+Date: 2024-02-13
 Title: Semiparametric Least Squares Inference for Causal Effects
 Authors@R: c(person("Pierre Chausse", "Developer", role = c("aut", "cre"),
                      email = "pchausse@uwaterloo.ca"),
