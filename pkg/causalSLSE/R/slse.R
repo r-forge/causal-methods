@@ -281,9 +281,9 @@ slseModel <- function (form, data, nbasis = function(n) n^0.3,
     }
     xlevels <- .getXlevels(mt,mf)
     na <- na.omit(cbind(Y,X))
-    if (!is.null(attr(na, "omit")))
+    if (!is.null(attr(na, "na.action")))
     {
-        na <- attr(na, "omit")
+        na <- attr(na, "na.action")
         X <- X[-na,,drop=FALSE]
         data <- data[-na,,drop=FALSE]
     } else {
