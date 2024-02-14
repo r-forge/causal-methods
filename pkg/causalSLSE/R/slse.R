@@ -584,6 +584,72 @@ predict.slseFit <- function (object, interval = c("none", "confidence"),
         for (i in 1:length(conCov))
             data[,names(conCov)[i]] <- conCov[[i]]
     }
+    model$data <- data
+    X <- model.matrix(model)
+    asF <- grepl("as.factor\\(", colnames(X))
+    if (any(asF))
+    {
+        colnames(X)[asF] <-
+            gsub("as.factor\\(", "", colnames(X)[asF])
+        colnames(X)[asF] <-
+            gsub(")", "", colnames(X)[asF])
+    }
+    data[,colnames(X)] <- X
+    xlevels <- list()
+    funVar <- colnames(X)[!(colnames(X) %in% c(varCov, names(conCov)))]
+    for (fi in funVar)
+    {
+        formi <- try(formula(paste("~",fi,"-1",sep="")), silent=TRUE)
+        if (inherits(formi, "try-error"))
+            stop("One of the variables cannot be selected to apply FUN. Try to simplify the formula when defining the model")
+        vari <- all.vars(formi)
+        dati <- data[,vari,drop=FALSE]
+        chk <- vari %in% varCov
+        if (any(!chk))
+        {
+            for (vi in vari[!chk])
+                dati[,vi] <- FUN(dati[,vi])
+        }
+        data[,fi] <- model.matrix(formi, dati)        
+    }
+    f <- paste(colnames(X), collapse="+")    
+    list(data=data, formX=f, xlevels=xlevels)
+}
+
+.prDatak.old <- function(object, varCov=NULL, conCov=NULL, sel=NULL, FUN = mean)
+{
+    model <- object$model
+    if (is.null(sel))
+        sel <- 1:nrow(model$data)
+    data <- model$data[sel,]
+    vnames <- all.vars(reformulate(model$formX))
+    if (!is.null(varCov))
+    {
+        if (!is.character(varCov)) 
+            stop("varCov must be a character vector")
+        if (!all(varCov  %in% vnames))
+            stop("Some variables in varCov do not exist")
+        varCov <- unique(varCov)
+    } else {
+        varCov <- character()
+    }
+    if (!is.null(conCov))
+    {
+        if (!is.list(conCov))
+            stop("conCov must be a list")
+        if (any(sapply(conCov, length) !=1))
+            stop("The elements of conCov must have a length of 1")
+        if (is.null(names(conCov)))
+            stop("conCov must be a named list")
+        if (!all(names(conCov) %in% vnames))
+            stop("Some variables in conCov do not exist")
+        conCov <- conCov[!duplicated(names(conCov))]
+        if (length(varCov))
+            if (any(names(conCov) %in% varCov))
+                stop("You cannot have the same covariates in conCov and varCov")
+        for (i in 1:length(conCov))
+            data[,names(conCov)[i]] <- conCov[[i]]
+    }
     
     model$data <- data
     X <- model.matrix(model)
