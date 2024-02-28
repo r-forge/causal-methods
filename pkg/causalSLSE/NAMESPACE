@@ -2,7 +2,9 @@ useDynLib(causalSLSE, .registration = TRUE, .fixes="F_")
 importFrom(stats, quantile, lm, predict, coef, vcov, printCoefmat, cov, pnorm,
            as.formula, model.frame, model.matrix, delete.response, formula, 
            na.omit, pf, qnorm, residuals, terms, var, fitted, nobs, .getXlevels,
-           update, AIC, BIC, reformulate, model.response)
+           update, AIC, BIC, reformulate, model.response,
+           binomial, glm, lm.wfit, optim, plogis)
+
 importFrom(graphics, grid, legend, matplot)
 importFrom(sandwich, vcovHC, vcovHAC)
 importFrom(texreg, extract, createTexreg)
@@ -18,11 +20,13 @@ export(cslseModel, print.cslseModel, causalSLSE, print.cslse,
        causalSLSE.cslseFit, causalSLSE.formula, predict.slseFit,
        summary.slseFit, print.summary.slseFit,
        slseKnots, print.slseKnots, as.model, 
-       llSplines, llSplines.slseModel, llSplines.cslseModel)
+       llSplines, llSplines.slseModel, llSplines.cslseModel,
+       matching, LLmatching, ipw)
 
 S3method(summary, cslse)
 S3method(summary, cslseFit)
 S3method(summary, slseFit)
+S3method(summary, altCausal)
 S3method(causalSLSE, cslseFit)
 S3method(causalSLSE, cslseModel)
 S3method(causalSLSE, formula)
@@ -44,6 +48,8 @@ S3method(print, summary.cslseFit)
 S3method(print, summary.slseFit)
 S3method(print, cslseFit)
 S3method(print, slseFit)
+S3method(print, altCausal)
+S3method(print, summaryAltCausal)
 S3method(plot, cslseFit)
 S3method(plot, slseFit)
 S3method(predict, cslseFit)

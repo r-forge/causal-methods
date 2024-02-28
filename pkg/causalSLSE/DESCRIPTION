@@ -9,7 +9,7 @@ Authors@R: c(person("Pierre Chausse", "Developer", role = c("aut", "cre"),
 Description: Several causal effects are measured using least squares regressions and basis function approximations. Backward and forward selection methods based on different criteria are used to select the basis functions.
 Depends: R (>= 4.0.0)
 Suggests: knitr, rmarkdown
-Collate: 'cslse.R' 'slse.R' 'Fcslse.R'
+Collate: 'cslse.R' 'slse.R' 'Fcslse.R' 'altCausal.R'
 Imports: stats, sandwich, texreg, methods
 License: GPL (>= 2)
 NeedsCompilation: yes

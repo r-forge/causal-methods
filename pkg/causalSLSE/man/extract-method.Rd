@@ -1,8 +1,20 @@
-\name{extract,cslse-method}
+\name{extract}
+\alias{extract,slseFit-method}
+\alias{extract.slseFit}
 \alias{extract,cslse-method}
 \alias{extract.cslse}
-\title{\code{\link{extract}} Method for \code{cslse} Objects}
+\alias{extract,altCausal-method}
+\title{\code{\link{extract}} methods for some objects.}
 \usage{
+\S4method{extract}{slseFit}(
+  model,
+  include.rsquared = TRUE,
+  include.adjrs = TRUE, 
+  include.nobs = TRUE,
+  include.fstatistic = FALSE,
+  include.rmse = FALSE,
+  ...)
+
 \S4method{extract}{cslse}(
     model,
     include.nobs = TRUE,
@@ -13,10 +25,15 @@
     separated.rsquared = FALSE,    
     which = c("ALL","ACE","ACT","ACN","ACE-ACT","ACE-ACN","ACT-ACN"),
     ...)
+
+\S4method{extract}{altCausal}(
+    model,
+    include.nobs = TRUE,
+    ...)
+
 }
 \arguments{
-\item{model}{A causal effect object created by
-  \code{\link{causalSLSE}}.} 
+\item{model}{A model object.} 
 
 \item{include.nobs}{Report the number of obervations?}
 
@@ -26,7 +43,7 @@
   interactions is any) per group?}
 
 \item{include.rsquared}{Report the R-squared of the final regression
-  estimtion}
+  estimation}
 
 \item{include.adjrs}{Report the adjusted R-squared of the final
   regression estimtion}
@@ -36,12 +53,23 @@
 
 \item{which}{Which causal effect measures should be printed?}
 
+\item{include.fstatistic}{Report the F-statistics?}
+
+\item{include.rmse}{Report the RMSE?}
+
 \item{...}{Custom parameters, which are handed over to subroutines. Currently
 not in use.}
+
 }
 \description{
+\code{\link{extract}} method for \code{slseFit} objects created by the
+\code{\link[causalSLSE]{estSLSE}} function.
+
 \code{\link{extract}} method for \code{cslse} objects created by the
 \code{\link[causalSLSE]{causalSLSE}} function.
+
+\code{\link{extract}} method for \code{altCausal} objects created by the
+functions in the list of alternative methods: \code{\link{altCausal}}.
 }
 
 \value{
