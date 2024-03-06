@@ -13,16 +13,16 @@ the treated and the causal effect on the nontreated.
 
 \usage{
 
-matching(form,  balm, data, type=c("ACE","ACT","ACC"), M=4,
+matching(form,  balm, data, type=c("ACE","ACT","ACN"), M=4,
          psForm=NULL, bcForm=NULL, vJ=4)
 
-LLmatching(form, psForm, data, type=c("ACE","ACT","ACC"),
+LLmatching(form, psForm, data, type=c("ACE","ACT","ACN"),
            kern=c("Gaussian","Epanechnikov"),tol=1e-4,
            h=NULL, from=.00001, to=5, ngrid=10, maxit=100,
            hMethod=c("Brent","Grid"))
 
-ipw(form, psForm, data, type=c("ACE","ACT","ACC"),
-    normalized=FALSE, ...)
+ipw(form, psForm, data, type=c("ACE","ACT","ACN"),
+    normalized=FALSE, tolPS=0, ...)
 }
 \arguments{
 
@@ -36,7 +36,7 @@ ipw(form, psForm, data, type=c("ACE","ACT","ACC"),
 
   \item{type}{The type of causal effect to compute. \code{ACE} stands
     for average causal effect, \code{ACT} for causal effect on the treated
-    and \code{ACC} for causal effect on the control or non-treated.}
+    and \code{ACN} for causal effect on the control or nontreated.}
 
   \item{M}{The minimum number of matches}
   
@@ -52,6 +52,11 @@ ipw(form, psForm, data, type=c("ACE","ACT","ACC"),
     
   \item{tol}{The tolerance level for the stopping rule used to compute
     the optimal bandwidth.}
+
+  \item{tolPS}{Observations for which the propensity scores or 1 minus
+  the propensity scores are less than \code{1/n*tolPS} are removed. It is
+  meant to satisfy the assumption that the propensity score is bounded
+  away from, 0 and 1. To keep all observation, set the argument to 0.}
 
   \item{h}{A fixed bandwidth. By default, the optimal bandwidth is found
     by minimizing a cross-validation.}

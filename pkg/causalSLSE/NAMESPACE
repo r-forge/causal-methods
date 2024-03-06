@@ -3,7 +3,7 @@ importFrom(stats, quantile, lm, predict, coef, vcov, printCoefmat, cov, pnorm,
            as.formula, model.frame, model.matrix, delete.response, formula, 
            na.omit, pf, qnorm, residuals, terms, var, fitted, nobs, .getXlevels,
            update, AIC, BIC, reformulate, model.response,
-           binomial, glm, lm.wfit, optim, plogis)
+           binomial, glm, lm.wfit, optim, plogis, dlogis)
 
 importFrom(graphics, grid, legend, matplot)
 importFrom(sandwich, vcovHC, vcovHAC)
