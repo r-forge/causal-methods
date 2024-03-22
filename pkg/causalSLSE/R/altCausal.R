@@ -106,11 +106,28 @@ getMissingY <- function(y, z, x, which=c("y0", "y1"),
 ## PSForm is the formula used to compute the propensity score.
 ## BCorForm is the bias correction regression model
 
+.rmNA <- function(dat, ...)
+{
+    if (...length() == 0)
+        return(dat)
+    allf <- list(...)
+    vars <- lapply(allf, function(fi) all.vars(fi))
+    vars <- unique(do.call("c", vars))
+    na <- attr(na.omit(dat[vars]), "na.action")
+    if (!is.null(na))
+    {
+        dat <- dat[-na,,drop=FALSE]
+        attr(dat,"na.action") <- na
+    }
+    dat    
+}
+
 matching <- function (form, balm, data, type = c("ACE", "ACT", "ACN"), M = 4, 
                        psForm = NULL, bcForm = NULL, vJ = 4) 
 {
     type <- match.arg(type)
     Call <- match.call()
+    data <- .rmNA(data, form, balm, psForm, bcForm)
     matchPS <- inherits(psForm, "formula")
     adjust <- inherits(bcForm, "formula")
     mf <- model.frame(form, data)
@@ -192,9 +209,9 @@ matching <- function (form, balm, data, type = c("ACE", "ACT", "ACN"), M = 4,
         details <- c(details, list(paste("Bias-correction formula: ", 
             deparse(bcForm), sep = "")))
     form <- list(balForm = balm, psForm = psForm, bcForm = bcForm)
-    ans <- list(estim = coef, se = se, type = type, method = method, 
+    ans <- list(estim = coef, se = se, type = ptype, method = method, 
         form = form, details = details, info = list(), data = data, 
-        call = Call, coefNames = c(type, paste(type, "_BC", sep = "")))
+        call = Call, coefNames = c(ptype, paste(ptype, "_BC", sep = "")))
     class(ans) <- "altCausal"
     ans
 }
@@ -215,6 +232,7 @@ LLmatching <- function(form, psForm, data, type=c("ACE","ACT","ACN"),
 {
     type <- match.arg(type)
     Call <- match.call()
+    data <- .rmNA(data, form, psForm)    
     kern <- match.arg(kern)
     hMethod <- match.arg(hMethod)
     mf <- model.frame(form, data)
@@ -400,7 +418,8 @@ ipw <- function(form, psForm, data, type=c("ACE","ACT","ACN"),
 {
     type <- match.arg(type)
     Call <- match.call()
-   mf <- model.frame(form, data)
+    data <- .rmNA(data, form, psForm)    
+    mf <- model.frame(form, data)
     Y <- c(mf[[1]])
     T <- c(mf[[2]])
     n <- length(Y)
@@ -425,6 +444,7 @@ ipw <- function(form, psForm, data, type=c("ACE","ACT","ACN"),
     {
         res <- getGPE.PS(form, psForm, data, ...)
         X <- res$phat
+        PSpar <- res$coef
         info <- res$info
         normalized <- TRUE
         if (info$convergence != 0)
@@ -437,36 +457,55 @@ ipw <- function(form, psForm, data, type=c("ACE","ACT","ACN"),
         }
     } else {                        
         res <- glm(psForm, data=data, family=binomial())
-        X <- as.matrix(fitted(res))
+        X <- fitted(res)
+        PSpar <- coef(res)
     }
-    Rx <- model.matrix(psForm, data)
-    selObs <- !(X<=1/length(T)*tolPS | (1-X)<=1/length(T)*tolPS)
+    Rx <- model.matrix(psForm, data)    
+    selObs <- X>tolPS & X<1-tolPS
     Rx <- Rx[selObs,,drop=FALSE]
     X <- X[selObs]
     T <- T[selObs]
     Y <- Y[selObs]
-    X <- X*sum(X)/sum(T)
     n <- length(Y)
     data <- data[selObs,,drop=FALSE]
     w1 <- T/X
     w0 <- (1-T)/(1-X)
-    gX <- if (type == "ACE")
-          {            
-              rep(1, n)
-          } else if (type == "ACT") {
-              X
-          } else {
-              1-X
-          }   
-    psi <- gX*(w1*Y-w0*Y)
+    gX <- switch(type,
+                 ACE = rep(1,n),
+                 ACT = X,
+                 ACN = 1-X)    
     if (normalized)
-        ACE <- sum(Y*((gX*w1)/sum(gX*w1)-(gX*w0)/sum(gX*w0)))
-    else
-        ACE <- sum(Y*gX*(w1-w0))/sum(gX)
-    b <- qr.solve(Rx,Y*(w1^2+w0^2))
-    alpha <- -gX*(T-X)*c(Rx%*%b)
-    V <- mean((psi-ACE*gX+alpha)^2)*n/sum(gX)^2
-    se <- c(IPW=sqrt(V))
+    {
+        D1 <- Y*(gX*w1)/sum(gX*w1)
+        D0 <- Y*(gX*w0)/sum(gX*w0)
+    } else {
+        D1 <- Y*gX*w1/sum(gX)
+        D0 <- Y*gX*w0/sum(gX)
+    }
+    ACE <- sum(D1-D0)
+        
+    ## This is like Hirano-Imbens-Ridder 2003  
+    ##  psi <- gX*(w1*Y-w0*Y)
+    ##  b <- qr.solve(Rx,Y*(w1^2+w0^2))
+    ##  alpha <- -gX*(T-X)*c(Rx%*%b)
+    ##  V <- mean((psi-ACE*gX+alpha)^2)*n/sum(gX)^2
+    ##  se <- c(IPW=sqrt(V))
+
+    ## This is like Zhou, Matsouaka and Thomas
+
+    Ebb <- crossprod(X*(1-X)*Rx,Rx)/n
+    Eh <- mean(gX)
+    dPS <- dlogis(c(Rx%*%PSpar))*Rx
+    gXb <- switch(type,
+                  ACE = 0,
+                  ACT = dPS,
+                  ACN = -dPS)
+    Ub <- colSums((Y-D1)*T/X*(gXb-(1-X)*gX*Rx))
+    Vb <- colSums((Y-D0)*(1-T)/(1-X)*(gXb+X*gX*Rx))
+    E <- mean(gX)
+    HbEbb <- solve(Ebb, (Vb-Ub)/n)
+    Ig <- (T*gX*(Y-D1)/X-(1-T)*gX*(Y-D0)/(1-X)-(T-X)*c(Rx%*%HbEbb))/E
+    se <- sqrt(sum(Ig^2))/n
     estim <- c(IPW=ACE)
     ans <- list(estim=estim, se=se, type=type, method=method,
                 form=list(psForm=psForm), details=details, data=data,
