@@ -1,5 +1,5 @@
       subroutine edist(x1,x2,n,k,dist)
-      integer n, i
+      integer n, i, k
       double precision x1(k), x2(n,k), dist(n)
       do i=1,n
          call exprsum((x1-x2(i,:))**2, k, dist(i))

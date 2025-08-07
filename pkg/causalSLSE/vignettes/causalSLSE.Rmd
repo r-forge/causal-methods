@@ -2110,6 +2110,65 @@ using `causalSLSE:::` before the method names.
 Note that the method `causalSLSE` is also registered for objects of
 class `formula`. 
 
+# Experiments (to be removed before publishing)
 
+```{r}
+data(simDat5)
+mod <- cslseModel(Y ~ Z | ~ X1 * X2, data = simDat5)
+getAlt <- function(which=c("ipw","matching"), ...)
+{
+    which <- match.arg(which)
+    met <- c("ACE","ACT","ACN")
+    l <- lapply(met, function(mi)
+    {
+        arg <- list(...)
+        arg$type <- mi
+        res <- do.call(which, arg)
+    })
+    if (length(l[[1]]$estim)==2)
+    {
+        l <- lapply(1:2, function(i) {
+            obj <- lapply(l, function(li) {
+                li$estim <- li$estim[i]
+                li$se <- li$se[i]
+                li})
+            names(obj) <- met
+            class(obj) <- "allAlt"
+            obj})
+        names(l) <- c("Matching", "BC_Matching")
+    } else {
+        names(l) <- met
+        class(l) <- "allAlt"
+    }
+    l
+}
+
+setMethod("extract", signature = className("allAlt", package='causalSLSE'),
+          definition = function (model, include.nobs = TRUE, ...) 
+          {
+              se <- sapply(model, function(li) li$se)
+              co <- sapply(model, function(li) li$estim)
+              pval <- 2*pnorm(-abs(co/se))
+              names(co) <- names(se) <- names(pval) <- names(model)
+              gof <- numeric()
+              gof.names <- character()
+              gof.decimal <- logical()
+              if (isTRUE(include.nobs)) {
+                  n <- nrow(model[[1]]$data)
+                  gof <- c(gof, n)
+                  gof.names <- c(gof.names, "Num. obs.")
+                  gof.decimal <- c(gof.decimal, FALSE)
+              }
+              tr <- createTexreg(coef.names = names(co), coef = co, se = se, 
+                                 pvalues = pval, gof.names = gof.names,
+                                 gof = gof, gof.decimal = gof.decimal)
+              return(tr)
+          })
+
+res <- getAlt("ipw", form=Y~Z, psForm=Z~X1*X2, data=simDat5, normalized=TRUE)
+res2 <- getAlt("matching", form=Y~Z, psForm=Z~X1*X2, data=simDat5, bcForm=~X1*X2,
+               balm=~X1*X2)
+texreg(list(IPW=res, Matching=res2[[1]], BC.Matching=res2[[2]]))
+```
 
 # References

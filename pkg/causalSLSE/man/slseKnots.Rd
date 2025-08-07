@@ -31,14 +31,14 @@ slseKnots(form, data, X, nbasis = function(n) n^0.3,
 }
 
 \details{The automatic selection is as follows. It is applied to each
-  variable created by the \code{\link{model.matrix}} of \code{form} except for
+  variable created by the \code{\link[stats]{model.matrix}} of \code{form} except for
   the intercept:
 
   The number of knots is the ceiling of what the \code{nbasis} function
   returns minus 1. Let \code{p-1} be the number of knots. Then, we
   compute the \code{p+1} empirical quantiles of the variable for equally
   spaced probabilities going from 0 to 1 and drop the first and last
-  ones. This is done using the function \code{\link{quantile}} with
+  ones. This is done using the function \code{\link[stats]{quantile}} with
   \code{type=1}. We then remove the duplicated values and the ones equal
   to either the \code{min} or the \code{max} of the variable. if the number
   of remaining knots is equal to 0, the set of knots for this variable
@@ -51,7 +51,7 @@ slseKnots(form, data, X, nbasis = function(n) n^0.3,
 
   It returns an object of class \code{slseKnots}. It is a list for which
   the length and names are respectively the number of columns and the
-  column names of the \code{\link{model.matrix}} of \code{form} after
+  column names of the \code{\link[stats]{model.matrix}} of \code{form} after
   the intercept has been removed. Each element is a numeric vector of
   knots, unless the number of knots is set to 0, in  which case it is
   \code{NULL}. 

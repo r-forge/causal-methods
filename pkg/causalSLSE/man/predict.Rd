@@ -30,7 +30,7 @@ errors and confidence intervals.
     \code{cslseFit} objects.}
   \item{vcov.}{An alternative function to compute the covariance
     matrix of the least squares estimates. The default is the
-    \code{\link[=vcovHC.default]{vcovHC}}.}
+    \code{\link[sandwich]{vcovHC}}.}
   \item{...}{Additional argument to pass to the \code{vcov.} function.}  
 }
 

@@ -41,7 +41,7 @@ ipw(form, psForm, data, type=c("ACE","ACT","ACN"),
   \item{M}{The minimum number of matches}
   
   \item{psForm}{It is the \code{formula} argument passed to
-    \code{\link{glm}} to estimate the propensity scores by a logistic
+    \code{\link[stats]{glm}} to estimate the propensity scores by a logistic
     regression.}
   
   \item{bcForm}{A formula that represents the right hand side in the
@@ -80,7 +80,7 @@ ipw(form, psForm, data, type=c("ACE","ACT","ACN"),
 
   \item{vJ}{The minimum number of matches for the standard error estimation}
   
-  \item{...}{Additional arguments to pass to \code{\link{optim}} when
+  \item{...}{Additional arguments to pass to \code{\link[stats]{optim}} when
     the \code{GPE} method is used.}
 	    
 }

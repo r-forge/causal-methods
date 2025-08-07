@@ -23,7 +23,7 @@ knot specifications of the \code{slseModel} or \code{cslseModel} model.
 
 \value{ The function returns a matrix of basis functions used to
 estimate the semiparametric model. It is used directly as regressor in
-\code{\link{lm}} as shown in the example below.}
+\code{\link[stats]{lm}} as shown in the example below.}
 
 \examples{
 

@@ -17,7 +17,7 @@ causal models.
     \code{\link{causalSLSE}}.} 
   \item{vcov.}{A function to compute the strandard error of the
     least squares coefficients. The default is
-    \code{\link[=vcovHC.default]{vcovHC}}.}  
+    \code{\link[sandwich]{vcovHC}}.}  
 \item{...}{Argument for other types of objects}
 }
 
@@ -30,7 +30,7 @@ estimated by \code{\link{estSLSE}}. It is an object of class
 
 \item{model}{The \code{\link{slseModel}} model being estimated.}
 
-\item{lseSum}{An object of class \code{\link{summary.lm}}.}
+\item{lseSum}{An object of class \code{\link[stats]{summary.lm}}.}
 
 The function \code{summary.cslseFit} returns an object of class
 \code{summary.cslseFit}, which is a list of \code{summary.slseFit} objects,

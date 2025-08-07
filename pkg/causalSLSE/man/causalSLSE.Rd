@@ -57,7 +57,7 @@ least squares method. It returns an object of class
     compute the p-values needed for the selection.}  
   \item{vcov.}{An alternative function to compute the covariance matrix
     of the least squares estimators. The default is
-    \code{\link[=vcovHC.default]{vcovHC}}. This function is used to
+    \code{\link[sandwich]{vcovHC}}. This function is used to
     compute the standard errors of the causal effect estimators and the
     SLSE coefficients.}   
   \item{reSelect}{By default, the stored selections are used. If

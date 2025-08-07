@@ -52,7 +52,7 @@ It returns an object of class \code{slseFit} or \code{cslseFit}
   is a list with the following elements: 
 
 \item{LSE}{This is the least squares estimate of the semiparametric
-  model. It is an object of class \code{\link{lm}}.}
+  model. It is an object of class \code{\link[stats]{lm}}.}
 
 \item{model}{An object of class \code{slseModel}. It is the model that
   is being estimated. The model may have been created by

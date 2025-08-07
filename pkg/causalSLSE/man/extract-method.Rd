@@ -4,7 +4,7 @@
 \alias{extract,cslse-method}
 \alias{extract.cslse}
 \alias{extract,altCausal-method}
-\title{\code{\link{extract}} methods for some objects.}
+\title{\code{extract} methods for some objects.}
 \usage{
 \S4method{extract}{slseFit}(
   model,
@@ -62,16 +62,16 @@ not in use.}
 
 }
 \description{
-\code{\link{extract}} method for \code{slseFit} objects created by the
+\code{\link[texreg]{extract}} method for \code{slseFit} objects created by the
 \code{\link[causalSLSE]{estSLSE}} function.
 
-\code{\link{extract}} method for \code{cslse} objects created by the
+\code{\link[texreg]{extract}} method for \code{cslse} objects created by the
 \code{\link[causalSLSE]{causalSLSE}} function.
 
-\code{\link{extract}} method for \code{altCausal} objects created by the
+\code{\link[texreg]{extract}} method for \code{altCausal} objects created by the
 functions in the list of alternative methods: \code{\link{altCausal}}.
 }
 
 \value{
-It returns an object of class \code{\link{texreg}}.  
+It returns an object of class \code{texreg}.  
 }
