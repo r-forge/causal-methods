@@ -310,7 +310,7 @@ c     the above is satisfied if hg ang cvg comes from gridcv subroutine
       subroutine exprsum(x, n, value)
       integer n, i
       double precision x(n), value
-      real*16 s
+      REAL(KIND=SELECTED_REAL_KIND(33)) :: s
 
       s = 0.0
       do i =1,n
